@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlayLoad · Crear cuenta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   PlayLoad · alta de cuenta
+   Cuatro pasos: tipo de cuenta → credenciales → perfil → listo.
+   El perfil que se pide en el paso 3 depende del tipo elegido.
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --color-bg:#13151f; --color-surface:#20222f; --color-text:#f1f1f5;
+  --color-accent:#9184d9;
+  --color-divider:color-mix(in srgb,#e9e9ed 22%,transparent);
+  --line:#414553;
+
+  --color-neutral-100:#f3f5fe; --color-neutral-200:#e4e7f5; --color-neutral-600:#75798c;
+  --color-neutral-800:#3f424d;
+  --color-accent-100:#f5f4ff; --color-accent-300:#d2cefd; --color-accent-400:#b5abfc;
+  --color-accent-800:#423a6a;
+  --color-section:#262a60; --color-section-glow:#353b80;
+
+  --color-ok:#a9df90; --color-ok-bg:#2e3d2b;
+  --color-warn:#e0ab8d; --color-risk:#e08d96;
+
+  --font-heading:"Inter",system-ui,sans-serif; --font-heading-weight:500;
+  --font-body:"Inter",system-ui,sans-serif;
+
+  --space-2:5.6px; --space-3:8.4px; --space-4:11.2px; --space-6:16.8px; --space-8:22.4px;
+  --radius-sm:4px; --radius-md:8px; --radius-lg:14px;
+
+  --muted:color-mix(in srgb,var(--color-text) 74%,transparent);
+  --muted-2:color-mix(in srgb,var(--color-text) 56%,transparent);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--font-heading);font-weight:var(--font-heading-weight);
+  line-height:1.14;letter-spacing:-.02em;margin:0}
+p{margin:0}
+a{color:var(--color-accent-300);text-decoration:none}
+a:hover{color:var(--color-accent-400)}
+button{font:inherit;color:inherit;background:transparent;border:0;cursor:pointer}
+input,select{font:inherit}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+::selection{background:color-mix(in srgb,var(--color-accent) 32%,transparent)}
+svg{display:block}
+@keyframes plPulse{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes plIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2)}
+.num{font-family:var(--font-heading);font-weight:500;letter-spacing:-.012em}
+.mark{width:25px;height:25px;border-radius:var(--radius-sm);border:1px solid var(--color-accent);
+  display:inline-flex;align-items:center;justify-content:center;font-size:11px;
+  color:var(--color-accent);font-family:var(--font-heading);flex:none}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:14.5px;
+  line-height:1.2;border:1px solid transparent;padding:10px 16px;border-radius:var(--radius-md);
+  transition:background .14s ease,border-color .14s ease,color .14s ease}
+.btn-primary{color:var(--color-accent-300);border-color:var(--color-accent)}
+.btn-primary:hover{background:color-mix(in srgb,var(--color-accent) 18%,transparent);color:var(--color-accent-100)}
+.btn-secondary{border-color:var(--line);color:var(--muted)}
+.btn-secondary:hover{background:color-mix(in srgb,var(--color-text) 8%,transparent);color:var(--color-text)}
+.btn-ghost{color:var(--muted);padding:8px 10px}
+.btn-ghost:hover{color:var(--color-text)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn-lg{font-size:15px;padding:12px 20px}
+.btn-block{width:100%}
+
+.input{width:100%;min-height:42px;padding:9px 12px;font-size:14.5px;color:var(--color-text);
+  caret-color:var(--color-accent);background:#191b26;border:1px solid var(--line);
+  border-radius:var(--radius-md)}
+.input::placeholder{color:var(--muted-2)}
+.input:hover{border-color:color-mix(in srgb,var(--color-text) 50%,transparent)}
+.input:focus-visible{border-color:var(--color-accent);outline-offset:0}
+select.input{appearance:none;padding-right:30px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 19px,calc(100% - 11px) 19px;background-size:5px 5px;background-repeat:no-repeat}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label{font-size:13px;color:var(--muted)}
+.hint{font-size:12px;color:var(--muted-2)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
+
+/* ═══════════ ESTRUCTURA ═══════════ */
+.wrap{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);min-height:100vh}
+
+/* — panel izquierdo — */
+.aside{position:relative;padding:34px 38px;display:flex;flex-direction:column;gap:26px;
+  border-right:1px solid var(--line);overflow:hidden;background:#0f111a}
+.aside .bg{position:absolute;inset:0;z-index:0}
+.aside .bg img{width:100%;height:100%;object-fit:cover;mix-blend-mode:lighten;opacity:.34}
+.aside .veil{position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,#0f111a 8%,color-mix(in srgb,#0f111a 78%,transparent) 55%,#0f111a 100%)}
+.aside>*{position:relative;z-index:2}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-heading);
+  font-weight:500;font-size:17px;color:var(--color-text)}
+.aside h2{font-size:27px;letter-spacing:-.024em;text-wrap:balance}
+.aside .sell{font-size:14.5px;line-height:1.6;color:var(--muted)}
+.points{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
+.points li{display:flex;gap:11px;align-items:flex-start;font-size:14px;color:var(--muted)}
+.points svg{width:16px;height:16px;flex:none;margin-top:2px;color:var(--color-accent)}
+.aside-foot{margin-top:auto;display:flex;flex-direction:column;gap:14px}
+.trust{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--muted-2)}
+
+/* tarjeta de vista previa de la cuenta */
+.preview{border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--color-surface);
+  padding:16px;display:flex;flex-direction:column;gap:13px;animation:plIn .25s ease both}
+.pv-head{display:flex;align-items:center;gap:12px}
+.pv-badge{width:42px;height:42px;border-radius:10px;flex:none;display:flex;align-items:center;
+  justify-content:center;font-family:var(--font-heading);font-weight:600;font-size:14px;color:#14161f;
+  background:linear-gradient(150deg,var(--color-accent),color-mix(in srgb,var(--color-accent) 68%,#14161f))}
+.pv-name{font-family:var(--font-heading);font-weight:500;font-size:16px;letter-spacing:-.015em}
+.pv-sub{font-size:12.5px;color:var(--muted-2);margin-top:2px}
+.pv-rows{display:flex;flex-direction:column;gap:0}
+.pv-row{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted);padding:7px 0}
+.pv-row+.pv-row{border-top:1px solid color-mix(in srgb,var(--color-text) 10%,transparent)}
+.pv-row b{font-weight:400;color:var(--color-text)}
+
+/* — panel derecho — */
+.main{padding:34px 44px 56px;display:flex;flex-direction:column;min-width:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:34px}
+.steps{display:flex;align-items:center;gap:10px}
+.step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted-2)}
+.step i{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);display:flex;
+  align-items:center;justify-content:center;font-size:11.5px;font-style:normal;
+  font-family:var(--font-heading);flex:none}
+.step.on{color:var(--color-accent-300)}
+.step.on i{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 18%,transparent)}
+.step.done{color:var(--muted)}
+.step.done i{border-color:var(--color-ok);color:var(--color-ok)}
+.step-sep{width:22px;height:1px;background:var(--line)}
+.panel{max-width:640px;width:100%;animation:plIn .25s ease both}
+.panel h1{font-size:30px;margin-bottom:9px}
+.panel .lead{font-size:15px;color:var(--muted);margin-bottom:28px;max-width:52ch}
+.actions{display:flex;align-items:center;gap:12px;margin-top:30px;flex-wrap:wrap}
+.actions .spacer{flex:1}
+
+/* — paso 1: tipo de cuenta — */
+.types{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.type{position:relative;text-align:left;border:1px solid var(--line);border-radius:var(--radius-lg);
+  background:var(--color-surface);padding:22px;display:flex;flex-direction:column;gap:14px;
+  transition:border-color .16s ease,transform .16s ease,background .16s ease}
+.type:hover{border-color:var(--color-accent);transform:translateY(-2px)}
+.type[aria-pressed="true"]{border-color:var(--color-accent);
+  background:color-mix(in srgb,var(--color-surface) 88%,var(--color-accent));
+  box-shadow:0 0 0 1px var(--color-accent)}
+.type-ico{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--color-accent) 20%,transparent);color:var(--color-accent-300);flex:none}
+.type-ico svg{width:22px;height:22px}
+.type h3{font-size:18px}
+.type p{font-size:13.5px;line-height:1.55;color:var(--muted)}
+.type ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.type li{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:var(--muted-2)}
+.type li i{width:12px;height:1px;background:var(--color-accent);flex:none;margin-top:9px}
+.type-check{position:absolute;top:16px;right:16px;width:20px;height:20px;border-radius:50%;
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#14161f}
+.type[aria-pressed="true"] .type-check{background:var(--color-accent);border-color:var(--color-accent)}
+.type-check svg{width:12px;height:12px;opacity:0}
+.type[aria-pressed="true"] .type-check svg{opacity:1}
+
+/* — paso 2: credenciales — */
+.google{width:100%;display:flex;align-items:center;justify-content:center;gap:11px;
+  background:#fff;color:#1f1f1f;border-radius:var(--radius-md);padding:11px 16px;
+  font-family:var(--font-heading);font-weight:500;font-size:14.5px;
+  transition:background .14s ease}
+.google:hover{background:#ececf1}
+.gmark{width:20px;height:20px;flex:none}
+.sep{display:flex;align-items:center;gap:14px;margin:22px 0;color:var(--muted-2);font-size:12px}
+.sep::before,.sep::after{content:"";height:1px;flex:1;background:var(--line)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted);cursor:pointer}
+.check input{position:absolute;opacity:0;width:0;height:0}
+.check .box{width:17px;height:17px;border-radius:4px;border:1px solid var(--line);flex:none;
+  margin-top:2px;display:flex;align-items:center;justify-content:center;color:#14161f}
+.check .box svg{width:11px;height:11px;opacity:0}
+.check input:checked+.box{background:var(--color-accent);border-color:var(--color-accent)}
+.check input:checked+.box svg{opacity:1}
+.check input:focus-visible+.box{outline:2px solid var(--color-accent);outline-offset:2px}
+.meter{display:flex;gap:4px;margin-top:7px}
+.meter i{height:3px;flex:1;border-radius:2px;background:var(--line)}
+
+/* — paso 3: perfil — */
+.form{display:flex;flex-direction:column;gap:20px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-size:13.5px;color:var(--muted);
+  transition:border-color .14s ease,color .14s ease,background .14s ease}
+.chip:hover{border-color:var(--color-accent);color:var(--color-text)}
+.chip[aria-pressed="true"]{border-color:var(--color-accent);color:var(--color-accent-300);
+  background:color-mix(in srgb,var(--color-accent) 15%,transparent)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden}
+.seg button{padding:8px 14px;font-size:13.5px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{color:var(--color-accent-300);box-shadow:inset 0 0 0 1px var(--color-accent)}
+.drop{border:1px dashed var(--line);border-radius:var(--radius-md);padding:16px;display:flex;
+  align-items:center;gap:14px;color:var(--muted-2);font-size:13.5px}
+.drop:hover{border-color:var(--color-accent);color:var(--muted)}
+.drop-sq{width:46px;height:46px;border-radius:10px;background:#191b26;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;color:var(--muted-2);flex:none}
+.invite-row{display:grid;grid-template-columns:minmax(0,1fr) 170px auto;gap:10px;align-items:center}
+.invite-row .btn{padding:9px 11px}
+
+/* — paso 4 — */
+.done-mark{width:56px;height:56px;border-radius:50%;background:var(--color-ok-bg);color:var(--color-ok);
+  display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.next{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius-lg);
+  background:var(--color-surface);overflow:hidden;margin-top:24px}
+.next-row{display:flex;align-items:center;gap:14px;padding:14px 16px}
+.next-row+.next-row{border-top:1px solid color-mix(in srgb,var(--color-text) 11%,transparent)}
+.next-n{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);display:flex;
+  align-items:center;justify-content:center;font-size:12px;color:var(--muted-2);flex:none;
+  font-family:var(--font-heading)}
+.next-row div{flex:1;min-width:0}
+.next-row .t{font-size:14px}
+.next-row .s{font-size:12.5px;color:var(--muted-2);margin-top:2px}
+
+@media (max-width:1080px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  .aside{border-right:0;border-bottom:1px solid var(--line);padding:26px 24px;gap:20px}
+  .aside h2{font-size:23px}
+  .points,.preview{display:none}
+  .aside-foot{margin-top:0}
+  .main{padding:26px 24px 48px}
+}
+@media (max-width:720px){
+  .types{grid-template-columns:1fr}
+  .grid-2{grid-template-columns:1fr}
+  .invite-row{grid-template-columns:1fr}
+  .panel h1{font-size:25px}
+  .steps .step span{display:none}
+  .step-sep{width:14px}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ══════════ PANEL IZQUIERDO ══════════ -->
+  <aside class="aside">
+    <div class="bg"><img src="img/planificacion.jpg" alt=""></div>
+    <div class="veil"></div>
+
+    <a class="brand" href="index.html"><span class="mark">PL</span>PlayLoad</a>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <h2 id="asideTitle">Empieza tu prueba de 30 días</h2>
+      <p class="sell" id="asideText">Planificación, sesiones, control de carga e informes. Sin tarjeta y sin instalar nada.</p>
+    </div>
+
+    <ul class="points" id="asidePoints"></ul>
+
+    <div class="aside-foot">
+      <div id="previewSlot"></div>
+      <div class="trust">
+        <span>Sin tarjeta</span><span>Datos en la UE</span><span>Cancela cuando quieras</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════════ PANEL DERECHO ══════════ -->
+  <main class="main">
+    <div class="top">
+      <div class="steps" id="steps"></div>
+      <div style="font-size:13.5px;color:var(--muted-2)">
+        ¿Ya tienes cuenta? <a href="PlayLoad-dashboard.html">Inicia sesión</a>
+      </div>
+    </div>
+
+    <div id="panel"></div>
+  </main>
+</div>
+
+<script>
+/* ── estado del alta ─────────────────────────────────────────── */
+const S = {
+  step: 1,
+  type: null,            // 'pro' | 'club'
+  email: '', pass: '', terms: false,
+  // perfil profesional
+  name:'', role:'Preparador físico', teams:'2 – 3', cats:[], worksAt:'',
+  // perfil club
+  club:'', city:'', teamCount:'4 – 8', modes:['Fútbol 11'], invites:[]
+};
+
+const STEPS = ['Tipo de cuenta','Cuenta','Perfil','Listo'];
+const TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg>';
+
+const ASIDE = {
+  none:{ t:'Empieza tu prueba de 30 días',
+    x:'Planificación, sesiones, control de carga e informes. Sin tarjeta y sin instalar nada.',
+    p:['Toda la temporada sobre el calendario real de competición',
+       'Wellness y RPE que el jugador envía en 20 segundos',
+       'El informe del microciclo, hecho cada lunes'] },
+  pro:{ t:'Tu cargo, tus equipos, tus datos',
+    x:'La cuenta profesional es tuya y te acompaña aunque cambies de club. Trabaja con uno o con varios equipos a la vez.',
+    p:['Los equipos que gestionas, estén en el club que estén',
+       'Tu biblioteca de tareas te sigue de una temporada a otra',
+       'Exporta tu histórico cuando quieras, en CSV'] },
+  club:{ t:'Todas las categorías bajo un panel',
+    x:'La cuenta de club reúne a los equipos y al cuerpo técnico, con permisos por rol y facturación única.',
+    p:['Panel multiequipo con el estado de cada categoría',
+       'Invita al cuerpo técnico y decide qué ve cada rol',
+       'Informe del club para dirección deportiva'] }
+};
+
+const ROLES = ['Entrenador','Preparador físico','Analista','Fisioterapeuta'];
+const CATS  = ['Fútbol base','Cadete','Juvenil','Amateur','Semiprofesional','Femenino','Fútbol sala'];
+const MODES = ['Fútbol 11','Fútbol 7','Fútbol sala'];
+const ini = s => (s||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+
+/* ── barra de pasos ──────────────────────────────────────────── */
+function renderSteps(){
+  document.getElementById('steps').innerHTML = STEPS.map((s,i)=>{
+    const n=i+1, cls = n===S.step ? 'on' : (n<S.step ? 'done' : '');
+    return `<div class="step ${cls}"><i>${n<S.step?TICK:n}</i><span>${s}</span></div>` +
+           (n<STEPS.length ? '<span class="step-sep"></span>' : '');
+  }).join('');
+}
+
+/* ── panel lateral ───────────────────────────────────────────── */
+function renderAside(){
+  const a = ASIDE[S.type || 'none'];
+  document.getElementById('asideTitle').textContent = a.t;
+  document.getElementById('asideText').textContent  = a.x;
+  document.getElementById('asidePoints').innerHTML = a.p.map(p=>
+    `<li>${TICK}<span>${p}</span></li>`).join('');
+
+  const slot = document.getElementById('previewSlot');
+  if(S.step < 2 || !S.type){ slot.innerHTML=''; return; }
+
+  const isClub = S.type==='club';
+  const title  = isClub ? (S.club || 'Tu club')      : (S.name || 'Tu cuenta');
+  const sub    = isClub ? (S.city || 'Sin ubicación') : S.role;
+  const rows = isClub
+    ? [['Tipo de cuenta','Club o academia'],['Equipos previstos',S.teamCount],
+       ['Modalidades', S.modes.join(', ')||'—'],['Staff invitado', S.invites.length? S.invites.length+' persona'+(S.invites.length>1?'s':'') : 'Ninguno']]
+    : [['Tipo de cuenta','Profesional'],['Rol principal',S.role],
+       ['Equipos',S.teams],['Categorías', S.cats.length? S.cats.length+' seleccionadas':'—']];
+
+  slot.innerHTML = `
+    <div class="preview">
+      <div class="eyebrow">Tu cuenta</div>
+      <div class="pv-head">
+        <span class="pv-badge">${ini(title)||(isClub?'CL':'PL')}</span>
+        <div style="min-width:0">
+          <div class="pv-name">${title}</div>
+          <div class="pv-sub">${sub}</div>
+        </div>
+      </div>
+      <div class="pv-rows">${rows.map(([k,v])=>`<div class="pv-row"><span>${k}</span><b>${v}</b></div>`).join('')}</div>
+    </div>`;
+}
+
+/* ── pasos ───────────────────────────────────────────────────── */
+function renderPanel(){
+  const el = document.getElementById('panel');
+  el.innerHTML = [step1,step2,step3,step4][S.step-1]();
+  el.querySelector('.panel')?.scrollIntoView({block:'nearest'});
+}
+
+/* paso 1 · tipo de cuenta */
+function step1(){
+  const card = (id,ico,h,p,list) => `
+    <button class="type" data-type="${id}" aria-pressed="${S.type===id}">
+      <span class="type-check">${TICK}</span>
+      <span class="type-ico">${ico}</span>
+      <h3>${h}</h3>
+      <p>${p}</p>
+      <ul>${list.map(l=>`<li><i></i><span>${l}</span></li>`).join('')}</ul>
+    </button>`;
+
+  const icoPro = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.5" r="3.5"/><path d="M4.5 20.5c0-3.9 3.4-6.3 7.5-6.3s7.5 2.4 7.5 6.3"/></svg>`;
+  const icoClub = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2.6 20 5.9v6c0 4.5-3.5 7.7-8 9-4.5-1.3-8-4.5-8-9v-6z"/><path d="M12 8.2v7.4M8.4 11.9h7.2" stroke-linecap="round"/></svg>`;
+
+  return `<div class="panel">
+    <h1>¿Cómo vas a usar PlayLoad?</h1>
+    <p class="lead">Elige el tipo de cuenta. Cambia lo que te pedimos después y cómo se organiza el trabajo dentro; podrás pasar de una a otra más adelante.</p>
+    <div class="types">
+      ${card('pro', icoPro, 'Profesional independiente',
+        'Entrenador, preparador físico, analista o fisio que trabaja por su cuenta o para varios equipos.',
+        ['Tú creas y gestionas tus equipos','Sin administración de club ni permisos','Facturación individual'])}
+      ${card('club', icoClub, 'Club o academia',
+        'Un club con varias categorías y un cuerpo técnico que comparte plantillas, tareas e informes.',
+        ['Panel con todas las categorías','Roles y permisos por miembro del staff','Facturación única del club'])}
+    </div>
+    <div class="actions">
+      <span class="hint">Podrás invitar a más gente en cualquier momento.</span>
+      <span class="spacer"></span>
+      <button class="btn btn-primary btn-lg" data-next ${S.type?'':'disabled'}>Continuar</button>
+    </div>
+  </div>`;
+}
+
+/* paso 2 · credenciales */
+function step2(){
+  const gmark = `<svg class="gmark" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="11" fill="#fff" stroke="#dadce0"/>
+      <text x="12" y="16.4" text-anchor="middle" font-family="Inter,Arial,sans-serif"
+            font-size="13" font-weight="700" fill="#4285F4">G</text>
+    </svg>`;
+  const strength = S.pass.length>=12 ? 3 : S.pass.length>=8 ? 2 : S.pass.length>0 ? 1 : 0;
+  const sc = ['','var(--color-risk)','var(--color-warn)','var(--color-ok)'][strength];
+
+  return `<div class="panel">
+    <h1>Crea tu cuenta</h1>
+    <p class="lead">${S.type==='club'
+      ? 'Esta será la cuenta propietaria del club. Después podrás invitar al resto del cuerpo técnico.'
+      : 'Con esta cuenta entrarás a todos tus equipos, cambies de club o no.'}</p>
+
+    <button class="google" data-google>${gmark}Continuar con Google</button>
+
+    <div class="sep">o con tu correo</div>
+
+    <div class="form">
+      <div class="field">
+        <label for="email">Correo electrónico</label>
+        <input class="input" id="email" type="email" inputmode="email" autocomplete="email"
+               placeholder="${S.type==='club'?'tu@club.com':'tu@correo.com'}" value="${S.email}">
+      </div>
+      <div class="field">
+        <label for="pass">Contraseña</label>
+        <input class="input" id="pass" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres" value="${S.pass}">
+        <div class="meter">${[0,1,2].map(i=>`<i style="background:${i<strength?sc:'var(--line)'}"></i>`).join('')}</div>
+        <span class="hint">${strength===0?'Usa al menos 8 caracteres.':strength===1?'Corta: añade alguna más.':strength===2?'Aceptable.':'Buena contraseña.'}</span>
+      </div>
+      <label class="check">
+        <input type="checkbox" id="terms" ${S.terms?'checked':''}>
+        <span class="box">${TICK}</span>
+        <span>Acepto las <a href="#">condiciones del servicio</a> y la <a href="#">política de privacidad</a>. Los datos se alojan en la UE.</span>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" data-back>← Atrás</button>
+      <span class="spacer"></span>
+      <button class="btn btn-primary btn-lg" data-next ${(S.email.includes('@') && S.pass.length>=8 && S.terms)?'':'disabled'}>Continuar</button>
+    </div>
+  </div>`;
+}
+
+/* paso 3 · perfil, distinto según el tipo */
+function step3(){
+  return S.type==='club' ? step3Club() : step3Pro();
+}
+
+function step3Pro(){
+  return `<div class="panel">
+    <h1>Cuéntanos a qué te dedicas</h1>
+    <p class="lead">Con esto ajustamos las plantillas de microciclo y las métricas que verás primero en tu panel.</p>
+
+    <div class="form">
+      <div class="grid-2">
+        <div class="field"><label for="name">Nombre y apellidos</label>
+          <input class="input" id="name" data-k="name" placeholder="Ferran Aguilar" value="${S.name}"></div>
+        <div class="field"><label for="worksAt">Club o centro (opcional)</label>
+          <input class="input" id="worksAt" data-k="worksAt" placeholder="CF Bellvitge" value="${S.worksAt}"></div>
+      </div>
+
+      <div class="field">
+        <label>Rol principal</label>
+        <div class="seg" data-seg="role">
+          ${ROLES.map(r=>`<button data-v="${r}" aria-pressed="${S.role===r}">${r}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>¿Con cuántos equipos trabajas?</label>
+        <div class="seg" data-seg="teams">
+          ${['1','2 – 3','4 – 6','Más de 6'].map(t=>`<button data-v="${t}" aria-pressed="${S.teams===t}">${t}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Categorías con las que trabajas</label>
+        <div class="chips" data-chips="cats">
+          ${CATS.map(c=>`<button class="chip" data-v="${c}" aria-pressed="${S.cats.includes(c)}">${c}</button>`).join('')}
+        </div>
+        <span class="hint">Puedes elegir varias.</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" data-back>← Atrás</button>
+      <span class="spacer"></span>
+      <button class="btn btn-primary btn-lg" data-next ${S.name.trim()?'':'disabled'}>Crear cuenta</button>
+    </div>
+  </div>`;
+}
+
+function step3Club(){
+  return `<div class="panel">
+    <h1>Configura el club</h1>
+    <p class="lead">Creamos la estructura del club con sus categorías. Podrás añadir o quitar equipos cuando quieras desde el gestor de equipos.</p>
+
+    <div class="form">
+      <div class="grid-2">
+        <div class="field"><label for="club">Nombre del club</label>
+          <input class="input" id="club" data-k="club" placeholder="CF Bellvitge" value="${S.club}"></div>
+        <div class="field"><label for="city">Ciudad</label>
+          <input class="input" id="city" data-k="city" placeholder="L'Hospitalet de Llobregat" value="${S.city}"></div>
+      </div>
+
+      <div class="field">
+        <label>Escudo del club</label>
+        <button class="drop" data-shield>
+          <span class="drop-sq">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10.6V2.8M5.3 5.5 8 2.8l2.7 2.7"/><path d="M2.6 10v3.4h10.8V10"/></svg>
+          </span>
+          <span>Arrastra el escudo o <span style="color:var(--color-accent-300)">búscalo en tu equipo</span><br>
+            <span class="hint">PNG o SVG, fondo transparente, mínimo 256 px</span></span>
+        </button>
+      </div>
+
+      <div class="field">
+        <label>¿Cuántos equipos tenéis?</label>
+        <div class="seg" data-seg="teamCount">
+          ${['1 – 3','4 – 8','9 – 15','Más de 15'].map(t=>`<button data-v="${t}" aria-pressed="${S.teamCount===t}">${t}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Modalidades</label>
+        <div class="chips" data-chips="modes">
+          ${MODES.map(m=>`<button class="chip" data-v="${m}" aria-pressed="${S.modes.includes(m)}">${m}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Invita al cuerpo técnico (opcional)</label>
+        <div class="invite-row">
+          <input class="input" id="invMail" type="email" placeholder="entrenador@club.com">
+          <select class="input" id="invRole">
+            <option>Entrenador principal</option><option>Preparador físico</option>
+            <option>Fisioterapeuta</option><option>Analista</option><option>Dirección deportiva</option>
+          </select>
+          <button class="btn btn-secondary" data-invite>Añadir</button>
+        </div>
+        ${S.invites.length ? `<div class="chips" style="margin-top:10px">${S.invites.map((i,n)=>
+          `<span class="chip" style="cursor:default">${i.mail} · ${i.role}
+             <button data-uninvite="${n}" aria-label="Quitar" style="margin-left:6px;color:var(--muted-2)">✕</button></span>`).join('')}</div>` : ''}
+        <span class="hint">Reciben un correo con su enlace de acceso. Los permisos se ajustan luego en Roles y permisos.</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" data-back>← Atrás</button>
+      <span class="spacer"></span>
+      <button class="btn btn-primary btn-lg" data-next ${S.club.trim()?'':'disabled'}>Crear club</button>
+    </div>
+  </div>`;
+}
+
+/* paso 4 · listo */
+function step4(){
+  const isClub = S.type==='club';
+  const who = isClub ? (S.club||'tu club') : (S.name||'tu cuenta');
+  const next = isClub
+    ? [['Crea tu primer equipo','Categoría, modalidad y sistema base. Un minuto.'],
+       ['Sube la plantilla','Importa un CSV o invita a los jugadores con un enlace.'],
+       ['Planifica el microciclo','Elige plantilla de semana y ajusta el día de partido.']]
+    : [['Crea tu primer equipo','Nombre, categoría y con eso ya puedes planificar.'],
+       ['Sube la plantilla','Importa un CSV o invita a los jugadores con un enlace.'],
+       ['Monta la sesión de hoy','Arrastra tareas de la biblioteca y mira la carga estimada.']];
+
+  return `<div class="panel">
+    <div class="done-mark"><svg width="26" height="26" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg></div>
+    <h1>Listo, ${who} ya está en PlayLoad</h1>
+    <p class="lead">Tienes 30 días completos, sin tarjeta. Te hemos enviado un correo de confirmación a <b style="color:var(--color-text);font-weight:400">${S.email||'tu correo'}</b>.</p>
+
+    <div class="next">
+      ${next.map(([t,s],i)=>`<div class="next-row"><span class="next-n">${i+1}</span>
+        <div><div class="t">${t}</div><div class="s">${s}</div></div>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="var(--muted-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>
+      </div>`).join('')}
+    </div>
+
+    <div class="actions">
+      <a class="btn btn-primary btn-lg" href="${isClub?'PlayLoad-equipos.html':'PlayLoad-dashboard.html'}">
+        ${isClub?'Ir al gestor de equipos':'Entrar en PlayLoad'}</a>
+      <a class="btn btn-secondary" href="PlayLoad-dashboard.html">Ver el panel de ejemplo</a>
+    </div>
+  </div>`;
+}
+
+/* ── pintado ─────────────────────────────────────────────────── */
+function render(){ renderSteps(); renderAside(); renderPanel(); }
+
+/* ── interacción ─────────────────────────────────────────────── */
+document.addEventListener('click', e => {
+  const t = e.target.closest('.type');
+  if(t){ S.type = t.dataset.type; render(); return; }
+
+  if(e.target.closest('[data-next]')){ S.step = Math.min(4, S.step+1); render(); return; }
+  if(e.target.closest('[data-back]')){ S.step = Math.max(1, S.step-1); render(); return; }
+
+  /* Google: en el prototipo salta al perfil con un correo de ejemplo */
+  if(e.target.closest('[data-google]')){
+    S.email = S.email || (S.type==='club' ? 'club@gmail.com' : 'entrenador@gmail.com');
+    S.pass = 'google-oauth'; S.terms = true; S.step = 3; render(); return;
+  }
+
+  const seg = e.target.closest('.seg button');
+  if(seg){ S[seg.parentNode.dataset.seg] = seg.dataset.v; render(); return; }
+
+  const chip = e.target.closest('.chips [data-v]');
+  if(chip){
+    const key = chip.closest('.chips').dataset.chips, v = chip.dataset.v, arr = S[key];
+    const i = arr.indexOf(v); i<0 ? arr.push(v) : arr.splice(i,1);
+    render(); return;
+  }
+
+  if(e.target.closest('[data-invite]')){
+    const m = document.getElementById('invMail'), r = document.getElementById('invRole');
+    if(m.value.includes('@')){ S.invites.push({mail:m.value, role:r.value}); render(); }
+    else { m.focus(); }
+    return;
+  }
+  const un = e.target.closest('[data-uninvite]');
+  if(un){ S.invites.splice(+un.dataset.uninvite,1); render(); return; }
+
+  if(e.target.closest('[data-shield]')) alert('En el prototipo no se sube el escudo todavía.');
+});
+
+/* los campos de texto no repintan mientras escribes: solo guardan y
+   refrescan la tarjeta lateral y el estado del botón */
+document.addEventListener('input', e => {
+  const el = e.target;
+  if(el.id==='email'){ S.email = el.value; }
+  else if(el.id==='pass'){ S.pass = el.value; }
+  else if(el.dataset.k){ S[el.dataset.k] = el.value; }
+  else return;
+
+  const btn = document.querySelector('[data-next]');
+  if(btn){
+    const ok = S.step===2 ? (S.email.includes('@') && S.pass.length>=8 && S.terms)
+             : S.step===3 ? (S.type==='club' ? !!S.club.trim() : !!S.name.trim())
+             : true;
+    btn.disabled = !ok;
+  }
+  renderAside();
+});
+
+document.addEventListener('change', e => {
+  if(e.target.id==='terms'){ S.terms = e.target.checked;
+    const btn = document.querySelector('[data-next]');
+    if(btn) btn.disabled = !(S.email.includes('@') && S.pass.length>=8 && S.terms);
+  }
+});
+
+/* correo traído desde la portada: index.html?email=… */
+const qs = new URLSearchParams(location.search);
+if(qs.get('email')) S.email = qs.get('email');
+
+render();
+</script>
+</body>
+</html>
