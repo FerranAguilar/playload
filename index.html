@@ -1,460 +1,61 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PlayLoad · La temporada entera, en un solo sitio</title>
-<meta name="description" content="Planificación de temporada, diseño de sesiones, control de carga y app del jugador para clubes y academias de fútbol.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!--
-  Fotografías: Pexels (licencia libre, sin atribución obligatoria).
-  hero 38615873 · planificacion 30314825 · sesiones 7187827 · informes 32101180
-  app 9438090 · caso 7307392 · avatar 37926706 · cta 30584996
--->
-<style>
-/* ═══════════════════════════════════════════════════════════════
-   PlayLoad · página de inicio
-   Sistema Nocturne, los mismos tokens que el resto del producto.
-   ═══════════════════════════════════════════════════════════════ */
-:root{
-  --color-bg:#161826; --color-surface:#232532; --color-text:#e9e9ed;
-  --color-accent:#9184d9;
-  --color-divider:color-mix(in srgb,#e9e9ed 16%,transparent);
-
-  --color-neutral-100:#f3f5fe; --color-neutral-600:#75798c; --color-neutral-800:#3f424d;
-  --color-accent-100:#f5f4ff; --color-accent-300:#d2cefd; --color-accent-400:#b5abfc;
-  --color-accent-800:#423a6a;
-  --color-section:#262a60; --color-section-glow:#353b80;
-
-  --font-heading:"Inter",system-ui,sans-serif; --font-heading-weight:500;
-  --font-body:"Inter",system-ui,sans-serif;
-
-  --space-1:2.8px; --space-2:5.6px; --space-3:8.4px;
-  --space-4:11.2px; --space-6:16.8px; --space-8:22.4px;
-  --radius-sm:4px; --radius-md:8px; --radius-lg:14px;
-  --shadow-sm:0 0 0 1px #3f424d;
-
-  --pad:56px;
-  --muted:color-mix(in srgb,var(--color-text) 68%,transparent);
-  --muted-2:color-mix(in srgb,var(--color-text) 45%,transparent);
-}
-*,*::before,*::after{box-sizing:border-box}
-html{scroll-behavior:smooth}
-html,body{margin:0;background:var(--color-bg);overflow-x:hidden}
-body{color:var(--color-text);font-family:var(--font-body);font-size:15px;line-height:1.55;
-  -webkit-font-smoothing:antialiased}
-h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);font-weight:var(--font-heading-weight);
-  line-height:1.12;letter-spacing:-.015em;margin:0}
-h6{font-size:13px;letter-spacing:.08em;text-transform:uppercase}
-p{margin:0}
-a{color:var(--color-accent);text-decoration:none}
-a:hover{color:var(--color-accent-400)}
-img{display:block;max-width:100%}
-:focus{outline:none}
-:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
-::selection{background:color-mix(in srgb,var(--color-accent) 30%,transparent)}
-@keyframes plPulse{0%,100%{opacity:.3}50%{opacity:1}}
-
-/* — piezas del sistema — */
-.hr{height:1px;border:0;background:linear-gradient(to right,transparent,var(--color-divider) 48px,
-  var(--color-divider) calc(100% - 48px),transparent)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;
-  font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:14px;line-height:1.2;
-  color:var(--color-text);background:transparent;border:1px solid transparent;
-  padding:var(--space-2) calc(var(--space-3)*1.2);border-radius:var(--radius-md);
-  transition:background .15s ease,border-color .15s ease,color .15s ease}
-.btn-primary{color:var(--color-accent);border-color:var(--color-accent)}
-.btn-primary:hover{background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent-300)}
-.btn-secondary{border-color:var(--color-divider)}
-.btn-secondary:hover{background:color-mix(in srgb,var(--color-text) 7%,transparent);color:var(--color-text)}
-.tag{display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.02em;
-  padding:4px 11px;border-radius:6px}
-.tag-accent{background:var(--color-accent-800);color:var(--color-accent-100)}
-.tag-outline{border:1px solid var(--color-accent);color:var(--color-accent)}
-.pulse{width:5px;height:5px;border-radius:50%;background:var(--color-accent);
-  animation:plPulse 2.6s ease-in-out infinite;flex:none}
-.mark{width:22px;height:22px;border-radius:var(--radius-sm);border:1px solid var(--color-accent);
-  display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:var(--color-accent);flex:none}
-.dash{width:14px;height:1px;background:var(--color-accent);margin-top:11px;flex:none}
-.eyebrow{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2)}
-.card{display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-4);
-  border-radius:var(--radius-md);background:var(--color-surface);box-shadow:var(--shadow-sm)}
-.card-title{font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:17px;line-height:1.2}
-.card p{font-size:13px;line-height:1.55;opacity:.8}
-.input{width:100%;min-height:36px;padding:6px 11px;font:inherit;font-size:14px;color:var(--color-text);
-  caret-color:var(--color-accent);background:var(--color-surface);
-  border:1px solid var(--color-divider);border-radius:var(--radius-md)}
-.input::placeholder{color:var(--muted-2)}
-.input:focus-visible{border-color:var(--color-accent);outline-offset:0}
-
-/* — fotografía —
-   El sistema funde las fotos con el fondo en modo «lighten»: los negros
-   de la imagen desaparecen sobre el índigo y todo el sitio queda cosido
-   por el mismo tono. Encima, un velo del color de fondo baja el brillo. */
-.photo{position:relative;overflow:hidden;border-radius:var(--radius-lg);background:#0b0d16}
-.photo img{width:100%;height:100%;object-fit:cover;mix-blend-mode:lighten;opacity:.92}
-.photo::after{content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,transparent 40%,color-mix(in srgb,var(--color-bg) 55%,transparent) 100%)}
-
-/* — cabecera — */
-.nav{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:var(--space-4);
-  padding:14px var(--pad);background:color-mix(in srgb,var(--color-bg) 88%,transparent);
-  backdrop-filter:blur(12px)}
-.nav-brand{display:flex;align-items:center;gap:10px;margin-right:auto;
-  font-family:var(--font-heading);font-weight:500;font-size:18px;color:var(--color-text)}
-.nav-brand:hover{color:var(--color-text)}
-.nav-links{display:flex;align-items:center;gap:var(--space-4)}
-.nav-links a{color:var(--color-text);font-size:14px;opacity:.82}
-.nav-links a:hover{color:var(--color-accent);opacity:1}
-.nav-cta{display:flex;align-items:center;gap:var(--space-4);margin-left:var(--space-6)}
-.nav-cta .login{color:var(--color-text);font-size:14px}
-.nav-cta .login:hover{color:var(--color-accent)}
-.burger{display:none}
-
-/* — hero — */
-.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:var(--space-8);align-items:center;
-  padding:96px var(--pad) 84px}
-.hero-copy{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-6);max-width:620px}
-.hero h1{font-size:64px;line-height:1.04;letter-spacing:-.022em;max-width:15ch;text-wrap:balance}
-.hero .lead{font-size:18px;line-height:1.6;color:var(--muted);max-width:46ch;text-wrap:pretty}
-.hero-actions{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;padding-top:var(--space-2)}
-.hero-actions .btn{font-size:15px;padding:11px 22px}
-.hero-meta{display:flex;align-items:center;gap:var(--space-4);font-size:12px;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--muted-2);flex-wrap:wrap}
-.hero .photo{height:520px}
-
-/* — banda de cifras — */
-.band{background:linear-gradient(160deg,var(--color-section) 0%,var(--color-section-glow) 100%);
-  padding:64px var(--pad)}
-.band-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-8);align-items:start}
-.band b{display:block;font-family:var(--font-heading);font-weight:500;font-size:46px;line-height:1;
-  letter-spacing:-.02em;color:var(--color-neutral-100);margin-bottom:var(--space-2)}
-.band span{font-size:14px;line-height:1.5;color:color-mix(in srgb,var(--color-neutral-100) 72%,transparent);
-  display:block;max-width:24ch}
-
-/* — módulos — */
-.modules{padding:96px var(--pad) 0}
-.modules-head{max-width:640px;margin-bottom:var(--space-8)}
-.modules-head h2{font-size:38px;letter-spacing:-.02em}
-.module{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-8);align-items:center;padding-bottom:88px}
-.module-copy{max-width:480px;display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-4)}
-.module h3{font-size:30px;letter-spacing:-.02em}
-.module p{font-size:15.5px;line-height:1.65;color:var(--muted);text-wrap:pretty}
-.module ul{margin:var(--space-2) 0 0;padding:0;list-style:none;display:flex;flex-direction:column;
-  gap:var(--space-3);font-size:14.5px;color:color-mix(in srgb,var(--color-text) 72%,transparent)}
-.module li{display:flex;gap:10px;align-items:flex-start}
-.module .photo{height:400px}
-.module.flip .module-copy{justify-self:end}
-.module.flip .photo{order:-1}
-
-/* — bloques de dos columnas — */
-.split{padding:0 var(--pad) 96px}
-.split-grid{display:grid;grid-template-columns:320px 1fr;gap:var(--space-8);align-items:start;
-  padding-top:var(--space-8)}
-.split-grid h3{font-size:26px;letter-spacing:-.02em;margin-bottom:var(--space-3)}
-.split-grid .intro p{font-size:14.5px;line-height:1.6;color:color-mix(in srgb,var(--color-text) 60%,transparent)}
-.extras{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-3)}
-.integrations{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-3)}
-.integr{border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:var(--space-4);
-  display:flex;flex-direction:column;gap:3px;transition:border-color .15s ease}
-.integr:hover{border-color:var(--color-accent)}
-.integr b{font-family:var(--font-heading);font-weight:500;font-size:15px}
-.integr span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
-
-/* — testimonio — */
-.quote-row{display:grid;grid-template-columns:1.15fr .85fr;gap:var(--space-8);align-items:stretch;
-  padding:0 var(--pad) 96px}
-.quote{padding:44px;gap:var(--space-8);justify-content:space-between;border-radius:var(--radius-lg)}
-.quote blockquote{margin:0;font-family:var(--font-heading);font-weight:500;font-size:27px;line-height:1.3;
-  letter-spacing:-.015em;text-wrap:pretty}
-.quote-by{display:flex;align-items:center;gap:var(--space-4)}
-.quote-by img{width:48px;height:48px;border-radius:50%;object-fit:cover;flex:none}
-.quote-row .photo{min-height:340px}
-
-/* — llamada final — */
-.cta{position:relative;padding:104px var(--pad);overflow:hidden}
-.cta .bg{position:absolute;inset:0;overflow:hidden}
-.cta .bg img{width:100%;height:100%;object-fit:cover;mix-blend-mode:lighten;opacity:.5}
-.cta .veil{position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(90deg,var(--color-bg) 0%,color-mix(in srgb,var(--color-bg) 82%,transparent) 52%,transparent 100%)}
-.cta-copy{position:relative;max-width:620px;display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-6)}
-.cta h2{font-size:46px;line-height:1.06;letter-spacing:-.022em;text-wrap:balance}
-.cta p{font-size:17px;line-height:1.6;color:color-mix(in srgb,var(--color-text) 70%,transparent);max-width:48ch}
-.cta form{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:center;width:100%;max-width:520px}
-.cta .input{flex:1;min-width:220px;height:42px}
-.cta .btn{height:42px;padding:0 22px;font-size:15px}
-
-/* — pie — */
-footer{padding:56px var(--pad) 36px;display:flex;flex-direction:column;gap:var(--space-8)}
-.foot-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:var(--space-8)}
-.foot-brand{max-width:280px;display:flex;flex-direction:column;gap:var(--space-3)}
-.foot-brand .name{display:flex;align-items:center;gap:10px;font-family:var(--font-heading);
-  font-weight:500;font-size:17px}
-.foot-brand p{font-size:13.5px;line-height:1.6;color:color-mix(in srgb,var(--color-text) 55%,transparent)}
-.foot-col{display:flex;flex-direction:column;gap:var(--space-3)}
-.foot-col .eyebrow{font-size:11px;letter-spacing:.08em}
-.foot-col a{font-size:14px;color:color-mix(in srgb,var(--color-text) 75%,transparent)}
-.foot-col a:hover{color:var(--color-accent)}
-.foot-legal{display:flex;justify-content:space-between;gap:var(--space-6);flex-wrap:wrap;
-  font-size:12px;color:var(--muted-2)}
-
-/* — adaptable — */
-@media (max-width:1080px){
-  :root{--pad:34px}
-  .hero{grid-template-columns:1fr;padding-top:64px;padding-bottom:64px}
-  .hero h1{font-size:50px}
-  .hero .photo{height:380px;width:100%}
-  .band-grid{grid-template-columns:repeat(2,1fr);gap:var(--space-8) var(--space-6)}
-  .module,.module.flip{grid-template-columns:1fr;gap:var(--space-6);padding-bottom:64px}
-  .module.flip .photo,.module .photo{order:-1;height:320px}
-  .module.flip .module-copy{justify-self:start}
-  .split-grid{grid-template-columns:1fr}
-  .extras{grid-template-columns:repeat(2,1fr)}
-  .integrations{grid-template-columns:repeat(2,1fr)}
-  .quote-row{grid-template-columns:1fr}
-  .foot-grid{grid-template-columns:1fr 1fr}
-}
-@media (max-width:760px){
-  :root{--pad:20px}
-  .nav-links{display:none}
-  .hero h1{font-size:38px;max-width:100%}
-  .modules-head h2{font-size:29px}
-  .module h3{font-size:25px}
-  .cta h2{font-size:33px}
-  .quote{padding:26px}
-  .quote blockquote{font-size:21px}
-  .band b{font-size:38px}
-  .extras,.integrations,.foot-grid{grid-template-columns:1fr}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página en Construcción</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        .icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        .email {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.3);
+        }
+        a {
+            color: #ffd700;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
-
-<!-- ══════════ CABECERA ══════════ -->
-<header class="nav">
-  <a class="nav-brand" href="#top"><span class="mark">PL</span>PlayLoad</a>
-  <nav class="nav-links">
-    <a href="#planificacion">Planificación</a>
-    <a href="#sesiones">Sesiones</a>
-    <a href="#informes">Informes</a>
-    <a href="#app">App del jugador</a>
-    <a href="#datos">Integraciones</a>
-  </nav>
-  <div class="nav-cta">
-    <a class="login" href="PlayLoad-dashboard.html">Iniciar sesión</a>
-    <a class="btn btn-primary" href="#prueba">Probar 30 días</a>
-  </div>
-</header>
-
-<!-- ══════════ HERO ══════════ -->
-<section class="hero" id="top">
-  <div class="hero-copy">
-    <span class="tag tag-outline"><span class="pulse"></span>Para preparadores físicos y academias</span>
-    <h1>La temporada entera, en un solo sitio</h1>
-    <p class="lead">Planifica macrociclos, diseña cada sesión, recoge RPE y wellness, cierra convocatorias y saca el informe del microciclo sin tocar una hoja de cálculo.</p>
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="#prueba">Empezar prueba de 30 días</a>
-      <a class="btn btn-secondary" href="#planificacion">Ver la plataforma</a>
+    <div class="container">
+        <div class="icon">🚀</div>
+        <h1>Página en Construcción</h1>
+        <p>Estamos preparando algo increíble para ti.</p>
+        <p>Volveremos pronto con novedades.</p>
+        <div class="email">
+            <p>¿Preguntas? <a href="mailto:contacto@tudominio.com">Contáctanos</a></p>
+        </div>
     </div>
-    <div class="hero-meta">
-      <span>Sin tarjeta</span><span>·</span><span>Plantilla ilimitada</span><span>·</span><span>Datos en la UE</span>
-    </div>
-  </div>
-  <figure class="photo" style="margin:0">
-    <img src="img/hero.jpg" alt="Jugadores de fútbol durante un ejercicio de entrenamiento en el campo">
-  </figure>
-</section>
-
-<!-- ══════════ CIFRAS ══════════ -->
-<section class="band" id="datos">
-  <div class="band-grid">
-    <div><b>38</b><span>semanas planificadas por temporada, sin duplicar trabajo</span></div>
-    <div><b>20 s</b><span>es lo que tarda un jugador en enviar wellness y RPE</span></div>
-    <div><b>1 clic</b><span>para el informe del microciclo en PDF con la marca del club</span></div>
-    <div><b>9</b><span>integraciones de GPS y wearables ya conectadas</span></div>
-  </div>
-</section>
-
-<!-- ══════════ MÓDULOS ══════════ -->
-<section class="modules" id="planificacion">
-  <div class="modules-head">
-    <h6 style="color:var(--color-accent);margin-bottom:var(--space-3)">Cuatro módulos</h6>
-    <h2>Del calendario de la temporada al parte del lunes</h2>
-  </div>
-  <hr class="hr" style="margin:0 0 var(--space-8)">
-
-  <div class="module">
-    <div class="module-copy">
-      <span class="tag tag-accent">01 · Planificación de temporada</span>
-      <h3>Periodiza en vertical, ajusta en horizontal</h3>
-      <p>Define macrociclos, mesociclos y microciclos sobre el calendario real de competición. Cambia una fecha de partido y la carga prevista de la semana se recoloca sola.</p>
-      <ul>
-        <li><span class="dash"></span><span>Macro, meso y microciclos sobre el calendario de competición</span></li>
-        <li><span class="dash"></span><span>Carga prevista frente a carga real, semana a semana</span></li>
-        <li><span class="dash"></span><span>Plantillas de temporada reutilizables entre categorías</span></li>
-      </ul>
-    </div>
-    <figure class="photo" style="margin:0">
-      <img src="img/planificacion.jpg" alt="Entrenador con una pizarra táctica preparando la sesión a pie de campo">
-    </figure>
-  </div>
-
-  <div class="module flip" id="sesiones">
-    <div class="module-copy">
-      <span class="tag tag-accent">02 · Diseño de sesiones</span>
-      <h3>Sesiones que se construyen arrastrando</h3>
-      <p>Biblioteca de tareas propia del club, con duración, densidad y objetivo. Montas la sesión por bloques y PlayLoad estima la carga antes de pisar el campo.</p>
-      <ul>
-        <li><span class="dash"></span><span>Biblioteca de tareas del club con objetivo y densidad</span></li>
-        <li><span class="dash"></span><span>Estimación de carga antes de la sesión</span></li>
-        <li><span class="dash"></span><span>Duplica el microciclo y ajusta solo lo que cambia</span></li>
-      </ul>
-    </div>
-    <figure class="photo" style="margin:0">
-      <img src="img/sesiones.jpg" alt="Jugador conduciendo el balón en un circuito de conos durante el entrenamiento">
-    </figure>
-  </div>
-
-  <div class="module" id="informes">
-    <div class="module-copy">
-      <span class="tag tag-accent">03 · Informes y PDF</span>
-      <h3>El informe del microciclo, ya escrito</h3>
-      <p>Carga interna y externa, disponibilidad y evolución individual en un PDF con el escudo del club. Se genera solo cada lunes y llega al correo del cuerpo técnico.</p>
-      <ul>
-        <li><span class="dash"></span><span>Carga interna y externa en el mismo informe</span></li>
-        <li><span class="dash"></span><span>Disponibilidad de plantilla y días perdidos</span></li>
-        <li><span class="dash"></span><span>Envío automático al cuerpo técnico y a dirección deportiva</span></li>
-      </ul>
-    </div>
-    <figure class="photo" style="margin:0">
-      <img src="img/informes.jpg" alt="Dos miembros del cuerpo técnico revisando los datos de la sesión a pie de campo">
-    </figure>
-  </div>
-
-  <div class="module flip" id="app">
-    <div class="module-copy">
-      <span class="tag tag-accent">04 · App del jugador</span>
-      <h3>El jugador responde en 20 segundos</h3>
-      <p>Wellness al despertar, RPE al acabar, convocatoria y sesión del día en el móvil. Sin instalar nada: entra con un enlace y su código de jugador.</p>
-      <ul>
-        <li><span class="dash"></span><span>Wellness al despertar y RPE al terminar</span></li>
-        <li><span class="dash"></span><span>Convocatoria, horario y sesión del día</span></li>
-        <li><span class="dash"></span><span>Aviso de molestias directo al fisio</span></li>
-      </ul>
-    </div>
-    <figure class="photo" style="margin:0">
-      <img src="img/app.jpg" alt="Jugadoras consultando el móvil en el vestuario antes del entrenamiento">
-    </figure>
-  </div>
-</section>
-
-<!-- ══════════ INCLUIDO ══════════ -->
-<section class="split">
-  <hr class="hr">
-  <div class="split-grid">
-    <div class="intro">
-      <h6 style="color:var(--color-accent);margin-bottom:var(--space-3)">Y todo lo demás</h6>
-      <h3>Incluido en cualquier plan</h3>
-      <p>Los módulos del día a día no se venden aparte.</p>
-    </div>
-    <div class="extras">
-      <div class="card"><div class="card-title">Test RPE</div><p>Percepción del esfuerzo por sesión y por tarea.</p></div>
-      <div class="card"><div class="card-title">Wellness</div><p>Sueño, fatiga, dolor muscular y estrés en un índice diario.</p></div>
-      <div class="card"><div class="card-title">Convocatorias</div><p>Lista, dorsales y disponibilidad en un paso.</p></div>
-      <div class="card"><div class="card-title">Calendario de partidos</div><p>Competición, amistosos y desplazamientos.</p></div>
-      <div class="card"><div class="card-title">Parte médico</div><p>Lesiones, plazos y vuelta a la competición.</p></div>
-      <div class="card"><div class="card-title">Multiequipo</div><p>Todas las categorías del club bajo un panel.</p></div>
-      <div class="card"><div class="card-title">Perfil de jugador</div><p>Histórico de carga, tests y disponibilidad.</p></div>
-      <div class="card"><div class="card-title">Roles y permisos</div><p>Qué ve cada miembro del staff.</p></div>
-      <div class="card"><div class="card-title">Exportación</div><p>CSV y API para tu propio análisis.</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════ INTEGRACIONES ══════════ -->
-<section class="split">
-  <hr class="hr">
-  <div class="split-grid" style="align-items:center">
-    <div class="intro">
-      <h6 style="color:var(--color-accent);margin-bottom:var(--space-3)">Integraciones</h6>
-      <h3>GPS y wearables, sin exportar nada</h3>
-      <p>Sincroniza la sesión al terminar y la carga externa aparece junto al RPE del jugador.</p>
-    </div>
-    <div class="integrations">
-      <div class="integr"><b>GPS de chaleco</b><span>Carga externa</span></div>
-      <div class="integr"><b>Pulsómetros</b><span>Frecuencia cardíaca</span></div>
-      <div class="integr"><b>Plataforma de salto</b><span>Neuromuscular</span></div>
-      <div class="integr"><b>Relojes deportivos</b><span>Wearable</span></div>
-      <div class="integr"><b>Google Calendar</b><span>Calendario</span></div>
-      <div class="integr"><b>Excel / CSV</b><span>Importación</span></div>
-      <div class="integr"><b>API abierta</b><span>Desarrollo</span></div>
-      <div class="integr"><b>Webhooks</b><span>Automatización</span></div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════ TESTIMONIO ══════════ -->
-<section class="quote-row">
-  <div class="card quote">
-    <blockquote>«Antes tardaba tres horas en cerrar la semana entre Excel y el GPS. Ahora la planifico el domingo y el lunes ya tengo el informe hecho.»</blockquote>
-    <div class="quote-by">
-      <img src="img/avatar.jpg" alt="Retrato del preparador físico">
-      <div>
-        <div style="font-size:14.5px">Nombre Apellido</div>
-        <div class="eyebrow" style="font-size:11px;letter-spacing:.08em">Preparador físico · Academia (Sub-19)</div>
-      </div>
-    </div>
-  </div>
-  <figure class="photo" style="margin:0">
-    <img src="img/caso.jpg" alt="Entrenamiento de fútbol base al atardecer">
-  </figure>
-</section>
-
-<!-- ══════════ PRUEBA ══════════ -->
-<section class="cta" id="prueba">
-  <div class="bg"><img src="img/cta.jpg" alt=""></div>
-  <div class="veil"></div>
-  <div class="cta-copy">
-    <h2>Prueba una pretemporada completa. 30 días, gratis</h2>
-    <p>Creas el club, subes la plantilla y planificas la primera semana el mismo día. Si encaja, pasas a plan de club; si no, no pasa nada.</p>
-    <form action="PlayLoad-dashboard.html" method="get">
-      <input class="input" type="email" name="email" placeholder="tu@club.com" aria-label="Correo del club" required>
-      <button class="btn btn-primary" type="submit">Crear cuenta</button>
-    </form>
-    <div class="eyebrow">Alta en 5 minutos · Soporte con preparador físico</div>
-  </div>
-</section>
-
-<!-- ══════════ PIE ══════════ -->
-<footer>
-  <hr class="hr">
-  <div class="foot-grid">
-    <div class="foot-brand">
-      <div class="name"><span class="mark">PL</span>PlayLoad</div>
-      <p>Gestión de equipos, planificación y control de carga para clubes y academias de fútbol.</p>
-    </div>
-    <div class="foot-col">
-      <div class="eyebrow">Producto</div>
-      <a href="#planificacion">Planificación</a><a href="#sesiones">Sesiones</a>
-      <a href="#informes">Informes</a><a href="#app">App del jugador</a><a href="#datos">Integraciones</a>
-    </div>
-    <div class="foot-col">
-      <div class="eyebrow">Club</div>
-      <a href="#prueba">Precios</a><a href="#prueba">Fútbol base</a>
-      <a href="#prueba">Onboarding</a><a href="#prueba">Soporte</a>
-    </div>
-    <div class="foot-col">
-      <div class="eyebrow">Compañía</div>
-      <a href="#top">Sobre PlayLoad</a><a href="#top">Blog</a><a href="#prueba">Contacto</a>
-    </div>
-  </div>
-  <div class="foot-legal">
-    <span>© 2026 PlayLoad</span>
-    <span>Privacidad · Cookies · Aviso legal · Fotografías de Pexels</span>
-  </div>
-</footer>
-
 </body>
 </html>
