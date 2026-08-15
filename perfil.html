@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlayLoad · Tu perfil</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  /* El tema se aplica antes de pintar para que no haya un fogonazo
+     blanco al cargar con el tema oscuro puesto. */
+  (function(){
+    var t = 'sistema';
+    try { t = lee('pl-theme') || 'sistema'; } catch(e){}
+    if(t !== 'sistema') document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   PlayLoad · perfil y preferencias
+   Primera pantalla con tema claro. Los colores que antes estaban
+   escritos a mano (fondo de la barra, de los campos) ahora son
+   variables, que es lo que permite cambiar de tema.
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --color-bg:#13151f; --color-surface:#20222f; --color-text:#f1f1f5;
+  --line:#414553; --input-bg:#191b26; --rail-bg:#0f111a;
+  --color-accent:#9184d9;
+  --color-accent-100:#f5f4ff; --color-accent-300:#d2cefd; --color-accent-800:#423a6a;
+  --color-neutral-200:#e4e7f5; --color-neutral-800:#3f424d;
+  --color-ok:#a9df90;   --color-ok-bg:#2e3d2b;
+  --color-warn:#e0ab8d; --color-warn-bg:#3d3129;
+  --color-risk:#e08d96; --color-risk-bg:#3d2c2f;
+  --sombra:0 20px 50px rgba(0,0,0,.6);
+
+  --font-heading:"Inter",system-ui,sans-serif;
+  --radius-md:8px; --radius-lg:14px;
+  --muted:color-mix(in srgb,var(--color-text) 74%,transparent);
+  --muted-2:color-mix(in srgb,var(--color-text) 56%,transparent);
+}
+
+/* — tema claro — */
+:root[data-theme="claro"]{
+  --color-bg:#f1f2f7; --color-surface:#ffffff; --color-text:#161822;
+  --line:#d8dae4; --input-bg:#f7f8fc; --rail-bg:#ffffff;
+  --color-accent:#6d5fc6;
+  --color-accent-100:#2c2554; --color-accent-300:#584ab4; --color-accent-800:#e8e5fb;
+  --color-neutral-200:#3f4250; --color-neutral-800:#e4e6ef;
+  --color-ok:#3d8a4f;   --color-ok-bg:#e4f2e6;
+  --color-warn:#9c6329; --color-warn-bg:#f8eddf;
+  --color-risk:#b04450; --color-risk-bg:#fae4e6;
+  --sombra:0 16px 40px rgba(22,24,34,.14);
+  --muted:color-mix(in srgb,var(--color-text) 70%,transparent);
+  --muted-2:color-mix(in srgb,var(--color-text) 52%,transparent);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="oscuro"]):not([data-theme="claro"]){
+    --color-bg:#f1f2f7; --color-surface:#ffffff; --color-text:#161822;
+    --line:#d8dae4; --input-bg:#f7f8fc; --rail-bg:#ffffff;
+    --color-accent:#6d5fc6;
+    --color-accent-100:#2c2554; --color-accent-300:#584ab4; --color-accent-800:#e8e5fb;
+    --color-neutral-200:#3f4250; --color-neutral-800:#e4e6ef;
+    --color-ok:#3d8a4f;   --color-ok-bg:#e4f2e6;
+    --color-warn:#9c6329; --color-warn-bg:#f8eddf;
+    --color-risk:#b04450; --color-risk-bg:#fae4e6;
+    --sombra:0 16px 40px rgba(22,24,34,.14);
+  }
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--color-bg);color:var(--color-text);
+  font-family:"Inter",system-ui,sans-serif;font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;transition:background .18s ease,color .18s ease}
+h1,h2,h3{font-family:var(--font-heading);font-weight:500;letter-spacing:-.022em;margin:0}
+h1{font-size:29px} h2{font-size:18px} h3{font-size:15px}
+p{margin:0}
+a{color:var(--color-accent-300);text-decoration:none}
+button{font:inherit;color:inherit;background:transparent;border:0;cursor:pointer}
+input,select{font:inherit}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+svg{display:block}
+
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2)}
+.num{font-family:var(--font-heading);font-weight:500;letter-spacing:-.015em}
+.mark{width:25px;height:25px;border-radius:4px;border:1px solid var(--color-accent);
+  display:inline-flex;align-items:center;justify-content:center;font-size:11px;
+  color:var(--color-accent);flex:none}
+.p-sub{font-size:12.5px;color:var(--muted-2);margin:0}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--font-heading);font-weight:500;font-size:14px;line-height:1.2;
+  border:1px solid transparent;padding:9px 14px;border-radius:var(--radius-md);
+  transition:background .14s ease,border-color .14s ease,color .14s ease}
+.btn-primary{color:var(--color-accent-300);border-color:var(--color-accent)}
+.btn-primary:hover{background:color-mix(in srgb,var(--color-accent) 16%,transparent)}
+.btn-secondary{border-color:var(--line);color:var(--muted)}
+.btn-secondary:hover{background:color-mix(in srgb,var(--color-text) 8%,transparent);color:var(--color-text)}
+.btn-danger{color:var(--color-risk);border-color:color-mix(in srgb,var(--color-risk) 55%,transparent)}
+.btn-danger:hover{background:color-mix(in srgb,var(--color-risk) 14%,transparent)}
+.btn-sm{font-size:13px;padding:6px 11px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+.input{width:100%;min-height:40px;padding:9px 12px;font-size:14.5px;color:var(--color-text);
+  background:var(--input-bg);border:1px solid var(--line);border-radius:var(--radius-md);
+  caret-color:var(--color-accent)}
+.input::placeholder{color:var(--muted-2)}
+.input:focus-visible{border-color:var(--color-accent);outline-offset:0}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label{font-size:13px;color:var(--muted)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:3px 10px;
+  border-radius:6px;white-space:nowrap}
+.tag-ok{background:var(--color-ok-bg);color:var(--color-ok)}
+.tag-warn{background:var(--color-warn-bg);color:var(--color-warn)}
+.tag-accent{background:var(--color-accent-800);color:var(--color-accent-100)}
+
+/* — estructura — */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;
+  padding:14px 30px;background:color-mix(in srgb,var(--color-bg) 92%,transparent);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-heading);
+  font-weight:500;font-size:17px;color:var(--color-text)}
+.wrap{max-width:1060px;margin:0 auto;padding:30px 30px 70px;
+  display:grid;grid-template-columns:210px minmax(0,1fr);gap:34px;align-items:start}
+
+.side{position:sticky;top:80px;display:flex;flex-direction:column;gap:2px}
+.side a{display:block;padding:8px 11px;border-radius:var(--radius-md);font-size:14px;
+  color:var(--muted)}
+.side a:hover{background:color-mix(in srgb,var(--color-text) 8%,transparent);color:var(--color-text)}
+.side a.on{color:var(--color-accent-300);background:color-mix(in srgb,var(--color-accent) 14%,transparent)}
+.side .sep{height:1px;background:var(--line);margin:10px 0}
+
+.cont{display:flex;flex-direction:column;gap:22px;min-width:0}
+.panel{border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--color-surface);
+  overflow:hidden;scroll-margin-top:88px}
+.panel-head{padding:17px 20px;border-bottom:1px solid var(--line)}
+.panel-head p{font-size:13px;color:var(--muted-2);margin-top:4px}
+.panel-body{padding:20px;display:flex;flex-direction:column;gap:18px}
+.fila{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.fila+.fila{border-top:1px solid color-mix(in srgb,var(--color-text) 10%,transparent);padding-top:16px}
+.fila-t{font-size:14.5px}
+.fila-s{font-size:12.5px;color:var(--muted-2);margin-top:3px;max-width:52ch}
+
+/* cabecera de la cuenta */
+.yo{display:flex;align-items:center;gap:16px;padding:20px;flex-wrap:wrap}
+.avatar{width:56px;height:56px;border-radius:50%;flex:none;display:flex;align-items:center;
+  justify-content:center;font-family:var(--font-heading);font-weight:600;font-size:19px;
+  color:var(--color-accent-100);background:var(--color-accent-800)}
+.yo-n{font-family:var(--font-heading);font-weight:500;font-size:20px;letter-spacing:-.02em}
+.yo-s{font-size:13.5px;color:var(--muted-2);margin-top:2px}
+
+/* selector de opciones (idioma, tema) */
+.ops{display:flex;gap:8px;flex-wrap:wrap}
+.op{border:1px solid var(--line);border-radius:var(--radius-md);padding:9px 14px;font-size:13.5px;
+  color:var(--muted);display:inline-flex;align-items:center;gap:8px;
+  transition:border-color .14s ease,color .14s ease,background .14s ease}
+.op:hover{border-color:var(--color-accent);color:var(--color-text)}
+.op[aria-pressed="true"]{border-color:var(--color-accent);color:var(--color-accent-300);
+  background:color-mix(in srgb,var(--color-accent) 12%,transparent)}
+.op svg{width:15px;height:15px}
+
+/* uso del plan */
+.uso{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.uso-c{border:1px solid var(--line);border-radius:var(--radius-md);padding:13px 15px}
+.uso-c b{display:block;font-family:var(--font-heading);font-weight:500;font-size:24px;
+  letter-spacing:-.025em;line-height:1.1;margin-bottom:2px}
+.barra{height:4px;border-radius:3px;background:var(--color-neutral-800);overflow:hidden;margin-top:9px}
+.barra i{display:block;height:100%;border-radius:3px;background:var(--color-accent)}
+
+.peligro{border-color:color-mix(in srgb,var(--color-risk) 45%,transparent)}
+.peligro .panel-head{border-bottom-color:color-mix(in srgb,var(--color-risk) 30%,transparent)}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;
+  padding:12px 18px;border-radius:var(--radius-md);font-size:14px;max-width:min(520px,90vw);
+  text-align:center;background:var(--color-surface);border:1px solid var(--line);
+  box-shadow:var(--sombra);opacity:0;pointer-events:none;transition:opacity .18s ease}
+.toast.show{opacity:1}
+
+@media (max-width:860px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:20px;padding:22px 18px 60px}
+  .side{position:static;flex-direction:row;flex-wrap:wrap;gap:6px}
+  .side .sep{display:none}
+  .top{padding-left:18px;padding-right:18px}
+  .uso{grid-template-columns:minmax(0,1fr)}
+  .grid-2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="PlayLoad-dashboard.html"><span class="mark">PL</span>PlayLoad</a>
+  <a class="btn btn-secondary btn-sm" href="PlayLoad-dashboard.html" style="margin-left:auto">← Volver al panel</a>
+</header>
+
+<div class="wrap">
+  <nav class="side">
+    <a href="#cuenta" class="on">Cuenta</a>
+    <a href="#suscripcion">Suscripción</a>
+    <a href="#preferencias">Preferencias</a>
+    <a href="#seguridad">Seguridad</a>
+    <a href="#datos">Datos</a>
+    <div class="sep"></div>
+    <a href="#" data-logout style="color:var(--color-risk)">Cerrar sesión</a>
+  </nav>
+
+  <main class="cont" id="cont">
+    <div class="panel"><div class="panel-body"><p style="color:var(--muted)">Cargando tu perfil…</p></div></div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API  = 'api/';
+const DEMO = !/^https?:$/.test(location.protocol);
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const ini = n => (n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || 'PL';
+
+let D = null;
+
+async function get(qs){
+  const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
+  let b = {}; try { b = await r.json(); } catch(e){}
+  return {status:r.status, ok:r.ok, ...b};
+}
+async function post(data){
+  const r = await fetch(API + 'app.php', {method:'POST',
+    headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body:JSON.stringify(data)});
+  let b = {}; try { b = await r.json(); } catch(e){}
+  return {status:r.status, ok:r.ok, ...b};
+}
+
+function toast(msg, mal){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show';
+  t.style.color = mal ? 'var(--color-risk)' : 'var(--color-text)';
+  t.style.borderColor = mal ? 'var(--color-risk)' : 'var(--line)';
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => { t.className = 'toast'; }, 3600);
+}
+
+/* ── tema ───────────────────────────────────────────────────── */
+/* localStorage falla en modo privado o con cookies bloqueadas: sin esta
+   red, elegir tema tumbaría la página. */
+const mem = {};
+const guarda = (k,v) => { try{ localStorage.setItem(k,v); }catch(e){ mem[k] = v; } };
+const lee    = k => { try{ return localStorage.getItem(k); }catch(e){ return mem[k] ?? null; } };
+
+function aplicarTema(t){
+  if(t === 'sistema') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+  guarda('pl-theme', t);
+}
+
+const IDIOMAS = [['es','Español'], ['ca','Català'], ['en','English']];
+const TEMAS = [
+  ['sistema','Como el sistema','<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.6" y="2.6" width="12.8" height="9" rx="1.6"/><path d="M5.6 13.4h4.8" stroke-linecap="round"/></svg>'],
+  ['claro','Claro','<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.4v1.6M8 13v1.6M1.4 8h1.6M13 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/></svg>'],
+  ['oscuro','Oscuro','<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.8 5.8 0 1 0 7 7z"/></svg>']
+];
+
+/* ── pintado ────────────────────────────────────────────────── */
+function render(){
+  const u = D.user, l = D.licencia, uso = D.uso;
+  const temaActual = lee('pl-theme') || u.theme || 'sistema';
+
+  const barra = (usado, max) => max
+    ? `<div class="barra"><i style="width:${Math.min(100, Math.round(usado/max*100))}%;
+         background:${usado >= max ? 'var(--color-warn)' : 'var(--color-accent)'}"></i></div>`
+    : '';
+
+  $('cont').innerHTML = `
+    <!-- ── cuenta ── -->
+    <section class="panel" id="cuenta">
+      <div class="yo">
+        <span class="avatar">${ini(u.name || u.email)}</span>
+        <div style="flex:1;min-width:0">
+          <div class="yo-n">${esc(u.name) || esc(u.email)}</div>
+          <div class="yo-s">${esc(u.email)}${u.admin ? ' · administrador' : ''}</div>
+        </div>
+        <span class="tag tag-accent">${esc(l.nombre)}</span>
+      </div>
+      <div class="panel-body" style="border-top:1px solid var(--line)">
+        <div class="grid-2">
+          <div class="field"><label for="pNombre">Nombre y apellidos</label>
+            <input class="input" id="pNombre" value="${esc(u.name)}"></div>
+          <div class="field"><label for="pRol">Rol</label>
+            <input class="input" id="pRol" value="${esc(u.role)}" placeholder="Preparador físico"></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Correo</label>
+            <input class="input" value="${esc(u.email)}" disabled title="El correo identifica la cuenta y no se cambia desde aquí"></div>
+          <div class="field"><label>Tipo de cuenta</label>
+            <input class="input" value="${u.type === 'club' ? 'Club o academia' : 'Profesional independiente'}" disabled></div>
+        </div>
+        <div class="fila" style="border:0;padding:0">
+          <p class="p-sub">${u.alta ? 'En PlayLoad desde el ' + new Date(u.alta.replace(' ','T')).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}) : ''}</p>
+          <button class="btn btn-primary btn-sm" data-guardar-perfil>Guardar cambios</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── suscripción ── -->
+    <section class="panel" id="suscripcion">
+      <div class="panel-head">
+        <h2>Suscripción</h2>
+        <p>Lo que incluye tu licencia y cuánto llevas usado.</p>
+      </div>
+      <div class="panel-body">
+        <div class="fila" style="border:0;padding:0">
+          <div>
+            <div class="fila-t">Plan ${esc(l.nombre)}</div>
+            <div class="fila-s">${l.hasta
+              ? 'Vigente hasta el ' + new Date(l.hasta).toLocaleDateString('es-ES')
+              : 'Sin fecha de caducidad'}</div>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="precios.html">Ver planes</a>
+        </div>
+
+        <div class="uso">
+          <div class="uso-c">
+            <b class="num">${uso.equipos}${l.max_equipos ? ` <span style="font-size:14px;color:var(--muted-2)">de ${l.max_equipos}</span>` : ''}</b>
+            <span class="p-sub">Equipos</span>
+            ${barra(uso.equipos, l.max_equipos)}
+          </div>
+          <div class="uso-c">
+            <b class="num">${uso.jugadores}</b>
+            <span class="p-sub">Jugadores${l.max_jugadores ? ` · máx. ${l.max_jugadores} por equipo` : ''}</span>
+          </div>
+          <div class="uso-c">
+            <b class="num">${uso.sesiones}</b>
+            <span class="p-sub">Sesiones registradas</span>
+          </div>
+        </div>
+
+        <p class="p-sub">Los precios están por determinar mientras dura la fase de pruebas.
+          Cuando se fijen, te avisaremos antes de cobrar nada.</p>
+      </div>
+    </section>
+
+    <!-- ── preferencias ── -->
+    <section class="panel" id="preferencias">
+      <div class="panel-head">
+        <h2>Preferencias</h2>
+        <p>Se guardan en tu cuenta, así que te acompañan en cualquier dispositivo.</p>
+      </div>
+      <div class="panel-body">
+        <div>
+          <h3 style="margin-bottom:4px">Idioma</h3>
+          <p class="fila-s" style="margin:0 0 11px">De momento la interfaz está solo en español;
+             catalán e inglés están en camino y tu elección queda guardada.</p>
+          <div class="ops" data-ops="locale">
+            ${IDIOMAS.map(([k,v]) => `<button class="op" data-v="${k}"
+              aria-pressed="${u.locale === k}">${v}${k !== 'es' ? ' <span class="tag tag-warn">pronto</span>' : ''}</button>`).join('')}
+          </div>
+        </div>
+
+        <div class="fila" style="display:block">
+          <h3 style="margin-bottom:4px">Tema</h3>
+          <p class="fila-s" style="margin:0 0 11px">«Como el sistema» sigue lo que tengas puesto
+             en el ordenador o el móvil.</p>
+          <div class="ops" data-ops="theme">
+            ${TEMAS.map(([k,v,ico]) => `<button class="op" data-v="${k}"
+              aria-pressed="${temaActual === k}">${ico}${v}</button>`).join('')}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── seguridad ── -->
+    <section class="panel" id="seguridad">
+      <div class="panel-head">
+        <h2>Seguridad</h2>
+        <p>Quién puede entrar en tu cuenta y cómo.</p>
+      </div>
+      <div class="panel-body">
+        <div class="grid-2">
+          <div class="field"><label for="pwActual">Contraseña actual</label>
+            <input class="input" id="pwActual" type="password" autocomplete="current-password"></div>
+          <div class="field"><label for="pwNueva">Contraseña nueva</label>
+            <input class="input" id="pwNueva" type="password" autocomplete="new-password"
+                   placeholder="Mínimo 8 caracteres"></div>
+        </div>
+        <div class="fila" style="border:0;padding:0">
+          <p class="fila-s" style="margin:0">Al cambiarla se cierran las sesiones recordadas
+             en otros dispositivos.</p>
+          <button class="btn btn-secondary btn-sm" data-password>Cambiar contraseña</button>
+        </div>
+
+        <div class="fila">
+          <div>
+            <div class="fila-t">Verificación en dos pasos</div>
+            <div class="fila-s">Un código por correo al entrar desde un dispositivo nuevo.</div>
+          </div>
+          <span class="tag ${u.dos_pasos ? 'tag-ok' : 'tag-warn'}">${u.dos_pasos ? 'Activada' : 'Desactivada'}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── datos ── -->
+    <section class="panel" id="datos">
+      <div class="panel-head">
+        <h2>Tus datos</h2>
+        <p>Son tuyos: puedes llevártelos cuando quieras.</p>
+      </div>
+      <div class="panel-body">
+        <div class="fila" style="border:0;padding:0">
+          <div>
+            <div class="fila-t">Exportar plantillas</div>
+            <div class="fila-s">Un CSV con tus equipos y sus jugadores, listo para abrir en
+               cualquier hoja de cálculo.</div>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="api/app.php?action=exportar">Descargar CSV</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── zona de peligro ── -->
+    <section class="panel peligro">
+      <div class="panel-head">
+        <h2 style="color:var(--color-risk)">Cerrar o eliminar</h2>
+        <p>Lo de abajo del todo no tiene vuelta atrás.</p>
+      </div>
+      <div class="panel-body">
+        <div class="fila" style="border:0;padding:0">
+          <div>
+            <div class="fila-t">Cerrar sesión</div>
+            <div class="fila-s">Solo en este dispositivo.</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" data-logout>Cerrar sesión</button>
+        </div>
+
+        <div class="fila">
+          <div>
+            <div class="fila-t">Eliminar la cuenta</div>
+            <div class="fila-s">Se borran los equipos, las plantillas y las sesiones.
+               No se puede deshacer, así que primero exporta lo que quieras conservar.</div>
+          </div>
+          <button class="btn btn-danger btn-sm" data-eliminar>Eliminar</button>
+        </div>
+      </div>
+    </section>`;
+}
+
+/* ── acciones ───────────────────────────────────────────────── */
+document.addEventListener('click', async e => {
+
+  /* navegación lateral */
+  const nav = e.target.closest('.side a[href^="#"]:not([data-logout])');
+  if(nav){
+    document.querySelectorAll('.side a').forEach(a => a.classList.remove('on'));
+    nav.classList.add('on');
+  }
+
+  /* idioma y tema */
+  const op = e.target.closest('.ops .op');
+  if(op){
+    const grupo = op.closest('.ops').dataset.ops;
+    const valor = op.dataset.v;
+    [...op.parentNode.children].forEach(b => b.setAttribute('aria-pressed', String(b === op)));
+
+    if(grupo === 'theme') aplicarTema(valor);
+    if(DEMO) return;
+
+    const r = await post({action:'preferencias',
+      locale: grupo === 'locale' ? valor : D.user.locale,
+      theme:  grupo === 'theme'  ? valor : (lee('pl-theme') || 'sistema')});
+
+    if(r.ok){ D.user.locale = r.locale; D.user.theme = r.theme;
+      toast(grupo === 'theme' ? 'Tema guardado' : 'Idioma guardado'); }
+    else toast(r.error || 'No se ha podido guardar.', true);
+    return;
+  }
+
+  if(e.target.closest('[data-guardar-perfil]')){
+    if(DEMO){ toast('Sin servidor no se guarda: esta es la vista de diseño.'); return; }
+    const r = await post({action:'guardar_perfil',
+      name:$('pNombre').value.trim(), role:$('pRol').value.trim()});
+    if(r.ok){ D.user.name = $('pNombre').value.trim(); toast('Perfil actualizado'); render(); }
+    else toast(r.error || 'No se ha podido guardar.', true);
+    return;
+  }
+
+  if(e.target.closest('[data-password]')){
+    if(DEMO){ toast('Sin servidor no se guarda: esta es la vista de diseño.'); return; }
+    const r = await post({action:'cambiar_password',
+      actual:$('pwActual').value, nueva:$('pwNueva').value});
+    if(r.ok){ $('pwActual').value = ''; $('pwNueva').value = ''; toast('Contraseña cambiada'); }
+    else toast(r.error || 'No se ha podido cambiar.', true);
+    return;
+  }
+
+  if(e.target.closest('[data-logout]')){
+    e.preventDefault();
+    if(DEMO){ location.href = 'acceso.html'; return; }
+    await fetch(API + 'logout.php', {method:'POST', credentials:'same-origin'});
+    location.href = 'acceso.html';
+    return;
+  }
+
+  if(e.target.closest('[data-eliminar]')){
+    if(DEMO){ toast('Sin servidor no se elimina nada: esta es la vista de diseño.'); return; }
+
+    const escrito = prompt(
+      'Esto borra la cuenta, los equipos, las plantillas y las sesiones. No hay vuelta atrás.\n\n' +
+      'Escribe tu correo para confirmar:');
+    if(!escrito) return;
+
+    const r = await post({action:'eliminar_cuenta', confirmacion:escrito});
+    if(r.ok){ location.href = 'index.html'; }
+    else toast(r.error || 'No se ha podido eliminar.', true);
+  }
+});
+
+/* ── carga ──────────────────────────────────────────────────── */
+(async function(){
+  if(DEMO){
+    D = {user:{name:'Tu cuenta', email:'sin@servidor', type:'pro', role:'', locale:'es',
+               theme:lee('pl-theme')||'sistema', admin:false,
+               dos_pasos:false, alta:null},
+         licencia:{nombre:'Tester', hasta:null, max_equipos:null, max_jugadores:null, max_staff:null},
+         uso:{equipos:0, jugadores:0, sesiones:0}};
+    render();
+    return;
+  }
+
+  const r = await get('action=perfil').catch(() => null);
+  if(!r) return;
+  if(r.status === 401){ location.href = 'acceso.html'; return; }
+  if(!r.ok){ toast(r.error || 'No se ha podido cargar el perfil.', true); return; }
+
+  D = r;
+  /* si el servidor tiene otro tema guardado, manda el del servidor */
+  if(r.user.theme && !lee('pl-theme')) aplicarTema(r.user.theme);
+  render();
+})();
+</script>
+</body>
+</html>

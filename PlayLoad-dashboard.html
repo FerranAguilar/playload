@@ -7,6 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  /* Tema antes de pintar: evita el fogonazo blanco al cargar en oscuro. */
+  (function(){
+    var t = 'sistema';
+    try { t = localStorage.getItem('pl-theme') || 'sistema'; } catch(e){}
+    if(t !== 'sistema') document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
 <style>
 /* ═══════════════════════════════════════════════════════════════
    PlayLoad · app shell
@@ -131,7 +139,7 @@ svg{display:block}
 /* — barra lateral — */
 .rail{
   position:sticky;top:0;height:100vh;display:flex;flex-direction:column;
-  background:color-mix(in srgb,var(--color-bg) 82%,#000);
+  background:var(--rail-bg);
   border-right:1px solid color-mix(in srgb,var(--color-text) 9%,transparent);
 }
 .rail-top{padding:16px 18px 12px;display:flex;align-items:center;gap:10px;
@@ -392,6 +400,78 @@ select.input{appearance:none;padding-right:28px;
   .page-head h1{font-size:26px}
   .report{grid-template-columns:minmax(0,1fr)}
 }
+
+/* ═══════════ TEMA CLARO ═══════════
+   Los colores que estaban escritos a mano pasan a variables; solo así
+   se puede cambiar de tema sin tocar cada regla. */
+:root{ --input-bg:#191b26; --rail-bg:#0f111a; --sombra:0 20px 50px rgba(0,0,0,.55); }
+
+:root[data-theme="claro"]{
+  --color-bg:#f1f2f7; --color-surface:#ffffff; --color-text:#161822;
+  --line:#d8dae4; --color-divider:color-mix(in srgb,#161822 18%,transparent);
+  --input-bg:#f7f8fc; --rail-bg:#ffffff;
+  --color-accent:#6d5fc6; --color-accent-100:#2c2554; --color-accent-200:#3a3170;
+  --color-accent-300:#584ab4; --color-accent-400:#4b3ea6; --color-accent-800:#e8e5fb;
+  --color-neutral-100:#1d1f2a; --color-neutral-200:#3f4250; --color-neutral-300:#5a5d6c;
+  --color-neutral-600:#8b8f9e; --color-neutral-700:#c9ccd8; --color-neutral-800:#e4e6ef;
+  --color-ok:#3d8a4f;   --color-ok-bg:#e4f2e6;
+  --color-warn:#9c6329; --color-warn-bg:#f8eddf;
+  --color-risk:#b04450; --color-risk-bg:#fae4e6;
+  --sombra:0 16px 40px rgba(22,24,34,.14);
+  --shadow-sm:0 0 0 1px #d8dae4;
+  --shadow-md:0 0 0 1px #c9ccd8,0 6px 18px rgba(22,24,34,.10);
+  --muted:color-mix(in srgb,var(--color-text) 70%,transparent);
+  --muted-2:color-mix(in srgb,var(--color-text) 52%,transparent);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="oscuro"]):not([data-theme="claro"]){
+    --color-bg:#f1f2f7; --color-surface:#ffffff; --color-text:#161822;
+    --line:#d8dae4; --color-divider:color-mix(in srgb,#161822 18%,transparent);
+    --input-bg:#f7f8fc; --rail-bg:#ffffff;
+    --color-accent:#6d5fc6; --color-accent-100:#2c2554; --color-accent-200:#3a3170;
+    --color-accent-300:#584ab4; --color-accent-400:#4b3ea6; --color-accent-800:#e8e5fb;
+    --color-neutral-100:#1d1f2a; --color-neutral-200:#3f4250; --color-neutral-300:#5a5d6c;
+    --color-neutral-600:#8b8f9e; --color-neutral-700:#c9ccd8; --color-neutral-800:#e4e6ef;
+    --color-ok:#3d8a4f;   --color-ok-bg:#e4f2e6;
+    --color-warn:#9c6329; --color-warn-bg:#f8eddf;
+    --color-risk:#b04450; --color-risk-bg:#fae4e6;
+    --sombra:0 16px 40px rgba(22,24,34,.14);
+    --shadow-sm:0 0 0 1px #d8dae4;
+    --shadow-md:0 0 0 1px #c9ccd8,0 6px 18px rgba(22,24,34,.10);
+    --muted:color-mix(in srgb,var(--color-text) 70%,transparent);
+    --muted-2:color-mix(in srgb,var(--color-text) 52%,transparent);
+  }
+}
+body{transition:background .18s ease,color .18s ease}
+
+/* ═══════════ MENÚ DE LA CUENTA ═══════════ */
+.me{cursor:pointer}
+.umenu{position:fixed;z-index:80;width:250px;padding:8px;border-radius:12px;
+  background:var(--color-surface);border:1px solid var(--line);box-shadow:var(--sombra);
+  display:flex;flex-direction:column;gap:2px;
+  font-family:"Inter",system-ui,sans-serif;color:var(--color-text)}
+.umenu[hidden]{display:none}
+.umenu-yo{padding:9px 10px 10px}
+.umenu-n{font-size:14px;line-height:1.25}
+.umenu-s{font-size:12px;color:var(--muted-2);margin-top:2px}
+.umenu-it{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;
+  border-radius:8px;font-size:13.5px;color:var(--muted);text-align:left;
+  text-decoration:none;background:transparent;border:0;cursor:pointer}
+.umenu-it svg{width:15px;height:15px;flex:none;opacity:.85}
+.umenu-it:hover{background:color-mix(in srgb,var(--color-text) 8%,transparent);color:var(--color-text)}
+.umenu-salir{color:var(--color-risk)}
+.umenu-salir:hover{background:color-mix(in srgb,var(--color-risk) 14%,transparent);color:var(--color-risk)}
+.umenu-sep{height:1px;background:var(--line);margin:6px 4px}
+.umenu-tit{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted-2);padding:6px 10px 4px}
+.umenu-ops{display:flex;gap:5px;padding:0 6px 4px}
+.umenu-op{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  padding:7px 6px;border-radius:7px;border:1px solid var(--line);background:transparent;
+  font-size:11.5px;color:var(--muted);cursor:pointer}
+.umenu-op svg{width:14px;height:14px}
+.umenu-op:hover{color:var(--color-text);border-color:var(--color-accent)}
+.umenu-op[aria-pressed="true"]{color:var(--color-accent-300);border-color:var(--color-accent);
+  background:color-mix(in srgb,var(--color-accent) 12%,transparent)}
 </style>
 </head>
 <body>
@@ -1164,5 +1244,140 @@ cargar();
   </div>
 </div>
 
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   Menú de la cuenta · se abre al pulsar el bloque de abajo a la
+   izquierda de la barra lateral. Idioma, tema, cuenta y salida.
+   ═══════════════════════════════════════════════════════════════ */
+(function(){
+  const TEMAS = [
+    ['sistema','Sistema','<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.6" y="2.6" width="12.8" height="9" rx="1.6"/><path d="M5.6 13.4h4.8" stroke-linecap="round"/></svg>'],
+    ['claro','Claro','<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.4v1.6M8 13v1.6M1.4 8h1.6M13 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/></svg>'],
+    ['oscuro','Oscuro','<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.8 5.8 0 1 0 7 7z"/></svg>']
+  ];
+  const IDIOMAS = [['es','ES'],['ca','CA'],['en','EN']];
+
+  /* localStorage no siempre está: en modo privado, con cookies
+     bloqueadas o dentro de un iframe lanza excepción. Sin esta red, un
+     fallo de almacenamiento tumbaría el menú entero. */
+  const mem = {};
+  const guarda = (k,v) => { try{ localStorage.setItem(k,v); }catch(e){ mem[k] = v; } };
+  const lee    = k => { try{ return localStorage.getItem(k); }catch(e){ return mem[k] ?? null; } };
+
+  function tema(){ return lee('pl-theme') || 'sistema'; }
+  function aplicarTema(t){
+    if(t === 'sistema') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', t);
+    guarda('pl-theme', t);
+  }
+
+  const me = document.querySelector('.me');
+  if(!me) return;
+
+  me.setAttribute('role','button');
+  me.setAttribute('aria-haspopup','menu');
+  me.setAttribute('aria-expanded','false');
+  me.tabIndex = 0;
+
+  const pop = document.createElement('div');
+  pop.className = 'umenu';
+  pop.hidden = true;
+  document.body.appendChild(pop);
+
+  function pintar(){
+    const nombre = document.getElementById('meName')?.textContent || 'Tu cuenta';
+    const rol    = document.getElementById('meRole')?.textContent || '';
+    const t      = tema();
+    const idioma = lee('pl-locale') || 'es';
+
+    pop.innerHTML = `
+      <div class="umenu-yo">
+        <div class="umenu-n">${nombre}</div>
+        <div class="umenu-s">${rol}</div>
+      </div>
+
+      <a class="umenu-it" href="perfil.html">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="5.4" r="2.6"/><path d="M2.9 13.6c0-2.6 2.3-4.2 5.1-4.2s5.1 1.6 5.1 4.2"/></svg>
+        Tu perfil</a>
+      <a class="umenu-it" href="perfil.html#suscripcion">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="3.4" width="12.4" height="9.2" rx="1.8"/><path d="M1.8 6.6h12.4" stroke-linecap="round"/></svg>
+        Suscripción</a>
+      <a class="umenu-it" href="perfil.html#datos">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10.4V2.6M5.3 5.3 8 2.6l2.7 2.7"/><path d="M2.6 9.8v3.6h10.8V9.8"/></svg>
+        Tus datos</a>
+
+      <div class="umenu-sep"></div>
+
+      <div class="umenu-tit">Tema</div>
+      <div class="umenu-ops" data-ops="theme">
+        ${TEMAS.map(([k,v,ico]) => `<button class="umenu-op" data-v="${k}"
+          aria-pressed="${t===k}" title="${v}">${ico}<span>${v}</span></button>`).join('')}
+      </div>
+
+      <div class="umenu-tit">Idioma</div>
+      <div class="umenu-ops" data-ops="locale">
+        ${IDIOMAS.map(([k,v]) => `<button class="umenu-op" data-v="${k}"
+          aria-pressed="${idioma===k}">${v}</button>`).join('')}
+      </div>
+
+      <div class="umenu-sep"></div>
+
+      <button class="umenu-it umenu-salir" data-salir>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 13.6H3.4V2.4h2.8"/><path d="M10.2 11 13.2 8l-3-3M13.2 8H6.6"/></svg>
+        Cerrar sesión</button>`;
+  }
+
+  function abrir(){
+    pintar();
+    pop.hidden = false;
+    const r = me.getBoundingClientRect();
+    /* con la barra plegada el menú se sale por la izquierda: se ancla
+       al borde derecho de la barra, nunca fuera de la ventana */
+    pop.style.left = Math.max(8, r.left) + 'px';
+    pop.style.bottom = (window.innerHeight - r.top + 8) + 'px';
+    me.setAttribute('aria-expanded','true');
+  }
+  function cerrar(){
+    pop.hidden = true;
+    me.setAttribute('aria-expanded','false');
+  }
+
+  me.addEventListener('click', e => { e.stopPropagation(); pop.hidden ? abrir() : cerrar(); });
+  me.addEventListener('keydown', e => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pop.hidden ? abrir() : cerrar(); }
+  });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') cerrar(); });
+  document.addEventListener('click', e => { if(!pop.contains(e.target)) cerrar(); });
+
+  pop.addEventListener('click', async e => {
+    e.stopPropagation();
+
+    const op = e.target.closest('.umenu-op');
+    if(op){
+      const grupo = op.closest('.umenu-ops').dataset.ops;
+      const valor = op.dataset.v;
+      [...op.parentNode.children].forEach(b => b.setAttribute('aria-pressed', String(b === op)));
+
+      if(grupo === 'theme')  aplicarTema(valor);
+      if(grupo === 'locale') guarda('pl-locale', valor);
+
+      if(!/^https?:$/.test(location.protocol)) return;
+      fetch('api/app.php', {method:'POST', headers:{'Content-Type':'application/json'},
+        credentials:'same-origin',
+        body:JSON.stringify({action:'preferencias',
+          locale: lee('pl-locale') || 'es',
+          theme:  tema()})}).catch(() => {});
+      return;
+    }
+
+    if(e.target.closest('[data-salir]')){
+      if(/^https?:$/.test(location.protocol)){
+        await fetch('api/logout.php', {method:'POST', credentials:'same-origin'}).catch(() => {});
+      }
+      location.href = 'acceso.html';
+    }
+  });
+})();
+</script>
 </body>
 </html>

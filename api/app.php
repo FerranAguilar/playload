@@ -383,6 +383,150 @@ switch ($action) {
             ],
         ]);
 
+    // ── Perfil completo ────────────────────────────────────────────
+    case 'perfil':
+        $st = db()->prepare(
+            'SELECT COUNT(*) AS equipos,
+                    (SELECT COUNT(*) FROM players p
+                      JOIN teams t2 ON t2.id = p.team_id
+                     WHERE t2.owner_user_id = ? AND p.active = 1) AS jugadores,
+                    (SELECT COUNT(*) FROM sessions s
+                      JOIN teams t3 ON t3.id = s.team_id
+                     WHERE t3.owner_user_id = ?) AS sesiones
+               FROM teams WHERE owner_user_id = ?'
+        );
+        $st->execute([$userId, $userId, $userId]);
+        $uso = $st->fetch();
+
+        json_out([
+            'ok'   => true,
+            'user' => [
+                'id'      => $userId,
+                'name'    => $user['name'],
+                'email'   => $user['email'],
+                'type'    => $user['account_type'],
+                'role'    => $user['role'],
+                'locale'  => $user['locale'] ?? 'es',
+                'theme'   => $user['theme'] ?? 'sistema',
+                'admin'   => (bool) $user['is_admin'],
+                'dos_pasos' => (bool) $user['two_factor'],
+                'con_password' => true,
+                'alta'    => $user['created_at'] ?? null,
+            ],
+            'licencia' => [
+                'plan'   => $limits['plan'],
+                'nombre' => $limits['name'],
+                'hasta'  => $user['plan_until'],
+                'max_equipos'   => $limits['teams'],
+                'max_jugadores' => $limits['players'],
+                'max_staff'     => $limits['staff'],
+            ],
+            'uso' => [
+                'equipos'   => (int) $uso['equipos'],
+                'jugadores' => (int) $uso['jugadores'],
+                'sesiones'  => (int) $uso['sesiones'],
+            ],
+        ]);
+
+    // ── Guardar preferencias ───────────────────────────────────────
+    case 'preferencias':
+        $locale = param('locale', 'es');
+        $theme  = param('theme', 'sistema');
+
+        if (!in_array($locale, ['es', 'ca', 'en'], true)) {
+            fail('Ese idioma no está disponible.');
+        }
+        if (!in_array($theme, ['sistema', 'claro', 'oscuro'], true)) {
+            fail('Ese tema no existe.');
+        }
+
+        $up = db()->prepare('UPDATE users SET locale = ?, theme = ? WHERE id = ?');
+        $up->execute([$locale, $theme, $userId]);
+
+        json_out(['ok' => true, 'locale' => $locale, 'theme' => $theme]);
+
+    // ── Datos de la cuenta ─────────────────────────────────────────
+    case 'guardar_perfil':
+        $name = param('name');
+        if ($name === '') {
+            fail('El nombre no puede quedar vacío.');
+        }
+        $up = db()->prepare('UPDATE users SET name = ?, role = ? WHERE id = ?');
+        $up->execute([$name, param('role'), $userId]);
+
+        json_out(['ok' => true]);
+
+    // ── Cambiar contraseña ─────────────────────────────────────────
+    case 'cambiar_password':
+        $actual = param('actual');
+        $nueva  = param('nueva');
+
+        if (mb_strlen($nueva) < 8) {
+            fail('La contraseña nueva necesita ocho caracteres como mínimo.');
+        }
+
+        $st = db()->prepare('SELECT password_hash FROM users WHERE id = ?');
+        $st->execute([$userId]);
+        $hash = $st->fetch()['password_hash'] ?? null;
+
+        if ($hash === null) {
+            fail('Tu cuenta entra con Google, así que no tiene contraseña.', 409);
+        }
+        if (!password_verify($actual, $hash)) {
+            fail('La contraseña actual no es correcta.', 401);
+        }
+
+        $up = db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+        $up->execute([password_hash($nueva, PASSWORD_DEFAULT), $userId]);
+
+        // Cambiar la contraseña cierra las sesiones recordadas.
+        $rm = db()->prepare('DELETE FROM remember_tokens WHERE user_id = ?');
+        $rm->execute([$userId]);
+
+        json_out(['ok' => true]);
+
+    // ── Exportar los datos ─────────────────────────────────────────
+    // Sale como CSV para que se abra en cualquier hoja de cálculo.
+    case 'exportar':
+        $st = db()->prepare(
+            'SELECT t.name AS equipo, t.category AS categoria, t.modality AS modalidad,
+                    p.dorsal, p.name AS jugador, p.position AS posicion, p.access_code AS codigo
+               FROM teams t
+               LEFT JOIN players p ON p.team_id = t.id AND p.active = 1
+              WHERE t.owner_user_id = ?
+                 OR t.club_id IN (SELECT id FROM clubs WHERE owner_user_id = ?)
+              ORDER BY t.name, (p.dorsal IS NULL), p.dorsal'
+        );
+        $st->execute([$userId, $userId]);
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="playload-plantillas.csv"');
+
+        $out = fopen('php://output', 'w');
+        fprintf($out, "\xEF\xBB\xBF");   // BOM, para que Excel respete las tildes
+        fputcsv($out, ['Equipo', 'Categoría', 'Modalidad', 'Dorsal', 'Jugador', 'Posición', 'Código'], ';');
+        foreach ($st->fetchAll() as $r) {
+            fputcsv($out, array_values($r), ';');
+        }
+        fclose($out);
+        exit;
+
+    // ── Eliminar la cuenta ─────────────────────────────────────────
+    case 'eliminar_cuenta':
+        // Se pide escribir el correo entero: un botón solo es demasiado
+        // fácil de pulsar sin querer, y esto no tiene vuelta atrás.
+        if (mb_strtolower(param('confirmacion')) !== mb_strtolower((string) $user['email'])) {
+            fail('Escribe tu correo exactamente para confirmar.', 400);
+        }
+
+        $del = db()->prepare('DELETE FROM users WHERE id = ?');
+        $del->execute([$userId]);
+
+        $_SESSION = [];
+        session_destroy();
+
+        json_out(['ok' => true]);
+
     default:
         fail('Acción desconocida.', 400);
 }

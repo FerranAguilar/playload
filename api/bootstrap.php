@@ -168,7 +168,7 @@ function current_user(): ?array
     }
     $st = db()->prepare(
         'SELECT id, email, name, account_type, role, avatar_url, two_factor,
-                is_admin, plan, plan_until
+                is_admin, plan, plan_until, locale, theme, created_at
            FROM users WHERE id = ?'
     );
     $st->execute([$_SESSION['uid']]);
