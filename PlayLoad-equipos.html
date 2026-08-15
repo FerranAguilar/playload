@@ -202,6 +202,16 @@ a.rail-top:hover .mark{background:color-mix(in srgb,var(--color-accent) 20%,tran
 .t-count b{font-family:var(--font-heading);font-weight:500;color:var(--color-text);font-size:15px}
 .state{display:inline-flex;align-items:center;gap:7px;color:var(--muted)}
 .state i{width:7px;height:7px;border-radius:50%;flex:none}
+/* — estado vacío — */
+.vacio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  text-align:center;padding:52px 30px;border:1px dashed var(--line);border-radius:var(--radius-lg)}
+.vacio-ico{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--color-accent) 16%,transparent);color:var(--color-accent-300);
+  margin-bottom:4px}
+.vacio h3{font-size:19px}
+.vacio p{margin:0;font-size:14px;line-height:1.6;color:var(--muted);max-width:46ch}
+.vacio .btn{margin-top:6px}
+.vacio-nota{font-size:12.5px;color:var(--muted-2);margin-top:2px}
 .team-new{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
   min-height:150px;border:1px dashed var(--line);border-radius:var(--radius-lg);cursor:pointer;
   color:var(--muted);font-size:14px;transition:border-color .16s ease,color .16s ease}
@@ -312,8 +322,8 @@ tr:hover .row-act{opacity:1}
     <a class="rail-top" href="PlayLoad-dashboard.html" title="Ir al panel"><span class="mark">PL</span><span>PlayLoad</span></a>
 
     <button class="club" title="Cambiar de club">
-      <span class="club-badge">CFB</span>
-      <span class="club-text"><span class="club-name">CF Bellvitge</span><span class="club-sub">Temporada 2026/27</span></span>
+      <span class="club-badge" id="clubBadge">··</span>
+      <span class="club-text"><span class="club-name">Cargando…</span><span class="club-sub"></span></span>
       <svg style="margin-left:auto;width:13px;height:13px;color:var(--muted-2)" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.5 8 3.5l3 3M5 9.5l3 3 3-3"/></svg>
     </button>
 
@@ -324,7 +334,7 @@ tr:hover .row-act{opacity:1}
         <span>Panel</span></a>
       <a class="nav-item" href="#" aria-current="page">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.2 13.4V12A2.6 2.6 0 0 1 4.8 9.4h2A2.6 2.6 0 0 1 9.4 12v1.4"/><circle cx="5.8" cy="5" r="2.4"/><path d="M11 9.6c1.6.3 2.8 1.3 2.8 2.7v1.1"/><circle cx="11.6" cy="5.6" r="1.9"/></svg>
-        <span>Equipos</span><span class="nav-count">6</span></a>
+        <span>Equipos</span><span class="nav-count" id="navEquipos">0</span></a>
       <a class="nav-item" href="#">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="3.2" width="12" height="11" rx="2"/><path d="M2 6.6h12M5.4 1.6v3M10.6 1.6v3"/></svg>
         <span>Calendario</span></a>
@@ -338,7 +348,7 @@ tr:hover .row-act{opacity:1}
         <span>Microciclos</span></a>
       <a class="nav-item" href="#">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="3" y="3" width="10" height="11" rx="2"/><path d="M6 2h4v2.6H6z"/><path d="M6 8.4h4M6 11h2.6"/></svg>
-        <span>Sesiones</span><span class="nav-count">4</span></a>
+        <span>Sesiones</span></a>
       <a class="nav-item" href="#">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="3" width="4.2" height="4.2" rx="1"/><rect x="2" y="9" width="4.2" height="4.2" rx="1"/><path d="M8.4 5.1H14M8.4 11.1H14"/></svg>
         <span>Biblioteca de tareas</span></a>
@@ -352,12 +362,12 @@ tr:hover .row-act{opacity:1}
         <span>Convocatorias</span></a>
       <a class="nav-item" href="#">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="5.8"/><path d="M8 5.2v5.6M5.2 8h5.6"/></svg>
-        <span>Parte médico</span><span class="nav-count hot">3</span></a>
+        <span>Parte médico</span></a>
 
       <div class="nav-group">Control de carga</div>
       <a class="nav-item" href="#">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M8 13.4S2.2 10 2.2 6.3A3.1 3.1 0 0 1 8 4.7a3.1 3.1 0 0 1 5.8 1.6c0 3.7-5.8 7.1-5.8 7.1z"/></svg>
-        <span>Wellness</span><span class="nav-count hot">4</span></a>
+        <span>Wellness</span></a>
       <a class="nav-item" href="#">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.4 12.2a5.8 5.8 0 1 1 11.2 0"/><path d="M8 12.2 10.9 7"/></svg>
         <span>RPE por sesión</span></a>
@@ -387,7 +397,7 @@ tr:hover .row-act{opacity:1}
 
     <div class="rail-foot">
       <div class="me"><span class="avatar">FA</span>
-        <span class="me-text"><span class="me-name">Ferran Aguilar</span><span class="me-role">Coordinador · PF</span></span>
+        <span class="me-text"><span class="me-name" id="meName">…</span><span class="me-role" id="meRole"></span></span>
       </div>
     </div>
   </aside>
@@ -395,7 +405,7 @@ tr:hover .row-act{opacity:1}
   <!-- ══════════ PRINCIPAL ══════════ -->
   <div class="main">
     <header class="topbar">
-      <div class="crumbs" id="crumbs"><b>CF Bellvitge</b><span class="sep">·</span><span>Equipos</span></div>
+      <div class="crumbs" id="crumbs"><b>Equipos</b></div>
       <div class="search">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7.2" cy="7.2" r="4.4"/><path d="m10.6 10.6 3 3"/></svg>
         <input class="input" type="search" placeholder="Buscar equipo o jugador…">
@@ -425,7 +435,7 @@ tr:hover .row-act{opacity:1}
           <button aria-pressed="false" data-filter="f7">Fútbol 7</button>
           <button aria-pressed="false" data-filter="fem">Femenino</button>
         </div>
-        <span class="tag tag-warn" style="margin-left:auto">2 equipos sin microciclo esta semana</span>
+        <span class="eyebrow" id="teamCount" style="margin-left:auto"></span>
       </div>
 
       <section class="teams" id="teams"></section>
@@ -440,10 +450,10 @@ tr:hover .row-act{opacity:1}
 
       <div class="page-head" style="align-items:center">
         <div class="team-head">
-          <span class="badge-lg" id="shBadge">JA</span>
+          <span class="badge-lg" id="shBadge">··</span>
           <div>
-            <h1 id="shName">Juvenil A</h1>
-            <div class="page-sub" id="shCat">Sub-19 · División de Honor</div>
+            <h1 id="shName">—</h1>
+            <div class="page-sub" id="shCat"></div>
           </div>
         </div>
         <div class="head-right">
@@ -521,7 +531,7 @@ tr:hover .row-act{opacity:1}
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgT">
     <div>
       <h2 id="dlgT">Nuevo equipo</h2>
-      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)">Se creará en CF Bellvitge para la temporada 2026/27. Los jugadores se añaden después.</p>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)">Podrás añadir la plantilla justo después de crearlo.</p>
     </div>
     <div class="field"><label for="f1">Nombre del equipo</label><input class="input" id="f1" placeholder="p. ej. Cadete B"></div>
     <div class="grid-2">
@@ -537,194 +547,259 @@ tr:hover .row-act{opacity:1}
     </div>
     <div class="dialog-actions">
       <button class="btn btn-secondary" data-close>Cancelar</button>
-      <button class="btn btn-primary" data-close>Crear equipo</button>
+      <button class="btn btn-primary" data-crear>Crear equipo</button>
     </div>
   </div>
 </div>
 
 <script>
-/* ── datos de ejemplo ────────────────────────────────────────── */
-const TEAMS = [
-  { id:'juv-a', badge:'JA', name:'Juvenil A', cat:'Sub-19 · División de Honor', kind:['f11'],
-    tint:'#9184d9', players:23, avail:87, availTxt:'20 de 23 disponibles', load:'4.860', acwr:'1,08',
-    acwrTxt:'Rango óptimo', form:[1,4,3,3], planned:true, plannedTxt:'Microciclo 12 planificado',
-    match:'Sáb 11:00 · CE Sabadell', pend:'4 wellness pendientes',
-    staff:[['EP','Èric Puig','Entrenador principal'],['FA','Ferran Aguilar','Preparador físico'],
-           ['LM','Lucía Márquez','Fisioterapeuta'],['DO','Dani Oliva','Analista']],
-    squad:[
-      [1,'Èric Lozano','POR','Portería','ok','4,4',720],[13,'Gerard Mas','POR','Portería','ok','4,1',640],
-      [2,'Joel Marín','LD','Defensa','ok','4,3',1120],[4,'Iker Ferrer','DFC','Defensa','warn','3,6',590],
-      [5,'Òscar Puente','DFC','Defensa','ok','4,0',1080],[3,'Aleix Ponce','LI','Defensa','ok','3,9',1040],
-      [15,'Hugo Bautista','DFC','Defensa','out','3,8',140],
-      [6,'Adrià Romero','MCD','Medio','ok','4,0',1190],[8,'Marc Vidal','MC','Medio','warn','3,2',1610],
-      [10,'Bruno Sáez','MCO','Medio','ok','4,2',1150],[14,'Pol Ripoll','MC','Medio','ok','—',980],
-      [7,'Dídac Company','ED','Ataque','ok','4,1',1210],[9,'Pau Serra','DC','Ataque','ok','4,1',1240],
-      [11,'Nil Castaño','EI','Ataque','warn','2,4',1365]] },
+/* ═══════════════════════════════════════════════════════════════
+   Gestor de equipos · datos reales de api/app.php
+   Sin servidor (file://) la página se enseña vacía, que es
+   exactamente como la encuentra una cuenta recién creada.
+   ═══════════════════════════════════════════════════════════════ */
+const API  = 'api/';
+const DEMO = !/^https?:$/.test(location.protocol);
 
-  { id:'juv-b', badge:'JB', name:'Juvenil B', cat:'Sub-18 · Primera División', kind:['f11'],
-    tint:'#84b6d9', players:22, avail:91, availTxt:'20 de 22 disponibles', load:'4.120', acwr:'1,02',
-    acwrTxt:'Rango óptimo', form:[1,4,4,2], planned:true, plannedTxt:'Microciclo 12 planificado',
-    match:'Dom 12:30 · UE Cornellà', pend:'Todo al día',
-    staff:[['SB','Sergi Bonet','Entrenador principal'],['FA','Ferran Aguilar','Preparador físico'],['LM','Lucía Márquez','Fisioterapeuta']],
-    squad:[
-      [1,'Roc Vilalta','POR','Portería','ok','4,2',610],[12,'Aran Solé','POR','Portería','ok','4,0',560],
-      [2,'Nico Bertrán','LD','Defensa','ok','4,1',980],[4,'Guim Pastor','DFC','Defensa','ok','3,9',1010],
-      [5,'Ivan Rueda','DFC','Defensa','ok','4,3',1050],[3,'Marçal Duran','LI','Defensa','warn','3,4',870],
-      [6,'Biel Roselló','MCD','Medio','ok','4,0',1120],[8,'Arnau Gil','MC','Medio','ok','4,2',1080],
-      [10,'Teo Amat','MCO','Medio','ok','3,8',1160],[7,'Lluc Ferrán','ED','Medio','ok','4,1',1090],
-      [9,'Marc Escuder','DC','Ataque','ok','4,4',1210],[11,'Jan Prieto','DC','Ataque','out','3,7',180]] },
+async function get(qs){
+  const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
+  let b = {}; try { b = await r.json(); } catch(e){}
+  return {status:r.status, ok:r.ok, ...b};
+}
+async function post(data){
+  const r = await fetch(API + 'app.php', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body:JSON.stringify(data)});
+  let b = {}; try { b = await r.json(); } catch(e){}
+  return {status:r.status, ok:r.ok, ...b};
+}
 
-  { id:'cad-a', badge:'CA', name:'Cadete A', cat:'Sub-16 · Preferente', kind:['f11'],
-    tint:'#9fd984', players:21, avail:95, availTxt:'20 de 21 disponibles', load:'3.480', acwr:'0,94',
-    acwrTxt:'Rango óptimo', form:[1,4,3,3], planned:false, plannedTxt:'Sin microciclo',
-    match:'Sáb 16:00 · FC Martorell', pend:'Planificación pendiente',
-    staff:[['NC','Nàdia Colomer','Entrenadora principal'],['RT','Roger Tena','Preparador físico']],
-    squad:[
-      [1,'Unai Mir','POR','Portería','ok','4,5',480],[2,'Cesc Bonilla','LD','Defensa','ok','4,3',820],
-      [4,'Àlex Duarte','DFC','Defensa','ok','4,2',860],[5,'Pere Cardona','DFC','Defensa','ok','4,4',840],
-      [3,'Nil Bosch','LI','Defensa','ok','4,1',790],[6,'Genís Alcaraz','MCD','Medio','ok','4,0',900],
-      [8,'Roi Peláez','MC','Medio','ok','4,2',930],[10,'Bruno Tena','MCO','Medio','warn','3,5',870],
-      [7,'Aleix Miró','ED','Ataque','ok','4,3',910],[9,'Manel Ortiz','DC','Ataque','ok','4,1',950],
-      [11,'Ferran Sala','EI','Ataque','ok','4,2',890]] },
+/* ── estado ─────────────────────────────────────────────────── */
+let S = {
+  user:null, club:null, teams:[], lic:null,
+  team:null, players:[], filter:'all', tab:'plantilla'
+};
 
-  { id:'inf-a', badge:'IA', name:'Infantil A', cat:'Sub-14 · Primera División', kind:['f11'],
-    tint:'#d9a184', players:20, avail:100, availTxt:'Plantilla completa', load:'2.640', acwr:'0,88',
-    acwrTxt:'Rango óptimo', form:[1,4,3,3], planned:true, plannedTxt:'Microciclo 12 planificado',
-    match:'Dom 10:00 · CF Igualada', pend:'Todo al día',
-    staff:[['JT','Jordi Terré','Entrenador principal'],['RT','Roger Tena','Preparador físico']],
-    squad:[
-      [1,'Oriol Bages','POR','Portería','ok','4,6',360],[2,'Marc Puigdellívol','LD','Defensa','ok','4,5',600],
-      [4,'Enzo Cabrera','DFC','Defensa','ok','4,4',620],[5,'Pol Estrada','DFC','Defensa','ok','4,3',610],
-      [3,'Denís Mateu','LI','Defensa','ok','4,5',590],[6,'Iu Sancho','MCD','Medio','ok','4,4',660],
-      [8,'Álvaro Nieto','MC','Medio','ok','4,2',680],[10,'Kilian Vives','MCO','Medio','ok','4,6',700],
-      [9,'Aitor Bru','DC','Ataque','ok','4,3',720],[11,'Marc Cuadrado','EI','Ataque','ok','4,4',690]] },
+const TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg>';
+const LINEAS = {POR:'Portería', DFC:'Defensa', LD:'Defensa', LI:'Defensa',
+                MCD:'Medio', MC:'Medio', MCO:'Medio', ED:'Ataque', EI:'Ataque', DC:'Ataque'};
+const ORDEN = ['Portería','Defensa','Medio','Ataque'];
 
-  { id:'fem-a', badge:'FA', name:'Femenino A', cat:'Sub-19 · Primera Nacional', kind:['f11','fem'],
-    tint:'#b5abfc', players:19, avail:89, availTxt:'17 de 19 disponibles', load:'4.010', acwr:'1,11',
-    acwrTxt:'Rango óptimo', form:[1,4,4,2], planned:false, plannedTxt:'Microciclo en borrador',
-    match:'Sáb 18:00 · CE Europa', pend:'2 wellness pendientes',
-    staff:[['CV','Clara Vega','Entrenadora principal'],['FA','Ferran Aguilar','Preparador físico'],['LM','Lucía Márquez','Fisioterapeuta']],
-    squad:[
-      [1,'Ariadna Blasco','POR','Portería','ok','4,2',580],[2,'Júlia Ferrer','LD','Defensa','ok','4,0',940],
-      [4,'Noa Salvat','DFC','Defensa','ok','4,1',990],[5,'Irene Cañas','DFC','Defensa','warn','3,3',1010],
-      [3,'Ona Vergés','LI','Defensa','ok','3,9',920],[6,'Alba Reig','MCD','Medio','ok','4,3',1060],
-      [8,'Laia Tost','MC','Medio','ok','4,0',1080],[10,'Vera Quintana','MCO','Medio','ok','4,2',1120],
-      [9,'Mar Bonet','DC','Ataque','ok','4,4',1180],[11,'Carla Ripoll','DC','Ataque','out','3,8',210]] },
+const esc  = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const ini  = n => (n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || 'EQ';
+const fmt  = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 
-  { id:'ale-a', badge:'AA', name:'Alevín A', cat:'Sub-12 · Fútbol 7', kind:['f7'],
-    tint:'#84c9d9', players:14, avail:100, availTxt:'Plantilla completa', load:'1.180', acwr:'0,79',
-    acwrTxt:'Por debajo del rango', form:[1,2,3,1], planned:false, plannedTxt:'Sin microciclo',
-    match:'Sáb 09:30 · UD Viladecans', pend:'Planificación pendiente',
-    staff:[['MG','Martí Gasull','Entrenador principal']],
-    squad:[
-      [1,'Leo Andrade','POR','Portería','ok','4,7',180],[2,'Biel Ferrer','DFC','Defensa','ok','4,6',260],
-      [3,'Nao Riera','DFC','Defensa','ok','4,5',250],[5,'Iker Pons','MC','Medio','ok','4,6',290],
-      [6,'Roc Salas','MC','Medio','ok','4,4',280],[8,'Ton Ribas','MC','Medio','ok','4,5',300],
-      [9,'Gael Muñoz','DC','Ataque','ok','4,7',320]] }
-];
+/* ── carga ──────────────────────────────────────────────────── */
+async function cargar(){
+  if(DEMO){
+    S.user = {name:'Tu cuenta', email:'', type:'pro'};
+    S.lic  = {nombre:'Tester', max_equipos:null, max_jugadores:null,
+              equipos_usados:0, puede_crear_equipo:true};
+    S.teams = [];
+    pintar();
+    return;
+  }
 
-const LINES = ['Portería','Defensa','Medio','Ataque'];
-const ST = { ok:['tag-ok','Disponible'], warn:['tag-warn','Molestia'], out:['tag-risk','Baja'] };
-const PERMS = { 'Entrenador principal':'Todo el equipo','Entrenadora principal':'Todo el equipo',
-  'Preparador físico':'Carga y planificación','Fisioterapeuta':'Parte médico','Analista':'Solo lectura' };
-const ini = n => n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-const fmt = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');   /* miles con punto */
-let current = TEAMS[0], filter = 'all';
+  const r = await get('action=estado').catch(() => ({status:0}));
 
-/* ── VISTA 1 · lista ─────────────────────────────────────────── */
+  if(r.status === 401){ location.href = 'acceso.html'; return; }
+  if(!r.ok){ avisoServidor(); return; }
+
+  S.user  = r.user;
+  S.club  = r.club;
+  S.teams = r.teams || [];
+  S.lic   = r.licencia;
+  pintar();
+}
+
+function avisoServidor(){
+  document.getElementById('teams').innerHTML = `
+    <div class="vacio" style="grid-column:1/-1">
+      <h3>No se ha podido hablar con el servidor</h3>
+      <p>Recarga la página en un momento. Si sigue igual, mira el registro de errores del hosting.</p>
+    </div>`;
+}
+
+/* ── cabecera y contadores ──────────────────────────────────── */
+function pintar(){
+  const lic = S.lic || {};
+  const n   = S.teams.length;
+  const max = lic.max_equipos;
+
+  document.getElementById('listSub').innerHTML = n === 0
+    ? 'Todavía no hay ningún equipo. Empieza creando el primero.'
+    : `${n} ${n===1?'equipo':'equipos'} · ${S.teams.reduce((a,t)=>a+t.players,0)} jugadores en ficha`;
+
+  const cont = document.getElementById('teamCount');
+  if(cont){
+    cont.textContent = (max === null || max === undefined)
+      ? `Plan ${lic.nombre||''} · equipos ilimitados`
+      : `${n} de ${max} equipos · plan ${lic.nombre||''}`;
+    cont.style.color = (max !== null && max !== undefined && n >= max)
+      ? 'var(--color-warn)' : 'var(--muted-2)';
+  }
+
+  const badge = document.getElementById('clubBadge');
+  if(badge) badge.textContent = ini(S.club ? S.club.name : (S.user?.name || ''));
+  const me = document.getElementById('meName');
+  if(me) me.textContent = S.user?.name || S.user?.email || '';
+  const rol = document.getElementById('meRole');
+  if(rol) rol.textContent = S.user?.role || (S.user?.type === 'club' ? 'Club' : 'Profesional');
+  const navEq = document.getElementById('navEquipos');
+  if(navEq) navEq.textContent = n;
+  const crumbs = document.getElementById('crumbs');
+  if(crumbs && !S.team) crumbs.innerHTML = `<b>${esc(S.club ? S.club.name : 'Equipos')}</b>`;
+
+  /* el club de una cuenta profesional es su propio nombre */
+  const cn = document.querySelector('.club-name');
+  const cs = document.querySelector('.club-sub');
+  if(cn) cn.textContent = S.club ? S.club.name : (S.user?.name || 'Mi cuenta');
+  if(cs) cs.textContent = S.club ? 'Club · ' + n + (n===1?' equipo':' equipos')
+                                 : 'Cuenta profesional';
+
+  renderTeams();
+  puedeCrear();
+}
+
+function puedeCrear(){
+  const lic = S.lic || {};
+  const bloqueado = lic.puede_crear_equipo === false;
+
+  document.querySelectorAll('[data-new-team]').forEach(b => {
+    b.disabled = bloqueado;
+    b.title = bloqueado
+      ? `Tu plan ${lic.nombre} permite ${lic.max_equipos} equipo${lic.max_equipos===1?'':'s'}`
+      : '';
+    b.style.opacity = bloqueado ? .45 : 1;
+    b.style.cursor  = bloqueado ? 'not-allowed' : 'pointer';
+  });
+  return !bloqueado;
+}
+
+/* ── rejilla de equipos ─────────────────────────────────────── */
 function renderTeams(){
-  const list = TEAMS.filter(t => filter==='all' || t.kind.includes(filter));
-  document.getElementById('listSub').textContent =
-    `${list.length} ${list.length===1?'equipo':'equipos'} · ${list.reduce((a,t)=>a+t.players,0)} jugadores en ficha`;
-  document.getElementById('teams').innerHTML = list.map(t => `
-    <button class="team" style="--tint:${t.tint}" data-id="${t.id}">
-      <div class="t-head">
-        <span class="badge-lg">${t.badge}</span>
-        <div style="min-width:0">
-          <div class="t-name">${t.name}</div>
-          <div class="t-cat">${t.cat}</div>
+  const box  = document.getElementById('teams');
+  const list = S.teams.filter(t => S.filter === 'all'
+    || (S.filter === 'f7'  && t.modality === 'Fútbol 7')
+    || (S.filter === 'f11' && t.modality !== 'Fútbol 7'));
+
+  if(!S.teams.length){
+    box.innerHTML = `
+      <div class="vacio" style="grid-column:1/-1">
+        <div class="vacio-ico">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="8" r="3.2"/><path d="M2.8 19c0-3.3 2.8-5.2 6.2-5.2s6.2 1.9 6.2 5.2"/>
+            <path d="M16.5 11.4a2.8 2.8 0 0 0 0-4.6M19.6 19c0-2.2-.9-3.7-2.4-4.5"/></svg>
         </div>
-        <svg class="t-open" width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>
+        <h3>Aún no tienes ningún equipo</h3>
+        <p>Un equipo es donde vive todo lo demás: la plantilla, las sesiones y la carga.
+           Créalo y en un minuto puedes empezar a planificar.</p>
+        <button class="btn btn-primary" data-new-team>Crear mi primer equipo</button>
+        ${S.lic && S.lic.max_equipos ? `<p class="vacio-nota">Tu plan ${esc(S.lic.nombre)} incluye
+           ${S.lic.max_equipos} equipo${S.lic.max_equipos===1?'':'s'}.</p>` : ''}
+      </div>`;
+    puedeCrear();
+    return;
+  }
+
+  box.innerHTML = list.map(t => `
+    <button class="team" style="--tint:${esc(t.tint)}" data-id="${t.id}">
+      <div class="t-head">
+        <span class="badge-lg">${ini(t.name)}</span>
+        <div style="min-width:0">
+          <div class="t-name">${esc(t.name)}</div>
+          <div class="t-cat">${esc(t.category) || esc(t.modality)}</div>
+        </div>
+        <svg class="t-open" width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>
       </div>
       <div class="t-foot">
-        <span class="t-count"><b>${t.players}</b> jugadores</span>
-        <span class="state"><i style="background:${t.planned?'var(--color-ok)':'var(--color-warn)'}"></i>${t.plannedTxt}</span>
+        <span class="t-count">${t.players
+          ? `<b>${t.players}</b> jugadores`
+          : '<span style="color:var(--color-warn)">Sin plantilla</span>'}</span>
+        <span class="state"><i style="background:var(--color-warn)"></i>Sin microciclo</span>
       </div>
     </button>`).join('') +
     `<button class="team-new" data-new-team>
-       <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+       <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+            stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
        Crear un equipo nuevo</button>`;
+
+  puedeCrear();
 }
 
-/* ── VISTA 2 · ficha ─────────────────────────────────────────── */
-function openTeam(id){
-  current = TEAMS.find(t=>t.id===id);
-  document.getElementById('viewList').style.display='none';
-  document.getElementById('viewTeam').style.display='flex';
+/* ── ficha del equipo ───────────────────────────────────────── */
+async function abrirEquipo(id){
+  const r = await get('action=equipo&id=' + id);
+  if(!r.ok){ toast(r.error || 'No se ha podido abrir el equipo.'); return; }
+
+  S.team    = r.team;
+  S.players = r.players || [];
+  S.tab     = 'plantilla';
+
+  document.getElementById('viewList').style.display = 'none';
+  document.getElementById('viewTeam').style.display = 'flex';
   document.getElementById('crumbs').innerHTML =
-    `<button data-back>CF Bellvitge</button><span class="sep">·</span><button data-back>Equipos</button><span class="sep">·</span><b>${current.name}</b>`;
-  document.querySelectorAll('.tab').forEach((b,i)=>b.setAttribute('aria-selected', i===0?'true':'false'));
-  renderSheet(); window.scrollTo(0,0);
-}
-function closeTeam(){
-  document.getElementById('viewTeam').style.display='none';
-  document.getElementById('viewList').style.display='flex';
-  document.getElementById('crumbs').innerHTML = `<b>CF Bellvitge</b><span class="sep">·</span><span>Equipos</span>`;
+    `<button data-back>${esc(S.club ? S.club.name : 'Equipos')}</button>` +
+    `<span class="sep">·</span><b>${esc(S.team.name)}</b>`;
+  document.querySelectorAll('.tab').forEach((b,i) => b.setAttribute('aria-selected', i===0 ? 'true':'false'));
+
+  renderSheet();
   window.scrollTo(0,0);
 }
 
+function cerrarEquipo(){
+  S.team = null;
+  document.getElementById('viewTeam').style.display = 'none';
+  document.getElementById('viewList').style.display = 'flex';
+  document.getElementById('crumbs').innerHTML =
+    `<b>${esc(S.club ? S.club.name : (S.user?.name || 'PlayLoad'))}</b>` +
+    `<span class="sep">·</span><span>Equipos</span>`;
+  window.scrollTo(0,0);
+  cargar();
+}
+
 function renderSheet(){
-  const t = current;
+  const t   = S.team;
+  const max = S.lic ? S.lic.max_jugadores : null;
+  const n   = S.players.length;
+
   const badge = document.getElementById('shBadge');
-  badge.textContent = t.badge; badge.style.setProperty('--tint', t.tint);
+  badge.textContent = ini(t.name);
+  badge.style.setProperty('--tint', t.tint || '#9184d9');
   document.getElementById('shName').textContent = t.name;
-  document.getElementById('shCat').textContent  = t.cat;
-  document.getElementById('tabCount').textContent = t.players;
-  document.getElementById('tabStaff').textContent = t.staff.length;
-  document.getElementById('rosterFoot').textContent = `Mostrando ${t.squad.length} de ${t.players}`;
+  document.getElementById('shCat').textContent  = [t.category, t.modality].filter(Boolean).join(' · ');
+  document.getElementById('tabCount').textContent = n;
+  document.getElementById('tabStaff').textContent = 1;
 
   document.getElementById('stats').innerHTML = [
-    ['Jugadores', t.players, t.availTxt, ''],
-    ['Disponibilidad', t.avail+'%', t.avail>=90?'Sin bajas relevantes':'Revisar parte médico',
-      t.avail>=90?'var(--color-ok)':'var(--color-warn)'],
-    ['Carga semanal', t.load, 'UA · sRPE × minutos', ''],
-    ['ACWR medio', t.acwr, t.acwrTxt, t.acwrTxt==='Rango óptimo'?'var(--color-ok)':'var(--color-warn)']
-  ].map(([k,v,s,c]) => `<div class="stat"><div class="eyebrow">${k}</div>
-      <b class="num"${c?` style="color:${c}"`:''}>${v}</b><span>${s}</span></div>`).join('');
-
-  document.getElementById('roster').innerHTML = LINES.map(line => {
-    const rows = t.squad.filter(p => p[3]===line);
-    if(!rows.length) return '';
-    return `<tr class="grp"><td colspan="7"><span class="line"><i style="background:${t.tint}"></i>${line} · ${rows.length}</span></td></tr>` +
-      rows.map(([num,name,pos,,st,w,load]) => {
-        const wc = w==='—' ? 'var(--color-neutral-600)'
-          : (parseFloat(w.replace(',','.'))<3.5 ? 'var(--color-warn)' : 'var(--color-ok)');
-        return `<tr class="pl">
-          <td><span class="dorsal">${num}</span></td>
-          <td><div class="player"><span class="avatar">${ini(name)}</span><span>${name}</span></div></td>
-          <td class="p-sub">${pos}</td>
-          <td><span class="tag ${ST[st][0]}">${ST[st][1]}</span></td>
-          <td><span class="dot-w" style="background:${wc}"></span><span class="num">${w}</span></td>
-          <td><span class="num">${fmt(load)}</span></td>
-          <td><button class="btn btn-ghost btn-sm row-act">Abrir</button></td>
-        </tr>`;
-      }).join('');
-  }).join('');
-
-  document.getElementById('staff').innerHTML = t.staff.map(s => `
-    <div style="display:flex;align-items:center;gap:10px">
-      <span class="avatar" style="width:28px;height:28px;font-size:10.5px;background:#31343f;color:var(--color-neutral-200)">${s[0]}</span>
-      <div style="min-width:0"><div style="font-size:13.5px;line-height:1.3">${s[1]}</div>
-        <div class="p-sub" style="font-size:12px">${s[2]}</div></div>
-    </div>`).join('');
+    ['Jugadores', n, max ? `de ${max} que permite tu plan` : 'sin límite en tu plan', ''],
+    ['Disponibilidad', n ? '100%' : '—', n ? 'Sin bajas registradas' : 'Aún no hay plantilla', ''],
+    ['Carga semanal', '—', 'Cuando registres la primera sesión', ''],
+    ['ACWR medio', '—', 'Necesita cuatro semanas de datos', '']
+  ].map(([k,v,s]) => `<div class="stat"><div class="eyebrow">${k}</div>
+      <b class="num">${v}</b><span>${s}</span></div>`).join('');
 
   renderPitch(t);
-  document.getElementById('formation').textContent = t.form.join('-') + ' · sistema base';
-  renderTab(document.querySelector('.tab[aria-selected="true"]').dataset.tab);
+  document.getElementById('formation').textContent = (t.formation || '1-4-3-3') + ' · sistema base';
+
+  document.getElementById('staff').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="avatar" style="width:28px;height:28px;font-size:10.5px;background:#31343f;color:var(--color-neutral-200)">${ini(S.user?.name||'')}</span>
+      <div style="min-width:0"><div style="font-size:13.5px">${esc(S.user?.name||'Tú')}</div>
+        <div class="p-sub" style="font-size:12px">${esc(S.user?.role || 'Propietario')}</div></div>
+    </div>
+    ${S.lic && S.lic.max_staff
+      ? `<div class="p-sub" style="margin-top:4px">Tu plan permite ${S.lic.max_staff} miembros del staff.</div>`
+      : ''}`;
+
+  renderTab(S.tab);
 }
 
 function renderPitch(t){
-  const W=168, H=216, L='#3a3f52';
+  const W=168, H=216, L='#3a3f52', tint = t.tint || '#9184d9';
+  const form = (t.formation || '1-4-3-3').split('-').map(n => parseInt(n,10) || 0);
   let svg = `
     <rect x="9" y="9" width="${W-18}" height="${H-18}" rx="4" fill="none" stroke="${L}"/>
     <line x1="9" y1="${H/2}" x2="${W-9}" y2="${H/2}" stroke="${L}"/>
@@ -732,118 +807,223 @@ function renderPitch(t){
     <rect x="${W/2-34}" y="${H-9-26}" width="68" height="26" fill="none" stroke="${L}"/>
     <rect x="${W/2-34}" y="9" width="68" height="26" fill="none" stroke="${L}"/>`;
   const ys=[H-28,H-72,H-116,H-160];
-  t.form.forEach((count,li)=>{
-    const y=ys[li];
+  form.forEach((count,li) => {
+    if(li > 3) return;
     for(let i=0;i<count;i++){
       const x = W/2 + (i-(count-1)/2)*Math.min(34,(W-50)/Math.max(count,1));
-      svg += `<circle cx="${x.toFixed(1)}" cy="${y}" r="8" fill="${t.tint}" opacity="${li===0?.8:1}"/>`;
+      svg += `<circle cx="${x.toFixed(1)}" cy="${ys[li]}" r="8" fill="${tint}"
+               opacity="${S.players.length ? (li===0?.8:1) : .28}"/>`;
     }
-    svg += `<text x="${W-15}" y="${y+4}" font-size="10" font-family="Inter,sans-serif" text-anchor="end"
-             fill="#9aa0b4">${t.squad.filter(p=>p[3]===LINES[li]).length}</text>`;
   });
   document.getElementById('pitch').innerHTML = svg;
 }
 
-/* ── pestañas ────────────────────────────────────────────────── */
+/* ── pestañas ───────────────────────────────────────────────── */
 function renderTab(name){
-  const roster = name==='plantilla', t = current;
-  document.getElementById('rosterBar').style.display = roster ? 'flex' : 'none';
-  document.getElementById('tabPanel').style.display  = roster ? 'block' : 'none';
+  S.tab = name;
+  const esPlantilla = name === 'plantilla';
+  document.getElementById('rosterBar').style.display = esPlantilla ? 'flex' : 'none';
+  document.getElementById('tabPanel').style.display  = esPlantilla ? 'block' : 'none';
   const extra = document.getElementById('tabExtra');
-  extra.style.display = roster ? 'none' : 'block';
-  if(roster) return;
+  extra.style.display = esPlantilla ? 'none' : 'block';
 
-  if(name==='staff'){
+  if(esPlantilla){ renderRoster(); return; }
+
+  if(name === 'staff'){
     extra.innerHTML = `
-      <div style="display:flex;justify-content:flex-end;padding:16px 20px 6px">
-        <button class="btn btn-primary btn-sm">+ Invitar miembro</button></div>
-      <div style="overflow-x:auto"><table class="table">
-        <thead><tr><th>Persona</th><th>Rol</th><th>Acceso</th><th>Otros equipos</th><th></th></tr></thead>
-        <tbody>${t.staff.map(s=>`
-          <tr class="pl">
-            <td><div class="player"><span class="avatar">${s[0]}</span><span>${s[1]}</span></div></td>
-            <td class="p-sub">${s[2]}</td>
-            <td><span class="tag tag-neutral">${PERMS[s[2]]||'Personalizado'}</span></td>
-            <td class="p-sub">${TEAMS.filter(x=>x.id!==t.id && x.staff.some(y=>y[1]===s[1])).map(x=>x.name).join(', ')||'—'}</td>
-            <td><button class="btn btn-ghost btn-sm row-act">Editar</button></td>
-          </tr>`).join('')}</tbody></table></div>
-      <div style="padding:16px 20px 20px;border-top:1px solid var(--line);margin-top:8px" class="p-sub">
-        Los permisos se heredan de Roles y permisos del club</div>`;
-
-  } else if(name==='calendario'){
-    const items = [
-      ['Hoy · 18:30','Sesión MD-3 · alta intensidad','Campo 2','ses'],
-      ['Jue · 18:30','Sesión MD-2 · táctico posicional','Campo 2','ses'],
-      ['Vie · 18:30','Sesión MD-1 · activación y ABP','Campo 1','ses'],
-      [t.match.split(' · ')[0],'Jornada 9 · '+t.match.split(' · ')[1],'Casa · Municipal','match'],
-      ['Lun · 08:00','Informe del microciclo 12','Envío automático','rep']
-    ];
-    extra.innerHTML = `<div>${items.map(([w,ti,su,k],i)=>`
-      <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;
-        ${i?'border-top:1px solid color-mix(in srgb,var(--color-text) 11%,transparent)':''}">
-        <span class="num" style="width:96px;flex:none;font-size:13.5px;color:${k==='match'?'var(--color-accent-300)':'var(--muted)'}">${w}</span>
-        <div style="flex:1;min-width:0"><div style="font-size:14px">${ti}</div>
-          <div class="p-sub" style="margin-top:2px">${su}</div></div>
-        <span class="tag ${k==='match'?'tag-accent':(k==='rep'?'tag-neutral':'tag-ok')}">${k==='match'?'Partido':(k==='rep'?'Informe':'Sesión')}</span>
-      </div>`).join('')}
-      <div style="padding:16px 20px 20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
-        <span class="p-sub">Sincronizado con Google Calendar</span>
-        <button class="btn btn-ghost btn-sm">Abrir calendario →</button></div></div>`;
-
+      <div class="vacio" style="margin:0;border:0">
+        <h3>Solo estás tú</h3>
+        <p>Invita a quien comparta el trabajo del equipo: entrenador, fisio o analista.
+           Cada uno entra con su cuenta y ve lo que le corresponda.</p>
+        <button class="btn btn-secondary" disabled title="Disponible en cuanto conectemos las invitaciones">
+          Invitar al cuerpo técnico</button>
+        ${S.lic && S.lic.max_staff
+          ? `<p class="vacio-nota">Tu plan ${esc(S.lic.nombre)} incluye ${S.lic.max_staff} miembros.</p>`
+          : `<p class="vacio-nota">Tu plan no limita el número de miembros.</p>`}
+      </div>`;
+  } else if(name === 'calendario'){
+    extra.innerHTML = `
+      <div class="vacio" style="margin:0;border:0">
+        <h3>El calendario está vacío</h3>
+        <p>Cuando planifiques el primer microciclo, aquí verás las sesiones, los partidos
+           y el envío del informe del lunes.</p>
+        <a class="btn btn-secondary" href="PlayLoad-dashboard.html">Ir al panel</a>
+      </div>`;
   } else {
+    const t = S.team;
     extra.innerHTML = `
       <div style="padding:22px 20px 24px;display:flex;flex-direction:column;gap:18px;max-width:640px">
         <div class="grid-2">
-          <div class="field"><label>Nombre del equipo</label><input class="input" value="${t.name}"></div>
-          <div class="field"><label>Categoría</label><input class="input" value="${t.cat.split(' · ')[0]}"></div>
+          <div class="field"><label>Nombre del equipo</label>
+            <input class="input" value="${esc(t.name)}" disabled></div>
+          <div class="field"><label>Categoría</label>
+            <input class="input" value="${esc(t.category)}" disabled></div>
         </div>
         <div class="grid-2">
-          <div class="field"><label>Competición</label><input class="input" value="${t.cat.split(' · ')[1]||''}"></div>
           <div class="field"><label>Modalidad</label>
-            <select class="input"><option>${t.kind.includes('f7')?'Fútbol 7':'Fútbol 11'}</option></select></div>
+            <input class="input" value="${esc(t.modality)}" disabled></div>
+          <div class="field"><label>Sistema base</label>
+            <input class="input" value="${esc(t.formation)}" disabled></div>
         </div>
-        <div class="grid-2">
-          <div class="field"><label>Sistema base</label><input class="input" value="${t.form.join('-')}"></div>
-          <div class="field"><label>Color del equipo</label>
-            <div style="display:flex;gap:9px;align-items:center;height:36px">
-              ${['#9184d9','#84b6d9','#9fd984','#d9a184','#b5abfc','#84c9d9'].map(c=>`
-                <span style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;
-                  box-shadow:${c===t.tint?'0 0 0 2px var(--color-surface),0 0 0 4px '+c:'none'}"></span>`).join('')}
-            </div></div>
-        </div>
-        <hr class="hr" style="margin:4px 0">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
-          <div><div style="font-size:14px;color:var(--color-risk)">Archivar equipo</div>
-            <div class="p-sub" style="margin-top:3px">Conserva los datos de la temporada y lo retira del panel</div></div>
-          <button class="btn btn-secondary btn-sm" style="color:var(--color-risk);border-color:var(--color-risk)">Archivar</button>
-        </div>
-        <div style="display:flex;gap:9px"><button class="btn btn-primary btn-sm">Guardar cambios</button>
-          <button class="btn btn-secondary btn-sm">Descartar</button></div>
+        <p class="p-sub">La edición de estos campos llega con el siguiente paso.</p>
       </div>`;
   }
 }
 
-/* ── interacción ─────────────────────────────────────────────── */
-document.addEventListener('click', e => {
-  if(e.target.closest('[data-new-team]')){ document.getElementById('dlg').classList.add('open'); return; }
-  if(e.target.closest('[data-close]') || e.target.id==='dlg'){ document.getElementById('dlg').classList.remove('open'); return; }
+/* ── plantilla ──────────────────────────────────────────────── */
+function renderRoster(){
+  const cuerpo = document.getElementById('roster');
+  const max    = S.lic ? S.lic.max_jugadores : null;
+  const n      = S.players.length;
+
+  document.getElementById('rosterFoot').textContent = max
+    ? `${n} de ${max} jugadores que permite tu plan`
+    : `${n} jugador${n===1?'':'es'}`;
+
+  if(!n){
+    cuerpo.innerHTML = `
+      <tr><td colspan="7" style="padding:0">
+        <div class="vacio" style="margin:0;border:0">
+          <h3>La plantilla está vacía</h3>
+          <p>Añade jugadores a mano, importa un CSV o comparte el enlace de invitación
+             para que se apunten ellos con su código.</p>
+          <button class="btn btn-primary" data-add-player>Añadir el primer jugador</button>
+        </div>
+      </td></tr>`;
+    return;
+  }
+
+  const grupos = {};
+  S.players.forEach(p => {
+    const linea = LINEAS[p.position] || 'Sin posición';
+    (grupos[linea] = grupos[linea] || []).push(p);
+  });
+
+  cuerpo.innerHTML = ORDEN.concat(['Sin posición']).filter(l => grupos[l]).map(linea => {
+    const filas = grupos[linea];
+    return `<tr class="grp"><td colspan="7"><span class="line">
+        <i style="background:${esc(S.team.tint||'#9184d9')}"></i>${linea} · ${filas.length}</span></td></tr>` +
+      filas.map(p => `<tr class="pl">
+        <td><span class="dorsal">${p.dorsal ?? '—'}</span></td>
+        <td><div class="player"><span class="avatar">${ini(p.name)}</span><span>${esc(p.name)}</span></div></td>
+        <td class="p-sub">${esc(p.position) || '—'}</td>
+        <td><span class="tag tag-ok">Disponible</span></td>
+        <td class="p-sub">Sin enviar</td>
+        <td class="p-sub">${esc(p.access_code)}</td>
+        <td><button class="btn btn-ghost btn-sm row-act">Abrir</button></td>
+      </tr>`).join('');
+  }).join('');
+}
+
+/* ── avisos ─────────────────────────────────────────────────── */
+function toast(msg, kind){
+  let t = document.getElementById('toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:90;' +
+      'padding:12px 18px;border-radius:8px;font-size:14px;max-width:min(520px,90vw);' +
+      'background:var(--color-surface);border:1px solid var(--line);box-shadow:0 12px 30px rgba(0,0,0,.5);' +
+      'opacity:0;transition:opacity .18s ease;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.borderColor = kind === 'bad' ? 'var(--color-risk)' : 'var(--line)';
+  t.style.color = kind === 'bad' ? 'var(--color-risk)' : 'var(--color-text)';
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => { t.style.opacity = '0'; }, 4200);
+}
+
+/* ── interacción ────────────────────────────────────────────── */
+document.addEventListener('click', async e => {
+
+  const nuevo = e.target.closest('[data-new-team]');
+  if(nuevo){
+    if(!puedeCrear()){
+      toast(`Tu plan ${S.lic.nombre} permite ${S.lic.max_equipos} equipo${S.lic.max_equipos===1?'':'s'}. ` +
+            `Cambia de plan para añadir más.`, 'bad');
+      return;
+    }
+    document.getElementById('dlg').classList.add('open');
+    document.getElementById('f1').focus();
+    return;
+  }
+
+  if(e.target.closest('[data-close]') || e.target.id === 'dlg'){
+    document.getElementById('dlg').classList.remove('open');
+    return;
+  }
+
+  if(e.target.closest('[data-crear]')){
+    const btn = e.target.closest('[data-crear]');
+    const name = document.getElementById('f1').value.trim();
+    if(!name){ document.getElementById('f1').focus(); return; }
+
+    if(DEMO){
+      toast('Sin servidor no se puede crear el equipo: esta es la vista de diseño.');
+      document.getElementById('dlg').classList.remove('open');
+      return;
+    }
+
+    btn.disabled = true;
+    const r = await post({action:'crear_equipo', name,
+      category: document.getElementById('f2').value,
+      modality: document.getElementById('f3').value,
+      formation: '1-4-3-3'});
+    btn.disabled = false;
+
+    if(r.ok){
+      document.getElementById('dlg').classList.remove('open');
+      document.getElementById('f1').value = '';
+      await cargar();
+      toast('Equipo creado');
+    } else {
+      toast(r.error || 'No se ha podido crear el equipo.', 'bad');
+    }
+    return;
+  }
 
   const card = e.target.closest('.team');
-  if(card){ openTeam(card.dataset.id); return; }
+  if(card){ abrirEquipo(+card.dataset.id); return; }
 
-  if(e.target.closest('#back') || e.target.closest('[data-back]')){ closeTeam(); return; }
+  if(e.target.closest('#back') || e.target.closest('[data-back]')){ cerrarEquipo(); return; }
 
   const seg = e.target.closest('.seg button');
-  if(seg){ [...seg.parentNode.children].forEach(b=>b.setAttribute('aria-pressed','false'));
-    seg.setAttribute('aria-pressed','true'); filter = seg.dataset.filter; renderTeams(); return; }
+  if(seg){
+    [...seg.parentNode.children].forEach(b => b.setAttribute('aria-pressed','false'));
+    seg.setAttribute('aria-pressed','true');
+    if(seg.dataset.filter){ S.filter = seg.dataset.filter; renderTeams(); }
+    return;
+  }
 
   const tab = e.target.closest('.tab');
-  if(tab){ document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected','false'));
-    tab.setAttribute('aria-selected','true'); renderTab(tab.dataset.tab); }
-});
-document.addEventListener('keydown', e => { if(e.key==='Escape') document.getElementById('dlg').classList.remove('open'); });
+  if(tab){
+    document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected','false'));
+    tab.setAttribute('aria-selected','true');
+    renderTab(tab.dataset.tab);
+    return;
+  }
 
-renderTeams();
+  if(e.target.closest('[data-add-player]')){
+    if(DEMO){ toast('Sin servidor no se pueden añadir jugadores: esta es la vista de diseño.'); return; }
+
+    const nombre = prompt('Nombre del jugador');
+    if(!nombre) return;
+    const dorsal = prompt('Dorsal (opcional)') || '';
+    const pos    = (prompt('Posición: POR, DFC, LD, LI, MCD, MC, MCO, ED, EI o DC') || '').toUpperCase();
+
+    const r = await post({action:'crear_jugador', team_id:S.team.id, name:nombre, dorsal, position:pos});
+    if(r.ok){ await abrirEquipo(S.team.id); toast('Jugador añadido · código ' + r.code); }
+    else toast(r.error || 'No se ha podido añadir.', 'bad');
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') document.getElementById('dlg').classList.remove('open');
+});
+
+cargar();
 </script>
 </body>
 </html>

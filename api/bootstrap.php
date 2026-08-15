@@ -194,6 +194,50 @@ function require_admin(): array
     return $u;
 }
 
+/**
+ * Límites de la licencia de una cuenta, leídos de la tabla `plans`.
+ * null = sin límite. Durante las pruebas cerradas, 'tester' no tiene
+ * techo: la idea es que los testers puedan romper cosas.
+ */
+function plan_limits(string $plan): array
+{
+    if ($plan === 'tester' || $plan === '') {
+        return ['plan' => 'tester', 'name' => 'Tester', 'teams' => null, 'players' => null, 'staff' => null];
+    }
+
+    $st = db()->prepare('SELECT id, name, teams, players, staff FROM plans WHERE id = ?');
+    $st->execute([$plan]);
+    $row = $st->fetch();
+
+    if (!$row) {
+        // Plan desconocido: se trata como tester para no bloquear a nadie
+        // por un dato mal escrito en la base.
+        return ['plan' => $plan, 'name' => $plan, 'teams' => null, 'players' => null, 'staff' => null];
+    }
+
+    $num = fn($v) => ($v === '∞' || $v === '' || $v === null) ? null : (int) $v;
+
+    return [
+        'plan'    => $row['id'],
+        'name'    => $row['name'],
+        'teams'   => $num($row['teams']),
+        'players' => $num($row['players']),
+        'staff'   => $num($row['staff']),
+    ];
+}
+
+/** Equipos que ya tiene una cuenta, contando los de su club. */
+function team_count(int $userId): int
+{
+    $st = db()->prepare(
+        'SELECT COUNT(*) AS n FROM teams t
+          WHERE t.owner_user_id = ?
+             OR t.club_id IN (SELECT id FROM clubs WHERE owner_user_id = ?)'
+    );
+    $st->execute([$userId, $userId]);
+    return (int) ($st->fetch()['n'] ?? 0);
+}
+
 // ── Ajustes ────────────────────────────────────────────────────────
 function setting(string $key, string $default = ''): string
 {
