@@ -155,13 +155,7 @@ switch ($action) {
             fail('El jugador necesita un nombre.');
         }
 
-        $t = db()->prepare(
-            'SELECT id FROM teams
-              WHERE id = ? AND (owner_user_id = ?
-                    OR club_id IN (SELECT id FROM clubs WHERE owner_user_id = ?))'
-        );
-        $t->execute([$teamId, $userId, $userId]);
-        if (!$t->fetch()) {
+        if (!es_mi_equipo($teamId, $userId)) {
             fail('Ese equipo no es tuyo.', 403);
         }
 
@@ -203,6 +197,205 @@ switch ($action) {
 
         json_out(['ok' => true, 'id' => (int) db()->lastInsertId(), 'code' => $code], 201);
 
+    // ── Editar equipo ──────────────────────────────────────────────
+    case 'editar_equipo':
+        $teamId = (int) (body()['team_id'] ?? 0);
+        $name   = param('name');
+
+        if ($name === '') {
+            fail('El equipo necesita un nombre.');
+        }
+        if (!es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        $form = param('formation', '1-4-3-3');
+        if (!preg_match('/^\d(-\d{1,2}){2,3}$/', $form)) {
+            fail('El sistema se escribe como 1-4-3-3.');
+        }
+
+        $up = db()->prepare(
+            'UPDATE teams SET name = ?, category = ?, modality = ?, formation = ?, tint = ?
+              WHERE id = ?'
+        );
+        $up->execute([
+            $name,
+            param('category'),
+            param('modality', 'Fútbol 11'),
+            $form,
+            preg_match('/^#[0-9a-f]{6}$/i', param('tint')) ? param('tint') : '#9184d9',
+            $teamId,
+        ]);
+
+        json_out(['ok' => true]);
+
+    // ── Sesiones de un equipo ──────────────────────────────────────
+    case 'sesiones':
+        $teamId = (int) ($_GET['team_id'] ?? 0);
+        if (!es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        $st = db()->prepare(
+            'SELECT id, date, time, title, kind, md_label, place, duration_min,
+                    planned_rpe, planned_load, actual_rpe, actual_load, status
+               FROM sessions
+              WHERE team_id = ? AND date >= (CURDATE() - INTERVAL 28 DAY)
+              ORDER BY date, time'
+        );
+        $st->execute([$teamId]);
+
+        json_out(['ok' => true, 'sesiones' => $st->fetchAll()]);
+
+    // ── Crear sesión ───────────────────────────────────────────────
+    case 'crear_sesion':
+        $teamId = (int) (body()['team_id'] ?? 0);
+        if (!es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        $date = param('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            fail('La fecha debe ser AAAA-MM-DD.');
+        }
+
+        $kind = param('kind', 'entrenamiento');
+        if (!in_array($kind, ['entrenamiento', 'partido', 'recuperacion', 'descanso'], true)) {
+            $kind = 'entrenamiento';
+        }
+
+        $dur = max(0, min(240, (int) (body()['duration_min'] ?? 90)));
+        $rpe = body()['planned_rpe'] ?? null;
+        $rpe = ($rpe === '' || $rpe === null) ? null : max(1, min(10, (int) $rpe));
+
+        $ins = db()->prepare(
+            'INSERT INTO sessions
+                (team_id, date, time, title, kind, md_label, place,
+                 duration_min, planned_rpe, planned_load)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $ins->execute([
+            $teamId, $date,
+            param('time') !== '' ? param('time') : null,
+            param('title'), $kind, param('md_label'), param('place'),
+            $dur, $rpe,
+            $rpe !== null ? $rpe * $dur : null,
+        ]);
+
+        json_out(['ok' => true, 'id' => (int) db()->lastInsertId()], 201);
+
+    // ── Cerrar sesión: cuánto costó de verdad ──────────────────────
+    case 'cerrar_sesion':
+        $id = (int) (body()['session_id'] ?? 0);
+
+        $st = db()->prepare(
+            'SELECT s.id, s.duration_min, s.team_id FROM sessions s WHERE s.id = ?'
+        );
+        $st->execute([$id]);
+        $ses = $st->fetch();
+
+        if (!$ses || !es_mi_equipo((int) $ses['team_id'], $userId)) {
+            fail('Esa sesión no es tuya.', 403);
+        }
+
+        $rpe = (float) str_replace(',', '.', (string) (body()['actual_rpe'] ?? 0));
+        if ($rpe < 1 || $rpe > 10) {
+            fail('El RPE va de 1 a 10.');
+        }
+        $dur = max(0, min(240, (int) (body()['duration_min'] ?? $ses['duration_min'])));
+
+        $up = db()->prepare(
+            "UPDATE sessions SET actual_rpe = ?, duration_min = ?, actual_load = ?,
+                    status = 'realizada' WHERE id = ?"
+        );
+        $up->execute([$rpe, $dur, (int) round($rpe * $dur), $id]);
+
+        json_out(['ok' => true, 'carga' => (int) round($rpe * $dur)]);
+
+    // ── Resumen de carga para el panel ─────────────────────────────
+    case 'resumen':
+        $teamId = (int) ($_GET['team_id'] ?? 0);
+        if ($teamId && !es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        // Semana en curso, de lunes a domingo.
+        $hoy      = new DateTimeImmutable('today');
+        $lunes    = $hoy->modify('monday this week');
+        $domingo  = $lunes->modify('+6 days');
+
+        $st = db()->prepare(
+            'SELECT date, kind, md_label, title, time, place, duration_min,
+                    planned_load, actual_load, status
+               FROM sessions
+              WHERE team_id = ? AND date BETWEEN ? AND ?
+              ORDER BY date, time'
+        );
+        $st->execute([$teamId, $lunes->format('Y-m-d'), $domingo->format('Y-m-d')]);
+        $semana = $st->fetchAll();
+
+        // Carga aguda (7 días) frente a crónica (media de 4 semanas).
+        $c = db()->prepare(
+            'SELECT
+               COALESCE(SUM(CASE WHEN date > (CURDATE() - INTERVAL 7 DAY)
+                                 THEN actual_load END), 0) AS aguda,
+               COALESCE(SUM(CASE WHEN date > (CURDATE() - INTERVAL 28 DAY)
+                                 THEN actual_load END), 0) AS mes
+             FROM sessions WHERE team_id = ? AND status = "realizada"'
+        );
+        $c->execute([$teamId]);
+        $carga = $c->fetch();
+
+        $aguda   = (int) $carga['aguda'];
+        $cronica = ((int) $carga['mes']) / 4;
+        $acwr    = $cronica > 0 ? round($aguda / $cronica, 2) : null;
+
+        // Wellness de hoy.
+        $w = db()->prepare(
+            'SELECT AVG(w.score) AS media, COUNT(*) AS enviados
+               FROM wellness_entries w
+               JOIN players p ON p.id = w.player_id
+              WHERE p.team_id = ? AND w.date = CURDATE()'
+        );
+        $w->execute([$teamId]);
+        $well = $w->fetch();
+
+        $p = db()->prepare('SELECT COUNT(*) AS n FROM players WHERE team_id = ? AND active = 1');
+        $p->execute([$teamId]);
+        $plantilla = (int) ($p->fetch()['n'] ?? 0);
+
+        json_out([
+            'ok'     => true,
+            'desde'  => $lunes->format('Y-m-d'),
+            'hasta'  => $domingo->format('Y-m-d'),
+            'semana' => $semana,
+            'carga'  => [
+                'aguda'   => $aguda,
+                'cronica' => round($cronica),
+                'acwr'    => $acwr,
+                'semana_prevista' => array_sum(array_map(fn($s) => (int) $s['planned_load'], $semana)),
+                'semana_real'     => array_sum(array_map(fn($s) => (int) $s['actual_load'], $semana)),
+            ],
+            'wellness' => [
+                'media'     => $well['media'] !== null ? round((float) $well['media'], 1) : null,
+                'enviados'  => (int) $well['enviados'],
+                'plantilla' => $plantilla,
+            ],
+        ]);
+
     default:
         fail('Acción desconocida.', 400);
+}
+
+
+/** ¿Este equipo es de esta cuenta, directamente o por su club? */
+function es_mi_equipo(int $teamId, int $userId): bool
+{
+    $st = db()->prepare(
+        'SELECT id FROM teams
+          WHERE id = ? AND (owner_user_id = ?
+                OR club_id IN (SELECT id FROM clubs WHERE owner_user_id = ?))'
+    );
+    $st->execute([$teamId, $userId, $userId]);
+    return (bool) $st->fetch();
 }

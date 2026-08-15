@@ -352,6 +352,24 @@ a.rail-top:hover{color:var(--color-accent)}
 .mini-row+.mini-row{border-top:1px solid color-mix(in srgb,var(--color-text) 9%,transparent)}
 .mini-row b{font-weight:400;color:var(--color-text);font-family:var(--font-heading)}
 
+
+.dialog-backdrop{position:fixed;inset:0;z-index:90;display:none;place-items:center;padding:16px;
+  background:color-mix(in srgb,#0b0d14 70%,transparent);backdrop-filter:blur(3px)}
+.dialog-backdrop.open{display:grid}
+.dialog{width:min(470px,100%);display:flex;flex-direction:column;gap:15px;padding:22px;
+  border-radius:var(--radius-lg);background:var(--color-surface);
+  border:1px solid var(--color-neutral-800);box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.dialog h2{font-size:20px}
+.dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:4px;flex-wrap:wrap}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label{font-size:13px;color:var(--muted)}
+.p-sub{font-size:12.5px;color:var(--muted-2);margin:0}
+select.input{appearance:none;padding-right:28px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 16px,calc(100% - 10px) 16px;background-size:5px 5px;background-repeat:no-repeat}
+@media (max-width:520px){ .grid-2{grid-template-columns:1fr} }
+
 /* — responsive — */
 @media (max-width:1320px){
   .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -706,18 +724,57 @@ a.rail-top:hover{color:var(--color-accent)}
 const API  = 'api/';
 const DEMO = !/^https?:$/.test(location.protocol);
 
-const $ = id => document.getElementById(id);
+const $   = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const ini = n => (n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || '··';
+const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+
+/* Fecha en formato AAAA-MM-DD con la hora LOCAL. toISOString() pasa a
+   UTC, y en España eso devuelve el día anterior a partir de medianoche:
+   colocaría cada sesión un día antes en el calendario. */
+const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+let D = {teams:[], equipo:null, resumen:null, lic:null, user:null, club:null};
 
 $('hoy').textContent = new Date().toLocaleDateString('es-ES',
   {weekday:'long', day:'numeric', month:'long'});
 
-function pasos(equipos, jugadores){
+async function get(qs){
+  const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
+  let b = {}; try { b = await r.json(); } catch(e){}
+  return {status:r.status, ok:r.ok, ...b};
+}
+async function post(data){
+  const r = await fetch(API + 'app.php', {method:'POST',
+    headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body:JSON.stringify(data)});
+  let b = {}; try { b = await r.json(); } catch(e){}
+  return {status:r.status, ok:r.ok, ...b};
+}
+
+function toast(msg, kind){
+  let t = $('toast');
+  if(!t){
+    t = document.createElement('div'); t.id = 'toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:95;' +
+      'padding:12px 18px;border-radius:8px;font-size:14px;max-width:min(520px,90vw);text-align:center;' +
+      'background:var(--color-surface);border:1px solid var(--color-neutral-700);' +
+      'box-shadow:0 12px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .18s ease;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.color = kind === 'bad' ? 'var(--color-risk)' : 'var(--color-text)';
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => { t.style.opacity = '0'; }, 4000);
+}
+
+/* ── primeros pasos ─────────────────────────────────────────── */
+function pasos(equipos, jugadores, sesiones){
   const lista = [
     ['Crea tu primer equipo', 'Nombre, categoría y sistema base.', equipos > 0, 'PlayLoad-equipos.html'],
     ['Sube la plantilla', 'A mano, por CSV o con el enlace de invitación.', jugadores > 0, 'PlayLoad-equipos.html'],
-    ['Planifica el microciclo', 'Elige la semana y ajusta el día de partido.', false, null]
+    ['Planifica la primera sesión', 'Duración y RPE previsto: con eso ya hay carga.', sesiones > 0, null]
   ];
   const hechos = lista.filter(p => p[2]).length;
   $('pasosCont').textContent = hechos + ' de 3';
@@ -731,16 +788,16 @@ function pasos(equipos, jugadores){
       </div>
       ${ok ? '<span class="tag tag-ok">Hecho</span>'
            : href ? `<a class="btn btn-secondary btn-sm" href="${href}">Empezar</a>`
-                  : '<span class="eyebrow">Después</span>'}
+                  : `<button class="btn btn-secondary btn-sm" data-nueva-sesion>Empezar</button>`}
     </div>`).join('');
 
-  if(hechos === 3) $('pasos').style.display = 'none';
+  $('pasos').style.display = hechos === 3 ? 'none' : '';
 }
 
+/* ── licencia ───────────────────────────────────────────────── */
 function licencia(lic){
   if(!lic) return;
   $('licTag').textContent = 'Licencia ' + lic.nombre;
-
   const filas = [
     ['Plan', lic.nombre],
     ['Equipos', lic.max_equipos === null ? 'Ilimitados' : `${lic.equipos_usados} de ${lic.max_equipos}`],
@@ -752,65 +809,360 @@ function licencia(lic){
     `<div class="mini-row"><span>${k}</span><b>${esc(v)}</b></div>`).join('');
 }
 
+/* ── gráfico de carga de la semana ──────────────────────────── */
+const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+function grafico(res){
+  const caja = document.querySelector('.row-a .panel .panel-body');
+  const dias = [];
+  const desde = new Date(res.desde + 'T00:00:00');
+
+  for(let i = 0; i < 7; i++){
+    const d = new Date(desde); d.setDate(desde.getDate() + i);
+    const iso = isoLocal(d);
+    const ses = res.semana.filter(s => s.date === iso);
+    dias.push({
+      iso, etiqueta: DIAS[i],
+      prevista: ses.reduce((a,s) => a + (+s.planned_load || 0), 0),
+      real:     ses.reduce((a,s) => a + (+s.actual_load  || 0), 0),
+      partido:  ses.some(s => s.kind === 'partido'),
+      hoy:      iso === isoLocal(new Date())
+    });
+  }
+
+  const tope = Math.max(600, ...dias.map(d => Math.max(d.prevista, d.real)));
+  const W = 660, H = 210, x0 = 44, x1 = 640, base = 186, alto = 166;
+  const paso = (x1 - x0) / 7;
+  const y = v => base - (v / tope) * alto;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="230" role="img"
+        aria-label="Carga prevista frente a carga real por día">`;
+
+  for(let i = 0; i <= 4; i++){
+    const v = tope * i / 4;
+    svg += `<line x1="${x0}" y1="${y(v)}" x2="${x1}" y2="${y(v)}"
+              stroke="color-mix(in srgb,#e9e9ed 10%,transparent)"/>
+            <text x="${x0-10}" y="${y(v)+3}" font-size="10" text-anchor="end"
+              font-family="Inter,sans-serif"
+              fill="color-mix(in srgb,#e9e9ed 40%,transparent)">${fmt(v)}</text>`;
+  }
+
+  dias.forEach((d,i) => {
+    const cx = x0 + paso * (i + 0.5);
+    if(d.prevista) svg += `<rect x="${cx-22}" y="${y(d.prevista)}" width="44"
+        height="${base - y(d.prevista)}" rx="3" fill="#3f424d"/>`;
+    if(d.real) svg += `<rect x="${cx-11}" y="${y(d.real)}" width="22"
+        height="${base - y(d.real)}" rx="3" fill="var(--color-accent)"/>`;
+    if(d.partido) svg += `<text x="${cx}" y="14" font-size="9.5" text-anchor="middle"
+        font-family="Inter,sans-serif" letter-spacing="1.2"
+        fill="var(--color-accent-400)">PARTIDO</text>`;
+    svg += `<text x="${cx}" y="203" font-size="11" text-anchor="middle" font-family="Inter,sans-serif"
+        fill="${d.hoy ? 'var(--color-accent)' : 'color-mix(in srgb,#e9e9ed 55%,transparent)'}">${d.etiqueta}</text>`;
+  });
+
+  svg += '</svg>';
+
+  caja.innerHTML = svg + `
+    <div class="legend" style="justify-content:center;margin-top:10px">
+      <span><i style="background:#3f424d"></i>Prevista</span>
+      <span><i style="background:var(--color-accent)"></i>Real</span>
+    </div>`;
+}
+
+/* ── sesión de hoy y semana ─────────────────────────────────── */
+function sesionHoy(res){
+  const hoy  = isoLocal(new Date());
+  const ses  = res.semana.find(s => s.date === hoy);
+  const caja = document.querySelectorAll('.row-a .stack .panel')[0].querySelector('.panel-body');
+
+  if(!ses){
+    caja.innerHTML = `
+      <div class="vacio" style="padding:34px 20px">
+        <h3>No hay sesión programada hoy</h3>
+        <p>Programa la siguiente y aparecerá aquí con su carga prevista.</p>
+        <button class="btn btn-secondary btn-sm" data-nueva-sesion>Crear sesión</button>
+      </div>`;
+    return;
+  }
+
+  const cerrada = ses.status === 'realizada';
+  caja.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+        <span class="num" style="font-size:27px;letter-spacing:-.025em">
+          ${fmt(cerrada ? ses.actual_load : (ses.planned_load || 0))}</span>
+        <span style="font-size:12.5px;color:var(--muted)">
+          UA ${cerrada ? 'reales' : 'estimadas'} · ${ses.duration_min} min</span>
+        ${ses.md_label ? `<span class="tag tag-accent" style="margin-left:auto">${esc(ses.md_label)}</span>` : ''}
+      </div>
+      <div style="font-size:14.5px">${esc(ses.title) || 'Sesión'}</div>
+      <div class="eyebrow">${ses.time ? ses.time.slice(0,5) + ' · ' : ''}${esc(ses.place) || 'Sin lugar'}</div>
+      ${cerrada
+        ? `<span class="tag tag-ok" style="align-self:flex-start">Cerrada · RPE ${ses.actual_rpe}</span>`
+        : `<button class="btn btn-primary btn-sm" style="align-self:flex-start"
+             data-cerrar-sesion='${JSON.stringify({id:ses.id, min:ses.duration_min, t:ses.title})}'>
+             Cerrar con el RPE del grupo</button>`}
+    </div>`;
+}
+
+function semana(res){
+  const caja = document.querySelectorAll('.row-a .stack .panel')[1].querySelector('.panel-body');
+
+  if(!res.semana.length){
+    caja.innerHTML = `
+      <div class="vacio" style="padding:34px 20px">
+        <h3>Semana sin planificar</h3>
+        <p>Añade las sesiones de la semana y aquí verás el microciclo completo.</p>
+        <button class="btn btn-secondary btn-sm" data-nueva-sesion>Planificar</button>
+      </div>`;
+    return;
+  }
+
+  caja.style.padding = '0';
+  caja.innerHTML = `<div class="days">${res.semana.map(s => {
+    const d = new Date(s.date + 'T00:00:00');
+    const cerrada = s.status === 'realizada';
+    return `<div class="day">
+      <span class="day-md">${esc(s.md_label) || DIAS[(d.getDay()+6)%7]}</span>
+      <div class="day-body">
+        <div class="day-name">${esc(s.title) || (s.kind === 'partido' ? 'Partido' : 'Sesión')}</div>
+        <div class="day-sub">${d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric'})}
+          ${s.time ? '· ' + s.time.slice(0,5) : ''}</div>
+      </div>
+      <span class="day-load num" style="opacity:${cerrada ? 1 : .55}">
+        ${fmt(cerrada ? s.actual_load : (s.planned_load || 0))}</span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+/* ── carga ──────────────────────────────────────────────────── */
 async function cargar(){
   if(DEMO){
     $('saludo').textContent = 'Bienvenido a PlayLoad';
     $('clubName').textContent = 'Tu cuenta';
     $('clubSub').textContent  = 'Vista sin servidor';
     $('meName').textContent   = 'Invitado';
-    pasos(0, 0);
+    pasos(0,0,0);
     licencia({nombre:'Tester', max_equipos:null, max_jugadores:null, max_staff:null,
               equipos_usados:0, hasta:null});
     return;
   }
 
-  let r;
-  try { r = await (await fetch(API + 'app.php?action=estado', {credentials:'same-origin'})).json(); }
-  catch(e){ r = null; }
+  const r = await get('action=estado').catch(() => null);
+  if(!r) return;
+  if(r.status === 401){ location.href = 'acceso.html'; return; }
+  if(!r.ok) return;
 
-  if(!r || r.ok === false){
-    if(!r) return;
-    location.href = 'acceso.html';
-    return;
-  }
+  D.user = r.user; D.club = r.club; D.teams = r.teams || []; D.lic = r.licencia;
 
-  const equipos    = r.teams || [];
-  const jugadores  = equipos.reduce((a,t) => a + t.players, 0);
-  const nombre     = (r.user.name || '').split(' ')[0];
+  const jugadores = D.teams.reduce((a,t) => a + t.players, 0);
+  const nombre    = (r.user.name || '').split(' ')[0];
 
-  $('saludo').textContent = nombre ? `Hola, ${nombre}` : 'Bienvenido a PlayLoad';
-  $('clubName').textContent = r.club ? r.club.name : (r.user.name || 'Mi cuenta');
-  $('clubSub').textContent  = r.club ? `Club · ${equipos.length} ${equipos.length===1?'equipo':'equipos'}`
-                                     : 'Cuenta profesional';
+  $('saludo').textContent    = nombre ? `Hola, ${nombre}` : 'Bienvenido a PlayLoad';
+  $('clubName').textContent  = r.club ? r.club.name : (r.user.name || 'Mi cuenta');
+  $('clubSub').textContent   = r.club ? `Club · ${D.teams.length} ${D.teams.length===1?'equipo':'equipos'}`
+                                      : 'Cuenta profesional';
   $('clubBadge').textContent = ini(r.club ? r.club.name : r.user.name);
-  $('meName').textContent = r.user.name || r.user.email;
-  $('meRole').textContent = r.user.role || (r.user.type === 'club' ? 'Club' : 'Profesional');
-  $('crumbTeam').textContent = equipos.length ? equipos[0].name : 'Equipos';
+  $('meName').textContent    = r.user.name || r.user.email;
+  $('meRole').textContent    = r.user.role || (r.user.type === 'club' ? 'Club' : 'Profesional');
 
-  $('kpiEq').textContent  = equipos.length;
+  $('kpiEq').textContent  = D.teams.length;
   $('kpiJug').textContent = jugadores;
-  $('kpiEqPie').textContent  = equipos.length
-    ? (r.licencia.max_equipos ? `de ${r.licencia.max_equipos} que permite tu plan` : 'sin límite en tu plan')
+  $('kpiEqPie').textContent = D.teams.length
+    ? (D.lic.max_equipos ? `de ${D.lic.max_equipos} que permite tu plan` : 'sin límite en tu plan')
     : 'Sin equipos todavía';
   $('kpiJugPie').textContent = jugadores ? 'en total' : 'Sin jugadores todavía';
 
-  if($('navEquipos')) $('navEquipos').textContent = equipos.length;
+  if($('navEquipos'))   $('navEquipos').textContent = D.teams.length;
   if($('navPlantilla')) $('navPlantilla').textContent = jugadores;
 
-  if(jugadores > 0){
+  licencia(D.lic);
+
+  if(!D.teams.length){ pasos(0, 0, 0); return; }
+
+  D.equipo = D.teams[0];
+  $('crumbTeam').textContent = D.equipo.name;
+
+  const res = await get('action=resumen&team_id=' + D.equipo.id).catch(() => null);
+  if(!res || !res.ok){ pasos(D.teams.length, jugadores, 0); return; }
+
+  D.resumen = res;
+  pasos(D.teams.length, jugadores, res.semana.length);
+
+  /* KPIs con datos reales */
+  const c = res.carga;
+  document.querySelectorAll('.kpi')[0].querySelector('.kpi-val').textContent =
+    c.semana_real ? fmt(c.semana_real) : '—';
+  document.querySelectorAll('.kpi')[0].querySelector('.kpi-foot span').textContent =
+    c.semana_prevista ? `${fmt(c.semana_prevista)} UA previstas` : 'Cuando cierres la primera sesión';
+
+  const kAcwr = document.querySelectorAll('.kpi')[1];
+  kAcwr.querySelector('.kpi-val').textContent = c.acwr !== null ? String(c.acwr).replace('.',',') : '—';
+  kAcwr.querySelector('.kpi-foot span').textContent = c.acwr !== null
+    ? (c.acwr > 1.3 ? 'Por encima del rango' : c.acwr < 0.8 ? 'Por debajo del rango' : 'Rango óptimo')
+    : 'Necesita cuatro semanas';
+
+  const kWell = document.querySelectorAll('.kpi')[2];
+  kWell.querySelector('.kpi-val').textContent = res.wellness.media !== null
+    ? String(res.wellness.media).replace('.',',') : '—';
+  kWell.querySelector('.kpi-foot span').textContent = res.wellness.media !== null
+    ? `${res.wellness.enviados} de ${res.wellness.plantilla} enviados hoy`
+    : 'Cuando responda el primer jugador';
+
+  if(res.semana.length){ grafico(res); }
+  sesionHoy(res);
+  semana(res);
+
+  if(jugadores > 0 && $('vacioPlantilla')){
     $('vacioPlantilla').innerHTML =
       `<h3>${jugadores} jugador${jugadores===1?'':'es'} en ficha</h3>
-       <p>Todavía no hay sesiones registradas, así que no hay carga que mostrar.
-          En cuanto cierres la primera, esta tabla se llena sola.</p>
+       <p>El detalle por jugador llega cuando empiecen a enviar su RPE y su wellness
+          desde la app.</p>
        <a class="btn btn-secondary" href="PlayLoad-equipos.html">Ver la plantilla</a>`;
   }
-
-  pasos(equipos.length, jugadores);
-  licencia(r.licencia);
 }
+
+/* ── interacción ────────────────────────────────────────────── */
+document.addEventListener('click', async e => {
+
+  if(e.target.closest('[data-nueva-sesion]')){
+    if(DEMO){ toast('Sin servidor no se pueden crear sesiones: esta es la vista de diseño.'); return; }
+    if(!D.equipo){ toast('Primero crea un equipo.', 'bad'); return; }
+
+    $('dlgSesSub').textContent = D.equipo.name;
+    $('sFecha').value = isoLocal(new Date());
+    $('dlgSes').classList.add('open');
+    $('sTitulo').focus();
+    calcularCarga();
+    return;
+  }
+
+  if(e.target.closest('[data-cerrar-dlg]') || e.target.id === 'dlgSes' || e.target.id === 'dlgCierre'){
+    document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
+    return;
+  }
+
+  if(e.target.closest('[data-crear-sesion]')){
+    const btn = e.target.closest('[data-crear-sesion]');
+    btn.disabled = true;
+    const r = await post({action:'crear_sesion', team_id:D.equipo.id,
+      date:$('sFecha').value, time:$('sHora').value, title:$('sTitulo').value,
+      kind:$('sTipo').value, md_label:$('sMd').value,
+      duration_min:$('sMin').value, planned_rpe:$('sRpe').value});
+    btn.disabled = false;
+
+    if(r.ok){ $('dlgSes').classList.remove('open'); $('sTitulo').value = ''; await cargar(); toast('Sesión creada'); }
+    else toast(r.error || 'No se ha podido crear.', 'bad');
+    return;
+  }
+
+  const cerrar = e.target.closest('[data-cerrar-sesion]');
+  if(cerrar){
+    const s = JSON.parse(cerrar.dataset.cerrarSesion);
+    $('dlgCierre').dataset.id = s.id;
+    $('dlgCierreSub').textContent = s.t || 'Sesión de hoy';
+    $('cMin').value = s.min;
+    $('cRpe').value = '';
+    $('cCarga').textContent = '';
+    $('dlgCierre').classList.add('open');
+    $('cRpe').focus();
+    return;
+  }
+
+  if(e.target.closest('[data-guardar-cierre]')){
+    const btn = e.target.closest('[data-guardar-cierre]');
+    btn.disabled = true;
+    const r = await post({action:'cerrar_sesion', session_id:+$('dlgCierre').dataset.id,
+      actual_rpe:$('cRpe').value, duration_min:$('cMin').value});
+    btn.disabled = false;
+
+    if(r.ok){ $('dlgCierre').classList.remove('open'); await cargar();
+      toast('Carga registrada: ' + fmt(r.carga) + ' UA'); }
+    else toast(r.error || 'No se ha podido guardar.', 'bad');
+  }
+});
+
+/* la carga estimada se ve mientras se escribe: enseña la fórmula */
+function calcularCarga(){
+  const min = +$('sMin').value || 0, rpe = +$('sRpe').value || 0;
+  $('sCarga').textContent = (min && rpe)
+    ? `Carga prevista: ${fmt(min * rpe)} UA  (${rpe} de RPE × ${min} min)`
+    : 'Escribe duración y RPE para ver la carga prevista.';
+}
+document.addEventListener('input', e => {
+  if(e.target.id === 'sMin' || e.target.id === 'sRpe') calcularCarga();
+  if(e.target.id === 'cMin' || e.target.id === 'cRpe'){
+    const min = +$('cMin').value || 0, rpe = parseFloat(($('cRpe').value||'').replace(',','.')) || 0;
+    $('cCarga').textContent = (min && rpe) ? `Carga real: ${fmt(min * rpe)} UA` : '';
+  }
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
+});
 
 cargar();
 </script>
+
+
+<!-- ══════════ DIÁLOGOS ══════════ -->
+<div class="dialog-backdrop" id="dlgSes">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgSesT">
+    <div>
+      <h2 id="dlgSesT">Nueva sesión</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgSesSub"></p>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label for="sFecha">Fecha</label>
+        <input class="input" id="sFecha" type="date"></div>
+      <div class="field"><label for="sHora">Hora</label>
+        <input class="input" id="sHora" type="time" value="18:30"></div>
+    </div>
+    <div class="field"><label for="sTitulo">Título</label>
+      <input class="input" id="sTitulo" placeholder="Alta intensidad"></div>
+    <div class="grid-2">
+      <div class="field"><label for="sTipo">Tipo</label>
+        <select class="input" id="sTipo">
+          <option value="entrenamiento">Entrenamiento</option>
+          <option value="partido">Partido</option>
+          <option value="recuperacion">Recuperación</option>
+          <option value="descanso">Descanso</option>
+        </select></div>
+      <div class="field"><label for="sMd">Día del microciclo</label>
+        <input class="input" id="sMd" placeholder="MD-3"></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label for="sMin">Duración (min)</label>
+        <input class="input" id="sMin" inputmode="numeric" value="90"></div>
+      <div class="field"><label for="sRpe">RPE previsto (1–10)</label>
+        <input class="input" id="sRpe" inputmode="numeric" placeholder="7"></div>
+    </div>
+    <p class="p-sub" id="sCarga"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
+      <button class="btn btn-primary" data-crear-sesion>Crear sesión</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="dlgCierre">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgCierreT">
+    <div>
+      <h2 id="dlgCierreT">Cerrar la sesión</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgCierreSub"></p>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label for="cRpe">RPE medio del grupo (1–10)</label>
+        <input class="input" id="cRpe" inputmode="decimal" placeholder="7"></div>
+      <div class="field"><label for="cMin">Duración real (min)</label>
+        <input class="input" id="cMin" inputmode="numeric"></div>
+    </div>
+    <p class="p-sub" id="cCarga"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
+      <button class="btn btn-primary" data-guardar-cierre>Guardar carga</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

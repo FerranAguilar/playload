@@ -851,21 +851,38 @@ function renderTab(name){
       </div>`;
   } else {
     const t = S.team;
+    const colores = ['#9184d9','#84b6d9','#9fd984','#d9a184','#b5abfc','#84c9d9'];
     extra.innerHTML = `
       <div style="padding:22px 20px 24px;display:flex;flex-direction:column;gap:18px;max-width:640px">
         <div class="grid-2">
-          <div class="field"><label>Nombre del equipo</label>
-            <input class="input" value="${esc(t.name)}" disabled></div>
-          <div class="field"><label>Categoría</label>
-            <input class="input" value="${esc(t.category)}" disabled></div>
+          <div class="field"><label for="eNombre">Nombre del equipo</label>
+            <input class="input" id="eNombre" value="${esc(t.name)}"></div>
+          <div class="field"><label for="eCat">Categoría</label>
+            <input class="input" id="eCat" value="${esc(t.category)}" placeholder="Sub-19 · Preferente"></div>
         </div>
         <div class="grid-2">
-          <div class="field"><label>Modalidad</label>
-            <input class="input" value="${esc(t.modality)}" disabled></div>
-          <div class="field"><label>Sistema base</label>
-            <input class="input" value="${esc(t.formation)}" disabled></div>
+          <div class="field"><label for="eMod">Modalidad</label>
+            <select class="input" id="eMod">
+              ${['Fútbol 11','Fútbol 7','Fútbol sala'].map(m =>
+                `<option ${m===t.modality?'selected':''}>${m}</option>`).join('')}
+            </select></div>
+          <div class="field"><label for="eForm">Sistema base</label>
+            <input class="input" id="eForm" value="${esc(t.formation)}" placeholder="1-4-3-3"></div>
         </div>
-        <p class="p-sub">La edición de estos campos llega con el siguiente paso.</p>
+        <div class="field">
+          <label>Color del equipo</label>
+          <input type="hidden" id="eTint" value="${esc(t.tint || '#9184d9')}">
+          <div style="display:flex;gap:9px;align-items:center;height:36px">
+            ${colores.map(c => `<span data-color="${c}" title="${c}"
+              style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;
+              box-shadow:${c === (t.tint||'#9184d9')
+                ? '0 0 0 2px var(--color-surface),0 0 0 4px ' + c : 'none'}"></span>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;gap:9px">
+          <button class="btn btn-primary btn-sm" data-guardar-equipo>Guardar cambios</button>
+          <button class="btn btn-secondary btn-sm" onclick="renderTab('ajustes')">Descartar</button>
+        </div>
       </div>`;
   }
 }
@@ -1006,18 +1023,101 @@ document.addEventListener('click', async e => {
   }
 
   if(e.target.closest('[data-add-player]')){
-    if(DEMO){ toast('Sin servidor no se pueden añadir jugadores: esta es la vista de diseño.'); return; }
+    abrirDialogoJugador();
+    return;
+  }
 
-    const nombre = prompt('Nombre del jugador');
-    if(!nombre) return;
-    const dorsal = prompt('Dorsal (opcional)') || '';
-    const pos    = (prompt('Posición: POR, DFC, LD, LI, MCD, MC, MCO, ED, EI o DC') || '').toUpperCase();
+  if(e.target.closest('[data-cerrar-jug]')|| e.target.id === 'dlgJug'){
+    document.getElementById('dlgJug').classList.remove('open');
+    if(S.team) abrirEquipo(S.team.id);
+    return;
+  }
 
-    const r = await post({action:'crear_jugador', team_id:S.team.id, name:nombre, dorsal, position:pos});
-    if(r.ok){ await abrirEquipo(S.team.id); toast('Jugador añadido · código ' + r.code); }
-    else toast(r.error || 'No se ha podido añadir.', 'bad');
+  const guardar = e.target.closest('[data-guardar-jug]');
+  if(guardar){ await guardarJugador(guardar.dataset.guardarJug === 'seguir'); return; }
+
+  /* ── ajustes del equipo ── */
+  const gt = e.target.closest('[data-guardar-equipo]');
+  if(gt){
+    if(DEMO){ toast('Sin servidor no se puede guardar: esta es la vista de diseño.'); return; }
+
+    const val = id => document.getElementById(id).value.trim();
+    gt.disabled = true;
+    const r = await post({action:'editar_equipo', team_id:S.team.id,
+      name:val('eNombre'), category:val('eCat'), modality:val('eMod'),
+      formation:val('eForm'), tint:val('eTint')});
+    gt.disabled = false;
+
+    if(r.ok){ toast('Equipo actualizado'); await abrirEquipo(S.team.id); renderTab('ajustes');
+      document.querySelectorAll('.tab').forEach(b =>
+        b.setAttribute('aria-selected', String(b.dataset.tab === 'ajustes'))); }
+    else toast(r.error || 'No se ha podido guardar.', 'bad');
+    return;
+  }
+
+  const color = e.target.closest('[data-color]');
+  if(color){
+    document.getElementById('eTint').value = color.dataset.color;
+    document.querySelectorAll('[data-color]').forEach(c =>
+      c.style.boxShadow = c === color
+        ? `0 0 0 2px var(--color-surface),0 0 0 4px ${c.dataset.color}` : 'none');
   }
 });
+
+/* ── jugadores ─────────────────────────────────────────────── */
+function abrirDialogoJugador(){
+  if(DEMO){ toast('Sin servidor no se pueden añadir jugadores: esta es la vista de diseño.'); return; }
+
+  const max = S.lic ? S.lic.max_jugadores : null;
+  const n   = S.players.length;
+
+  if(max !== null && max !== undefined && n >= max){
+    toast(`Tu plan ${S.lic.nombre} permite ${max} jugadores por equipo y este ya los tiene.`, 'bad');
+    return;
+  }
+
+  document.getElementById('dlgJugSub').textContent = max
+    ? `${n} de ${max} jugadores · plan ${S.lic.nombre}`
+    : `${n} jugador${n===1?'':'es'} en la plantilla`;
+  document.getElementById('jCodigo').style.display = 'none';
+  document.getElementById('dlgJug').classList.add('open');
+  document.getElementById('jNombre').focus();
+}
+
+async function guardarJugador(seguir){
+  const nombre = document.getElementById('jNombre');
+  if(!nombre.value.trim()){ nombre.focus(); return; }
+
+  const r = await post({action:'crear_jugador', team_id:S.team.id,
+    name:   nombre.value.trim(),
+    dorsal: document.getElementById('jDorsal').value.trim(),
+    position: document.getElementById('jPos').value});
+
+  if(!r.ok){ toast(r.error || 'No se ha podido añadir.', 'bad'); return; }
+
+  /* el código de acceso solo se ve una vez aquí: conviene enseñarlo bien */
+  const caja = document.getElementById('jCodigo');
+  caja.style.display = 'block';
+  caja.innerHTML = `
+    <div style="padding:12px 14px;border-radius:var(--radius-md);
+                background:color-mix(in srgb,var(--color-ok) 12%,transparent);
+                border:1px solid color-mix(in srgb,var(--color-ok) 45%,transparent)">
+      <div style="font-size:13px;color:var(--muted)">Código de acceso de ${esc(nombre.value.trim())}</div>
+      <div class="num" style="font-size:22px;letter-spacing:.14em;margin-top:4px">${esc(r.code)}</div>
+      <div class="p-sub" style="margin-top:4px">Con esto entra en su día desde el móvil, sin contraseña.</div>
+    </div>`;
+
+  nombre.value = '';
+  document.getElementById('jDorsal').value = '';
+
+  if(seguir){ nombre.focus(); }
+  else {
+    setTimeout(() => {
+      document.getElementById('dlgJug').classList.remove('open');
+      abrirEquipo(S.team.id);
+    }, 1400);
+  }
+}
 
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') document.getElementById('dlg').classList.remove('open');
@@ -1025,5 +1125,42 @@ document.addEventListener('keydown', e => {
 
 cargar();
 </script>
+
+<!-- ══════════ DIÁLOGO: JUGADOR ══════════ -->
+<div class="dialog-backdrop" id="dlgJug">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgJugT">
+    <div>
+      <h2 id="dlgJugT">Añadir jugador</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgJugSub"></p>
+    </div>
+    <div class="field"><label for="jNombre">Nombre y apellidos</label>
+      <input class="input" id="jNombre" placeholder="Marc Vidal" autocomplete="off"></div>
+    <div class="grid-2">
+      <div class="field"><label for="jDorsal">Dorsal</label>
+        <input class="input" id="jDorsal" inputmode="numeric" placeholder="8"></div>
+      <div class="field"><label for="jPos">Posición</label>
+        <select class="input" id="jPos">
+          <option value="">Sin asignar</option>
+          <option value="POR">POR · portero</option>
+          <option value="LD">LD · lateral derecho</option>
+          <option value="DFC">DFC · central</option>
+          <option value="LI">LI · lateral izquierdo</option>
+          <option value="MCD">MCD · pivote</option>
+          <option value="MC">MC · centrocampista</option>
+          <option value="MCO">MCO · mediapunta</option>
+          <option value="ED">ED · extremo derecho</option>
+          <option value="EI">EI · extremo izquierdo</option>
+          <option value="DC">DC · delantero</option>
+        </select></div>
+    </div>
+    <div id="jCodigo" style="display:none"></div>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" data-cerrar-jug>Cerrar</button>
+      <button class="btn btn-secondary" data-guardar-jug="seguir">Guardar y añadir otro</button>
+      <button class="btn btn-primary" data-guardar-jug="cerrar">Guardar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
