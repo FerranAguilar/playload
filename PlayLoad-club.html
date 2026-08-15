@@ -18,8 +18,9 @@
 <style>
 /* ═══════════════════════════════════════════════════════════════
    PlayLoad · club
-   La cuenta de club no entrena: reparte equipos, plantillas y
-   accesos. Mismos tokens Nocturne que el resto de la aplicación.
+   Cuatro secciones y nada más: plantillas, calendarios, staff y el
+   perfil del club. La cuenta de club no entrena, así que aquí no hay
+   carga ni wellness; los calendarios se miran, no se tocan.
    ═══════════════════════════════════════════════════════════════ */
 :root{
   --color-bg:#161826;
@@ -155,7 +156,8 @@ a.rail-top:hover{color:var(--color-accent)}
 .nav-group:first-child{margin-top:2px}
 .nav-item{position:relative;display:flex;align-items:center;gap:10px;padding:7px 10px;
   border-radius:var(--radius-md);color:color-mix(in srgb,var(--color-text) 72%,transparent);
-  font-size:13.5px;line-height:1.3;transition:background .14s ease,color .14s ease}
+  font-size:13.5px;line-height:1.3;cursor:pointer;
+  transition:background .14s ease,color .14s ease}
 .nav-item svg{width:15px;height:15px;flex:none;opacity:.72}
 .nav-item:hover{background:color-mix(in srgb,var(--color-text) 6%,transparent);color:var(--color-text)}
 .nav-item:hover svg{opacity:1}
@@ -183,9 +185,7 @@ a.rail-top:hover{color:var(--color-accent)}
 .crumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-width:0}
 .crumbs b{font-weight:400;color:var(--color-text)}
 .crumbs span.sep{color:var(--muted-2)}
-.search{position:relative;margin-left:auto;width:min(280px,26vw)}
-.search .input{padding-left:32px;height:34px;min-height:34px}
-.search svg{position:absolute;left:10px;top:9px;width:15px;height:15px;color:var(--muted-2)}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
 
 .content{padding:26px 30px 56px;display:flex;flex-direction:column;gap:22px}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-8);flex-wrap:wrap}
@@ -193,43 +193,121 @@ a.rail-top:hover{color:var(--color-accent)}
 .head-meta{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted);flex-wrap:wrap}
 .head-right{display:flex;align-items:center;gap:10px}
 
-/* KPIs */
-.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.kpi{position:relative;background:var(--color-surface);border-radius:var(--radius-md);
-  box-shadow:var(--shadow-sm);padding:15px 16px 13px;display:flex;flex-direction:column;gap:9px;
-  overflow:hidden}
-.kpi::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;
-  background:linear-gradient(to right,transparent,var(--tint,var(--color-accent)) 30%,
-    var(--tint,var(--color-accent)) 70%,transparent);opacity:.55}
-.kpi-label{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2)}
-.kpi-val{font-family:var(--font-heading);font-weight:500;font-size:34px;line-height:1;
-  letter-spacing:-.025em;display:flex;align-items:baseline;gap:5px}
-.kpi-val small{font-size:14px;letter-spacing:0;color:var(--muted)}
-.kpi-foot{font-size:11.5px;color:var(--muted)}
-.meter{height:4px;border-radius:3px;background:var(--color-neutral-800);overflow:hidden}
-.meter i{display:block;height:100%;border-radius:3px;background:var(--color-accent)}
-.meter i.lleno{background:var(--color-warn)}
+/* solo se enseña una sección a la vez */
+.seccion[hidden]{display:none}
+.seccion{display:flex;flex-direction:column;gap:22px}
 
-/* ═══════════════ EQUIPOS Y SU STAFF ═══════════════
-   Lo primero de la página: un equipo por tarjeta, y dentro las
-   personas que tienen acceso. Es lo que la cuenta de club viene a
-   hacer, así que va antes que ninguna otra cosa. */
+/* ═══ selector de equipo, común a plantillas y calendarios ═══
+   El club trabaja categoría a categoría, así que primero se elige de
+   cuál se habla y luego se enseña una sola. */
+.equipos-tira{display:flex;gap:8px;flex-wrap:wrap}
+.chip-eq{--k:var(--color-accent);
+  display:inline-flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;
+  border:1px solid var(--color-divider);border-radius:20px;background:transparent;
+  font:inherit;font-size:13.5px;color:var(--muted);
+  transition:border-color .14s ease,color .14s ease,background .14s ease}
+.chip-eq i{width:8px;height:8px;border-radius:50%;background:var(--k);flex:none}
+.chip-eq:hover{color:var(--color-text);border-color:color-mix(in srgb,var(--color-text) 40%,transparent)}
+.chip-eq[aria-pressed="true"]{color:var(--color-accent);border-color:var(--color-accent);
+  background:color-mix(in srgb,var(--color-accent) 12%,transparent)}
+.chip-eq b{font-weight:400;font-size:11.5px;color:var(--muted-2)}
+.chip-eq[aria-pressed="true"] b{color:var(--color-accent)}
+
+/* ═══ PLANTILLAS ═══ */
+.table{width:100%;border-collapse:collapse;font-size:13.5px}
+.table th{text-align:left;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);padding:9px 10px;font-weight:400}
+.table td{padding:9px 10px}
+.table th:first-child,.table td:first-child{padding-left:18px}
+.table th:last-child,.table td:last-child{padding-right:18px;text-align:right}
+.table thead tr{border-bottom:1px solid var(--hair)}
+.table tbody tr{border-bottom:1px solid var(--hair)}
+.table tbody tr:hover{background:color-mix(in srgb,var(--color-text) 4%,transparent)}
+/* La fila de grupo abarca toda la tabla, así que es a la vez primera y
+   última celda: sin esto la regla de `td:last-child` la manda a la
+   derecha y el rótulo de la línea aparece descolgado. */
+.table tr.grp td{padding-top:14px;padding-bottom:6px;border:0;text-align:left}
+.linea{display:inline-flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted-2)}
+.linea i{width:8px;height:2px;border-radius:2px;flex:none}
+.dorsal{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+  border-radius:var(--radius-sm);background:var(--color-neutral-800);color:var(--color-neutral-200);
+  font-family:var(--font-heading);font-size:12px;font-variant-numeric:tabular-nums}
+.jugador{display:flex;align-items:center;gap:9px}
+.jugador .avatar{width:26px;height:26px;font-size:10.5px;background:var(--color-neutral-800);
+  color:var(--color-neutral-200)}
+.codigo{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--muted-2);
+  letter-spacing:.04em}
+.p-sub{font-size:12.5px;color:var(--muted-2);margin:0}
+
+/* ═══ CALENDARIOS ═══ */
+.cal-bar{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap;
+  padding:13px 18px;border-bottom:1px solid var(--hair)}
+.nav-week{display:flex;align-items:center;gap:4px}
+.nav-week .btn-icon{width:30px;height:30px}
+.week-range{font-family:var(--font-heading);font-weight:500;font-size:16px;letter-spacing:-.015em;
+  line-height:1.2}
+.week-range::first-letter{text-transform:uppercase}
+.week-sub{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
+.cal-total{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px;line-height:1.15}
+.cal-total b{font-family:var(--font-heading);font-weight:500;font-size:19px;letter-spacing:-.02em}
+.cal-total span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
+
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--hair)}
+.wday{background:var(--color-surface);display:flex;flex-direction:column;min-width:0}
+.wday.finde{background:color-mix(in srgb,var(--color-text) 2.5%,var(--color-surface))}
+.wday.hoy{background:color-mix(in srgb,var(--color-accent) 8%,var(--color-surface))}
+.wday-h{display:flex;align-items:baseline;gap:7px;padding:11px 12px 9px}
+.wday-w{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2)}
+.wday-d{font-family:var(--font-heading);font-weight:500;font-size:15px;letter-spacing:-.02em;
+  color:color-mix(in srgb,var(--color-text) 80%,transparent)}
+.wday.hoy .wday-w,.wday.hoy .wday-d{color:var(--color-accent)}
+.wday-md{margin-left:auto;font-size:10.5px;font-family:var(--font-heading);color:var(--muted-2)}
+.wday-b{flex:1;display:flex;flex-direction:column;gap:7px;padding:0 9px 9px;min-height:132px}
+.wday-f{display:flex;align-items:center;justify-content:space-between;gap:6px;
+  padding:8px 12px;border-top:1px solid var(--hair);font-size:10.5px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
+.wday-f b{font-family:var(--font-heading);font-weight:500;font-size:13px;letter-spacing:-.01em;
+  text-transform:none;color:var(--muted)}
+.wday-f b.real{color:var(--color-text)}
+
+/* Aquí la sesión no es un botón: el club mira, no planifica. */
+.ses{--k:var(--color-accent);
+  display:flex;flex-direction:column;gap:3px;
+  padding:8px 9px 8px 11px;border-left:2px solid var(--k);border-radius:var(--radius-sm);
+  background:color-mix(in srgb,var(--k) 11%,transparent)}
+.ses.k-partido{--k:var(--color-warn)}
+.ses.k-recuperacion{--k:var(--color-ok)}
+.ses.k-descanso{--k:var(--color-neutral-600)}
+.ses-top{display:flex;align-items:center;gap:6px}
+.ses-h{font-size:11px;font-family:var(--font-heading);font-weight:500;color:var(--k);
+  font-variant-numeric:tabular-nums}
+.ses-md{margin-left:auto;font-size:10px;padding:1px 5px;border-radius:20px;
+  background:color-mix(in srgb,var(--k) 22%,transparent);color:var(--k)}
+.ses-t{font-size:12.5px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ses-m{font-size:10.5px;color:var(--muted-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ses-l{margin-top:2px;font-size:10.5px;color:var(--muted)}
+.ses-l .num{font-size:12px;color:color-mix(in srgb,var(--color-text) 80%,transparent)}
+.wday-vacio{margin:auto 0;text-align:center;font-size:11.5px;color:var(--muted-2);padding:10px 4px}
+
+.leyenda{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+.leyenda span{display:inline-flex;align-items:center;gap:6px}
+.leyenda i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+/* ═══ STAFF ═══ */
 .equipos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .equipo{--k:var(--color-accent);
   background:var(--color-surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
   display:flex;flex-direction:column;overflow:hidden}
-.equipo-h{display:flex;align-items:center;gap:11px;padding:14px 18px;
-  border-bottom:1px solid var(--hair)}
+.equipo-h{display:flex;align-items:center;gap:11px;padding:14px 18px;border-bottom:1px solid var(--hair)}
 .equipo-b{width:3px;height:30px;border-radius:3px;flex:none;background:var(--k)}
 .equipo-n{font-family:var(--font-heading);font-weight:500;font-size:16px;letter-spacing:-.015em;
   line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.equipo-s{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2);
-  margin-top:2px}
+.equipo-s{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2);margin-top:2px}
 .equipo-jug{margin-left:auto;text-align:right;flex:none}
 .equipo-jug b{display:block;font-family:var(--font-heading);font-weight:500;font-size:17px;
   letter-spacing:-.02em;line-height:1.1}
 .equipo-jug span{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
-
 .staff{display:flex;flex-direction:column;padding:6px 0;flex:1}
 .miembro{display:flex;align-items:center;gap:10px;padding:8px 18px}
 .miembro:hover{background:color-mix(in srgb,var(--color-text) 4%,transparent)}
@@ -244,17 +322,24 @@ a.rail-top:hover{color:var(--color-accent)}
 .miembro:hover .quitar,.quitar:focus-visible{opacity:1}
 .quitar:hover{color:var(--color-risk);background:color-mix(in srgb,var(--color-risk) 14%,transparent)}
 .sin-staff{padding:16px 18px;font-size:12.5px;color:var(--muted-2);line-height:1.5}
-
 .equipo-f{display:flex;align-items:center;gap:8px;padding:10px 14px 12px;
   border-top:1px solid var(--hair);flex-wrap:wrap}
-.equipo-f .btn-ghost{margin-left:auto}
 
-/* invitaciones sin recoger */
 .pend-list{display:flex;flex-direction:column}
 .pend-it{display:flex;align-items:center;gap:11px;padding:11px 18px}
 .pend-it+.pend-it{border-top:1px solid var(--hair)}
 .pend-t{font-size:13.5px;line-height:1.25}
 .pend-s{font-size:11.5px;color:var(--muted-2)}
+
+/* ═══ PERFIL DEL CLUB ═══ */
+.perfil-fila{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start}
+.dato{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;
+  padding:10px 0;color:var(--muted)}
+.dato+.dato{border-top:1px solid var(--hair)}
+.dato b{font-weight:400;color:var(--color-text);font-family:var(--font-heading)}
+.meter{height:5px;border-radius:3px;background:var(--color-neutral-800);overflow:hidden;margin-top:10px}
+.meter i{display:block;height:100%;border-radius:3px;background:var(--color-accent)}
+.meter i.lleno{background:var(--color-warn)}
 
 /* — estado vacío — */
 .vacio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;
@@ -278,10 +363,9 @@ a.rail-top:hover{color:var(--color-accent)}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field>label{font-size:13px;color:var(--muted)}
-.p-sub{font-size:12.5px;color:var(--muted-2);margin:0}
 
 /* — responsive — */
-@media (max-width:1240px){ .equipos{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:1240px){ .equipos,.perfil-fila{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:1080px){
   :root{--rail:64px}
   .rail-top span:last-child,.club-text,.nav-item span,.nav-count,.me-text{display:none}
@@ -292,10 +376,16 @@ a.rail-top:hover{color:var(--color-accent)}
   .nav-group{text-align:center;padding:0;font-size:9px;overflow:hidden;text-overflow:clip;opacity:.5}
   .me{justify-content:center}
   .content,.topbar{padding-left:18px;padding-right:18px}
-  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:900px){
+  .week{grid-template-columns:minmax(0,1fr)}
+  .wday{flex-direction:row;align-items:stretch;flex-wrap:wrap}
+  .wday-h{width:96px;flex:none;flex-direction:column;align-items:flex-start;gap:0;padding:12px}
+  .wday-md{margin-left:0}
+  .wday-b{min-height:0;padding:10px 12px;min-width:0;flex:1 1 200px}
+  .wday-f{width:100%;border-top:1px dashed var(--hair)}
 }
 @media (max-width:760px){
-  .search{display:none}
   .page-head h1{font-size:26px}
   .grid-2{grid-template-columns:1fr}
   .quitar{opacity:1}
@@ -378,9 +468,7 @@ body{transition:background .18s ease,color .18s ease}
 
 <div class="app">
 
-  <!-- ══════════ BARRA LATERAL ══════════
-       El menú del club es más corto a propósito: aquí no hay
-       calendario, ni sesiones, ni wellness. Eso lo lleva el staff. -->
+  <!-- ══════════ BARRA LATERAL ══════════ -->
   <aside class="rail">
     <a class="rail-top" href="PlayLoad-club.html" title="Ir al club">
       <span class="mark">PL</span>
@@ -397,44 +485,28 @@ body{transition:background .18s ease,color .18s ease}
 
     <nav class="nav">
       <div class="nav-group">Club</div>
-      <a class="nav-item" href="PlayLoad-club.html" aria-current="page">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.2 13.4V12A2.6 2.6 0 0 1 4.8 9.4h2A2.6 2.6 0 0 1 9.4 12v1.4"/><circle cx="5.8" cy="5" r="2.4"/><path d="M11 9.6c1.6.3 2.8 1.3 2.8 2.7v1.1"/><circle cx="11.6" cy="5.6" r="1.9"/></svg>
-        <span>Equipos y staff</span>
-        <span class="nav-count" id="navEquipos">0</span>
-      </a>
-      <a class="nav-item" href="PlayLoad-equipos.html">
+
+      <a class="nav-item" href="#plantillas" data-sec="plantillas">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="6" cy="5.4" r="2.5"/><path d="M1.8 13.4c0-2.2 1.9-3.6 4.2-3.6s4.2 1.4 4.2 3.6"/><path d="M11 6.3a2.2 2.2 0 0 0 0-3.5M12.4 13.4c0-1.6-.6-2.7-1.6-3.3"/></svg>
         <span>Plantillas</span>
         <span class="nav-count" id="navJugadores">0</span>
       </a>
-      <a class="nav-item" href="#">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="3.4" width="12.4" height="9.2" rx="1.8"/><path d="M1.8 6.6h12.4" stroke-linecap="round"/></svg>
-        <span>Licencias</span>
-        <span class="nav-count" id="navLic">0</span>
+
+      <a class="nav-item" href="#calendarios" data-sec="calendarios">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="3.2" width="12" height="11" rx="2"/><path d="M2 6.6h12M5.4 1.6v3M10.6 1.6v3"/></svg>
+        <span>Calendarios</span>
+        <span class="nav-count" id="navEquipos">0</span>
       </a>
 
-      <div class="nav-group">Dirección deportiva</div>
-      <a class="nav-item" href="#">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1.8h5l3.4 3.4v9H4z"/><path d="M9 1.8v3.4h3.4M6.4 8.6h3.6M6.4 11h3.6"/></svg>
-        <span>Informe del club</span>
-      </a>
-      <a class="nav-item" href="#">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13V8.5M8 13V3.5M13 13V6.5"/></svg>
-        <span>Comparativa</span>
-      </a>
-      <a class="nav-item" href="#">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10.2V2.4M5.3 5.1 8 2.4l2.7 2.7"/><path d="M2.6 9.6v4h10.8v-4"/></svg>
-        <span>Exportación</span>
+      <a class="nav-item" href="#staff" data-sec="staff">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.2 13.4V12A2.6 2.6 0 0 1 4.8 9.4h2A2.6 2.6 0 0 1 9.4 12v1.4"/><circle cx="5.8" cy="5" r="2.4"/><path d="M11 9.6c1.6.3 2.8 1.3 2.8 2.7v1.1"/><circle cx="11.6" cy="5.6" r="1.9"/></svg>
+        <span>Staff</span>
+        <span class="nav-count" id="navStaff">0</span>
       </a>
 
-      <div class="nav-group">Ajustes</div>
-      <a class="nav-item" href="#">
+      <a class="nav-item" href="#perfil" data-sec="perfil">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M8 1.9 13.4 4.1v4.1c0 3-2.4 5.1-5.4 5.9-3-.8-5.4-2.9-5.4-5.9V4.1z"/></svg>
-        <span>Roles y permisos</span>
-      </a>
-      <a class="nav-item" href="#">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="2.4"/><path d="M8 1.6v2M8 12.4v2M1.6 8h2M12.4 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4"/></svg>
-        <span>Ajustes del club</span>
+        <span>Perfil del club</span>
       </a>
     </nav>
 
@@ -456,71 +528,110 @@ body{transition:background .18s ease,color .18s ease}
       <div class="crumbs">
         <b id="crumbClub">Club</b>
         <span class="sep">/</span>
-        <span>Equipos y staff</span>
+        <span id="crumbSec">Plantillas</span>
       </div>
-
-      <div class="search">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7.2" cy="7.2" r="4.4"/><path d="m10.6 10.6 3 3"/></svg>
-        <input class="input" type="search" id="buscar" placeholder="Buscar equipo o persona…">
-      </div>
-
-      <a class="btn btn-secondary" href="PlayLoad-equipos.html">Nuevo equipo</a>
-      <button class="btn btn-primary" data-invitar>
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
-        Añadir staff
-      </button>
+      <div class="top-right" id="topAcciones"></div>
     </header>
 
     <main class="content">
 
       <div class="page-head">
         <div>
-          <h1>Equipos y staff</h1>
+          <h1 id="secTitulo">Plantillas</h1>
           <div class="head-meta">
             <span class="tag tag-outline"><span class="pulse"></span><span id="licTag">Licencia</span></span>
-            <span id="headSub">Quién entra en cada equipo del club</span>
+            <span id="secSub">Los jugadores de cada categoría del club</span>
           </div>
-        </div>
-        <div class="head-right">
-          <a class="btn btn-secondary btn-sm" href="precios.html">Ver planes</a>
         </div>
       </div>
 
-      <section class="kpis">
-        <div class="kpi">
-          <div class="kpi-label">Equipos</div>
-          <div class="kpi-val num" id="kEquipos">0</div>
-          <div class="kpi-foot" id="kEquiposPie">Sin equipos todavía</div>
+      <!-- ═══ PLANTILLAS ═══ -->
+      <section class="seccion" id="secPlantillas" hidden>
+        <div class="equipos-tira" id="tiraPlantillas"></div>
+        <div class="panel" id="panelPlantilla"></div>
+      </section>
+
+      <!-- ═══ CALENDARIOS ═══ -->
+      <section class="seccion" id="secCalendarios" hidden>
+        <div class="equipos-tira" id="tiraCalendarios"></div>
+        <div class="panel">
+          <div class="cal-bar">
+            <div class="nav-week">
+              <button class="btn btn-icon" data-semana="-1" title="Semana anterior" aria-label="Semana anterior">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.8 3.4 5.2 8l4.6 4.6"/></svg>
+              </button>
+              <button class="btn btn-secondary btn-sm" data-semana="0">Hoy</button>
+              <button class="btn btn-icon" data-semana="1" title="Semana siguiente" aria-label="Semana siguiente">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.4 10.8 8l-4.6 4.6"/></svg>
+              </button>
+            </div>
+            <div>
+              <div class="week-range" id="weekRange">—</div>
+              <div class="week-sub" id="weekSub"></div>
+            </div>
+            <div class="cal-total">
+              <b class="num" id="weekLoad">—</b>
+              <span id="weekLoadPie">UA de la semana</span>
+            </div>
+          </div>
+          <div class="week" id="week"></div>
         </div>
-        <div class="kpi" style="--tint:var(--color-ok)">
-          <div class="kpi-label">Personas en el staff</div>
-          <div class="kpi-val num" id="kPersonas">0</div>
-          <div class="kpi-foot" id="kPersonasPie">Nadie con acceso</div>
-        </div>
-        <div class="kpi" style="--tint:var(--color-warn)">
-          <div class="kpi-label">Licencias</div>
-          <div class="kpi-val num" id="kLic">0<small id="kLicMax"></small></div>
-          <div class="meter"><i id="kLicBar" style="width:0"></i></div>
-        </div>
-        <div class="kpi" style="--tint:var(--color-accent-2)">
-          <div class="kpi-label">Jugadores en ficha</div>
-          <div class="kpi-val num" id="kJug">0</div>
-          <div class="kpi-foot" id="kJugPie">En todas las categorías</div>
+        <div class="leyenda">
+          <span><i style="background:var(--color-accent)"></i>Entrenamiento</span>
+          <span><i style="background:var(--color-warn)"></i>Partido</span>
+          <span><i style="background:var(--color-ok)"></i>Recuperación</span>
+          <span><i style="background:var(--color-neutral-600)"></i>Descanso</span>
+          <span style="margin-left:auto;color:var(--muted-2)">Lo planifica el staff del equipo; aquí solo se mira.</span>
         </div>
       </section>
 
-      <!-- ═══ lo primero: cada equipo con su gente ═══ -->
-      <section class="equipos" id="equipos"></section>
+      <!-- ═══ STAFF ═══ -->
+      <section class="seccion" id="secStaff" hidden>
+        <div class="equipos" id="equipos"></div>
+        <div class="panel" id="pendPanel" hidden>
+          <div class="card-head">
+            <div>
+              <div class="card-title">Invitaciones sin recoger</div>
+              <div class="eyebrow" style="margin-top:4px">Entrarán en cuanto se den de alta con ese correo</div>
+            </div>
+          </div>
+          <div class="pend-list" id="pendList"></div>
+        </div>
+      </section>
 
-      <!-- invitaciones que todavía nadie ha recogido -->
-      <section class="panel" id="pendPanel" hidden>
-        <div class="card-head">
-          <div>
-            <div class="card-title">Invitaciones sin recoger</div>
-            <div class="eyebrow" style="margin-top:4px">Entrarán en cuanto se den de alta con ese correo</div>
+      <!-- ═══ PERFIL DEL CLUB ═══ -->
+      <section class="seccion" id="secPerfil" hidden>
+        <div class="perfil-fila">
+          <div class="panel">
+            <div class="card-head"><div class="card-title">Datos del club</div></div>
+            <div class="panel-body" style="display:flex;flex-direction:column;gap:14px">
+              <div class="grid-2">
+                <div class="field"><label for="pNombre">Nombre</label>
+                  <input class="input" id="pNombre" placeholder="CF Bellvitge"></div>
+                <div class="field"><label for="pCiudad">Ciudad</label>
+                  <input class="input" id="pCiudad" placeholder="L'Hospitalet"></div>
+              </div>
+              <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-primary" data-guardar-club>Guardar</button>
+                <span class="p-sub" id="pAviso"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="card-head"><div class="card-title">Licencia</div></div>
+            <div class="panel-body">
+              <div class="dato"><span>Plan</span><b id="pPlan">—</b></div>
+              <div class="dato"><span>Equipos</span><b id="pEquipos">0</b></div>
+              <div class="dato"><span>Jugadores en ficha</span><b id="pJugadores">0</b></div>
+              <div class="dato"><span>Personas en el staff</span><b id="pPersonas">0</b></div>
+              <div class="dato"><span>Licencias de staff</span><b id="pLic">0</b></div>
+              <div class="meter"><i id="pLicBar" style="width:0"></i></div>
+              <p class="p-sub" style="margin-top:10px" id="pLicPie"></p>
+              <a class="btn btn-secondary btn-sm" href="precios.html" style="margin-top:14px">Ver planes</a>
+            </div>
           </div>
         </div>
-        <div class="pend-list" id="pendList"></div>
       </section>
 
     </main>
@@ -561,10 +672,41 @@ body{transition:background .18s ease,color .18s ease}
   </div>
 </div>
 
+<div class="dialog-backdrop" id="dlgJugador">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgJugT">
+    <div>
+      <h2 id="dlgJugT">Añadir jugador</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgJugSub"></p>
+    </div>
+    <div class="field"><label for="jNombre">Nombre</label>
+      <input class="input" id="jNombre" placeholder="Aitor Ferrer"></div>
+    <div class="grid-2">
+      <div class="field"><label for="jDorsal">Dorsal</label>
+        <input class="input" id="jDorsal" inputmode="numeric" placeholder="9"></div>
+      <div class="field"><label for="jPos">Posición</label>
+        <select class="input" id="jPos">
+          <option value="POR">Portero</option>
+          <option value="DFC">Central</option>
+          <option value="LTD">Lateral derecho</option>
+          <option value="LTI">Lateral izquierdo</option>
+          <option value="MC" selected>Centrocampista</option>
+          <option value="MP">Mediapunta</option>
+          <option value="EXT">Extremo</option>
+          <option value="DC">Delantero</option>
+        </select></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
+      <button class="btn btn-primary" data-guardar-jugador>Añadir</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ═══════════════════════════════════════════════════════════════
-   Club · lee de api/app.php (action=club). La cuenta de club no
-   entrena: reparte equipos, plantillas y accesos.
+   Club · cuatro secciones: plantillas, calendarios, staff y perfil.
+   El club gestiona y mira; planificar es del staff del equipo, y por
+   eso los calendarios de aquí no tienen dónde tocar.
    ═══════════════════════════════════════════════════════════════ */
 const API  = 'api/';
 const DEMO = !/^https?:$/.test(location.protocol);
@@ -573,17 +715,48 @@ const $   = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[<>&"']/g, c =>
   ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
 const ini = n => (n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || '··';
+const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 
-/* El `ok` de fetch dice que la respuesta llegó, no que la diera el API:
-   si PHP no llega a ejecutarse, o el hosting mete su propia página de
-   error, lo que baja es un 200 con algo que no es JSON. Solo vale como
-   buena una respuesta que traiga su propio `ok`. */
+/* Fecha AAAA-MM-DD en hora LOCAL: toISOString() pasa a UTC y en España
+   devuelve el día anterior a partir de medianoche. */
+const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const dia   = s => new Date(s + 'T00:00:00');
+const suma  = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const lunesDe = d => suma(d, -((d.getDay()+6) % 7));
+
+function semanaISO(d){
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() + 3 - ((x.getDay()+6) % 7));
+  const enero4 = new Date(x.getFullYear(), 0, 4);
+  return 1 + Math.round(((x - enero4) / 86400000 - 3 + ((enero4.getDay()+6) % 7)) / 7);
+}
+
+const LOC = {es:'es-ES', ca:'ca-ES', en:'en-GB'};
+function loc(){
+  let v = 'es';
+  try { v = localStorage.getItem('pl-locale') || 'es'; } catch(e){}
+  return LOC[v] || 'es-ES';
+}
+
+const TIPOS  = {entrenamiento:'Entrenamiento', partido:'Partido',
+                recuperacion:'Recuperación', descanso:'Descanso'};
+const LINEAS = {POR:'Portería', DFC:'Defensa', LTD:'Defensa', LTI:'Defensa',
+                MC:'Centro del campo', MP:'Centro del campo', EXT:'Ataque', DC:'Ataque'};
+const ORDEN  = ['Portería','Defensa','Centro del campo','Ataque'];
+
+const SECCIONES = {
+  plantillas:  {titulo:'Plantillas',      sub:'Los jugadores de cada categoría del club'},
+  calendarios: {titulo:'Calendarios',     sub:'Lo que tiene planificado cada equipo'},
+  staff:       {titulo:'Staff',           sub:'Quién entra en cada equipo del club'},
+  perfil:      {titulo:'Perfil del club', sub:'Datos del club y licencia'}
+};
+
+/* El `ok` de fetch dice que la respuesta llegó, no que la diera el API. */
 function respuesta(status, b){
   return (b && typeof b.ok !== 'undefined')
     ? {status, ...b}
     : {status, ok:false, error:'El servidor no ha contestado como se esperaba.'};
 }
-
 async function get(qs){
   const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
   let b = null; try { b = await r.json(); } catch(e){}
@@ -614,43 +787,227 @@ function toast(msg, kind){
   toast.t = setTimeout(() => { t.style.opacity = '0'; }, 4500);
 }
 
-let D = {teams:[], lic:null, club:null, resumen:null};
+let D = {club:null, teams:[], lic:null, resumen:null};
+let sec      = 'plantillas';
+let equipoId = 0;                    // el elegido en plantillas y calendarios
+let plantillas = {};                 // id de equipo → jugadores, ya pedidos
+let sesiones   = [];                 // las del equipo elegido
+let ancla = lunesDe(new Date());
 
-/* ── los equipos, con su gente dentro ───────────────────────── */
-function pintarEquipos(){
-  const q = ($('buscar').value || '').trim().toLowerCase();
+const equipo = () => D.teams.find(t => t.id === equipoId) || null;
 
-  const lista = !q ? D.teams : D.teams.filter(t =>
-    t.name.toLowerCase().includes(q) ||
-    (t.category || '').toLowerCase().includes(q) ||
-    t.staff.some(m => (m.name || '').toLowerCase().includes(q) ||
-                       m.email.toLowerCase().includes(q)));
+/* ── secciones ──────────────────────────────────────────────── */
+function irA(nombre, empujar){
+  if(!SECCIONES[nombre]) nombre = 'plantillas';
+  sec = nombre;
+
+  document.querySelectorAll('.nav-item[data-sec]').forEach(a => {
+    if(a.dataset.sec === sec) a.setAttribute('aria-current','page');
+    else a.removeAttribute('aria-current');
+  });
+
+  ['plantillas','calendarios','staff','perfil'].forEach(n => {
+    $('sec' + n[0].toUpperCase() + n.slice(1)).hidden = (n !== sec);
+  });
+
+  $('secTitulo').textContent = SECCIONES[sec].titulo;
+  $('secSub').textContent    = SECCIONES[sec].sub;
+  $('crumbSec').textContent  = SECCIONES[sec].titulo;
+
+  if(empujar && location.hash !== '#' + sec) history.replaceState(null, '', '#' + sec);
+
+  accionesDeArriba();
+  pintarSeccion();
+}
+
+/* El botón de la barra de arriba cambia con la sección: en cada una
+   solo hay una cosa que de verdad quieras hacer. */
+function accionesDeArriba(){
+  const caja = $('topAcciones');
+  if(sec === 'plantillas'){
+    caja.innerHTML = equipoId
+      ? `<button class="btn btn-primary" data-add-jugador>
+           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
+           Añadir jugador</button>` : '';
+  } else if(sec === 'staff'){
+    caja.innerHTML = `<button class="btn btn-primary" data-invitar>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
+        Añadir staff</button>`;
+  } else if(sec === 'calendarios'){
+    caja.innerHTML = `<span class="p-sub">Solo lectura</span>`;
+  } else {
+    caja.innerHTML = '';
+  }
+}
+
+function pintarSeccion(){
+  if(sec === 'plantillas')  pintarPlantillas();
+  if(sec === 'calendarios') pintarCalendarios();
+  if(sec === 'staff'){ pintarStaff(); pintarPendientes(); }
+  if(sec === 'perfil')      pintarPerfil();
+}
+
+/* tira de equipos, común a plantillas y calendarios */
+function tira(destino){
+  if(!D.teams.length){ $(destino).innerHTML = ''; return; }
+  $(destino).innerHTML = D.teams.map(t => `
+    <button class="chip-eq" data-equipo="${t.id}" aria-pressed="${t.id === equipoId}"
+            style="--k:${esc(t.tint) || 'var(--color-accent)'}">
+      <i></i>${esc(t.name)} <b>${t.players}</b>
+    </button>`).join('');
+}
+
+/* ── plantillas ─────────────────────────────────────────────── */
+function pintarPlantillas(){
+  tira('tiraPlantillas');
+  const caja = $('panelPlantilla');
+
+  if(!D.teams.length){ caja.innerHTML = vacioSinEquipos(); return; }
+
+  const t = equipo();
+  const jug = plantillas[equipoId];
+
+  if(jug === undefined){
+    caja.innerHTML = `<div class="panel-body"><p class="p-sub">Cargando la plantilla…</p></div>`;
+    return;
+  }
+
+  if(!jug.length){
+    caja.innerHTML = `
+      <div class="panel-body">
+        <div class="vacio">
+          <h3>${esc(t.name)} no tiene jugadores</h3>
+          <p>Añádelos aquí y cada uno recibirá su código para entrar en la
+             aplicación y mandar su RPE y su wellness.</p>
+          <button class="btn btn-primary" data-add-jugador>Añadir el primero</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const grupos = {};
+  jug.forEach(p => {
+    const linea = LINEAS[p.position] || 'Sin posición';
+    (grupos[linea] = grupos[linea] || []).push(p);
+  });
+
+  caja.innerHTML = `
+    <div class="card-head">
+      <div>
+        <div class="card-title">${esc(t.name)}</div>
+        <div class="eyebrow" style="margin-top:4px">${esc(t.category) || 'Sin categoría'} ·
+          ${esc(t.modality)} · ${jug.length} jugador${jug.length===1?'':'es'}</div>
+      </div>
+    </div>
+    <table class="table">
+      <thead><tr><th style="width:56px">Dorsal</th><th>Jugador</th><th>Posición</th>
+                 <th>Código de acceso</th></tr></thead>
+      <tbody>
+        ${ORDEN.concat(['Sin posición']).filter(l => grupos[l]).map(linea => `
+          <tr class="grp"><td colspan="4"><span class="linea">
+            <i style="background:${esc(t.tint) || 'var(--color-accent)'}"></i>${linea} · ${grupos[linea].length}
+          </span></td></tr>
+          ${grupos[linea].map(p => `
+            <tr>
+              <td><span class="dorsal">${p.dorsal ?? '—'}</span></td>
+              <td><div class="jugador"><span class="avatar">${esc(ini(p.name))}</span>
+                    <span>${esc(p.name)}</span></div></td>
+              <td class="p-sub">${esc(p.position) || '—'}</td>
+              <td><span class="codigo">${esc(p.access_code)}</span></td>
+            </tr>`).join('')}
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ── calendarios ────────────────────────────────────────────── */
+function pintarCalendarios(){
+  tira('tiraCalendarios');
 
   if(!D.teams.length){
-    $('equipos').innerHTML = `
-      <div class="vacio" style="grid-column:1/-1">
-        <div class="vacio-ico">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c0-3.3 2.7-5.4 6-5.4s6 2.1 6 5.4"/><path d="M16.5 11a3 3 0 0 0 0-5M21 19.5c0-2.4-1-4-2.6-4.8"/></svg>
-        </div>
-        <h3>El club todavía no tiene equipos</h3>
-        <p>Crea las categorías del club y después reparte el cuerpo técnico.
-           Cada persona que añadas a un equipo gasta una licencia de tu plan.</p>
-        <a class="btn btn-primary" href="PlayLoad-equipos.html">Crear el primer equipo</a>
-      </div>`;
+    $('week').innerHTML = `<div style="grid-column:1/-1;background:var(--color-surface)">
+      ${vacioSinEquipos()}</div>`;
+    $('weekRange').textContent = '—';
     return;
   }
 
-  if(!lista.length){
-    $('equipos').innerHTML = `
-      <div class="vacio" style="grid-column:1/-1">
-        <h3>Nada con «${esc(q)}»</h3>
-        <p>No hay ningún equipo ni nadie del staff que coincida.</p>
-      </div>`;
-    return;
-  }
+  const hoy = isoLocal(new Date());
+  const fin = suma(ancla, 6);
+  const L   = loc();
 
-  $('equipos').innerHTML = lista.map(t => `
+  $('weekRange').textContent = rango(ancla, fin, L);
+  $('weekSub').textContent   = `${equipo() ? equipo().name + ' · ' : ''}Semana ${semanaISO(ancla)}`;
+
+  let total = 0, cerradas = 0, cuantas = 0;
+
+  $('week').innerHTML = Array.from({length:7}, (_, i) => {
+    const d = suma(ancla, i);
+    const f = isoLocal(d);
+    const ses = sesiones.filter(s => s.date === f);
+
+    let carga = 0, cerradasDia = 0;
+    ses.forEach(s => {
+      const hecha = s.status === 'realizada';
+      carga += (+(hecha ? s.actual_load : s.planned_load)) || 0;
+      if(hecha) cerradasDia++;
+    });
+    total += carga; cuantas += ses.length; cerradas += cerradasDia;
+    const todoCerrado = ses.length > 0 && cerradasDia === ses.length;
+    const md = ses.map(s => s.md_label).find(Boolean) || '';
+
+    return `<div class="wday ${f === hoy ? 'hoy' : ''} ${i > 4 ? 'finde' : ''}">
+      <div class="wday-h">
+        <span class="wday-w">${d.toLocaleDateString(L,{weekday:'short'}).replace('.','')}</span>
+        <span class="wday-d">${d.getDate()}</span>
+        ${md ? `<span class="wday-md">${esc(md)}</span>` : ''}
+      </div>
+      <div class="wday-b">
+        ${ses.length ? ses.map(tarjeta).join('') : `<div class="wday-vacio">Sin sesión</div>`}
+      </div>
+      <div class="wday-f">
+        <span>UA</span>
+        <b class="num ${todoCerrado ? 'real' : ''}">${carga ? fmt(carga) : '—'}</b>
+      </div>
+    </div>`;
+  }).join('');
+
+  const plural = `${cuantas} sesion${cuantas===1?'':'es'}`;
+  $('weekLoad').textContent = total ? fmt(total) : '—';
+  $('weekLoadPie').textContent =
+      !cuantas             ? 'Semana sin planificar'
+    : cerradas === cuantas ? `UA reales · ${plural}`
+    : cerradas             ? `UA · ${cerradas} de ${cuantas} cerradas`
+    :                        `UA previstas · ${plural}`;
+}
+
+function rango(a, b, L){
+  const mismoMes = a.getMonth() === b.getMonth();
+  return `${a.toLocaleDateString(L, mismoMes ? {day:'numeric'} : {day:'numeric',month:'long'})} – ` +
+         `${b.toLocaleDateString(L, {day:'numeric', month:'long'})}`;
+}
+
+function tarjeta(s){
+  const cerrada = s.status === 'realizada';
+  const carga   = cerrada ? s.actual_load : s.planned_load;
+  const pie     = [s.place, s.duration_min ? s.duration_min + ' min' : ''].filter(Boolean).join(' · ');
+
+  return `<div class="ses k-${esc(s.kind)}">
+    <div class="ses-top">
+      <span class="ses-h">${s.time ? s.time.slice(0,5) : (TIPOS[s.kind] || 'Sesión')}</span>
+      ${s.md_label ? `<span class="ses-md">${esc(s.md_label)}</span>` : ''}
+    </div>
+    <div class="ses-t">${esc(s.title) || TIPOS[s.kind] || 'Sesión'}</div>
+    ${pie ? `<div class="ses-m">${esc(pie)}</div>` : ''}
+    ${carga ? `<div class="ses-l"><span class="num">${fmt(carga)}</span>
+        UA ${cerrada ? 'reales' : 'previstas'}</div>` : ''}
+  </div>`;
+}
+
+/* ── staff ──────────────────────────────────────────────────── */
+function pintarStaff(){
+  if(!D.teams.length){ $('equipos').innerHTML = vacioSinEquipos(true); return; }
+
+  $('equipos').innerHTML = D.teams.map(t => `
     <article class="equipo" style="--k:${esc(t.tint) || 'var(--color-accent)'}">
       <div class="equipo-h">
         <span class="equipo-b"></span>
@@ -658,25 +1015,18 @@ function pintarEquipos(){
           <div class="equipo-n">${esc(t.name)}</div>
           <div class="equipo-s">${esc(t.category) || 'Sin categoría'} · ${esc(t.modality)}</div>
         </div>
-        <div class="equipo-jug">
-          <b class="num">${t.players}</b>
-          <span>jugadores</span>
-        </div>
+        <div class="equipo-jug"><b class="num">${t.players}</b><span>jugadores</span></div>
       </div>
-
       <div class="staff">
         ${t.staff.length ? t.staff.map(miembro).join('') : `
           <div class="sin-staff">Nadie tiene acceso a este equipo todavía.
             Sin staff, nadie puede planificar ni registrar la carga.</div>`}
       </div>
-
       <div class="equipo-f">
-        <button class="btn btn-secondary btn-sm" data-invitar data-equipo="${t.id}">
+        <button class="btn btn-secondary btn-sm" data-invitar data-equipo-staff="${t.id}">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
           Añadir staff
         </button>
-        <a class="btn btn-secondary btn-sm" href="PlayLoad-equipos.html">Plantilla</a>
-        <a class="btn btn-ghost btn-sm" href="PlayLoad-dashboard.html">Ver el panel</a>
       </div>
     </article>`).join('');
 }
@@ -700,7 +1050,6 @@ function miembro(m){
   </div>`;
 }
 
-/* ── invitaciones que nadie ha recogido ─────────────────────── */
 function pintarPendientes(){
   const pend = [];
   D.teams.forEach(t => t.staff.filter(m => m.status === 'invitado')
@@ -721,51 +1070,85 @@ function pintarPendientes(){
     </div>`).join('');
 }
 
-/* ── cabecera y contadores ──────────────────────────────────── */
+/* ── perfil del club ────────────────────────────────────────── */
+function pintarPerfil(){
+  const l = D.lic || {};
+  const r = D.resumen || {equipos:0, personas:0, jugadores:0};
+
+  if(D.club){
+    $('pNombre').value = D.club.name || '';
+    $('pCiudad').value = D.club.city || '';
+  }
+
+  $('pPlan').textContent      = l.nombre || '—';
+  $('pEquipos').textContent   = r.equipos;
+  $('pJugadores').textContent = r.jugadores;
+  $('pPersonas').textContent  = r.personas;
+
+  const usadas = l.usadas || 0, max = l.max_staff;
+  $('pLic').textContent = max ? `${usadas} de ${max}` : `${usadas} · sin límite`;
+
+  const pct = max ? Math.min(100, Math.round(usadas / max * 100)) : (usadas ? 100 : 0);
+  $('pLicBar').style.width = pct + '%';
+  $('pLicBar').className   = (max && usadas >= max) ? 'lleno' : '';
+
+  $('pLicPie').textContent = !max
+    ? 'Tu plan no limita el staff.'
+    : usadas >= max
+      ? 'No quedan licencias: quita a alguien de un equipo o cambia de plan.'
+      : `Te quedan ${max - usadas}. Cada persona gasta una por equipo en el que esté.`;
+}
+
+function vacioSinEquipos(enRejilla){
+  return `<div class="vacio" ${enRejilla ? 'style="grid-column:1/-1"' : ''}>
+      <div class="vacio-ico">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c0-3.3 2.7-5.4 6-5.4s6 2.1 6 5.4"/><path d="M16.5 11a3 3 0 0 0 0-5M21 19.5c0-2.4-1-4-2.6-4.8"/></svg>
+      </div>
+      <h3>El club todavía no tiene equipos</h3>
+      <p>Crea las categorías del club y después sube las plantillas y reparte
+         el cuerpo técnico.</p>
+      <a class="btn btn-primary" href="PlayLoad-equipos.html">Crear el primer equipo</a>
+    </div>`;
+}
+
+/* ── contadores de la barra ─────────────────────────────────── */
 function pintarCabecera(){
   const r = D.resumen || {equipos:0, personas:0, jugadores:0};
   const l = D.lic || {};
-
-  $('kEquipos').textContent  = r.equipos;
-  $('kPersonas').textContent = r.personas;
-  $('kJug').textContent      = r.jugadores;
-
-  $('kEquiposPie').textContent = r.equipos
-    ? (l.max_equipos ? `de ${l.max_equipos} que permite tu plan` : 'sin límite en tu plan')
-    : 'Sin equipos todavía';
-  $('kPersonasPie').textContent = r.personas
-    ? (r.personas === 1 ? 'una persona con acceso' : 'personas distintas con acceso')
-    : 'Nadie con acceso';
-  $('kJugPie').textContent = r.jugadores ? 'en todas las categorías' : 'Sin jugadores todavía';
-
-  const usadas = l.usadas || 0;
-  const max    = l.max_staff;
-  $('kLic').firstChild.nodeValue = usadas;
-  $('kLicMax').textContent = max ? ` / ${max}` : ' sin límite';
-
-  const pct = max ? Math.min(100, Math.round(usadas / max * 100)) : (usadas ? 100 : 0);
-  $('kLicBar').style.width = pct + '%';
-  $('kLicBar').className = (max && usadas >= max) ? 'lleno' : '';
-
-  $('licTag').textContent = l.nombre || 'Licencia';
-  $('headSub').textContent = max
-    ? `${usadas} de ${max} licencias de staff repartidas`
-    : 'Quién entra en cada equipo del club';
-
-  $('navEquipos').textContent  = r.equipos;
+  $('navEquipos').textContent   = r.equipos;
   $('navJugadores').textContent = r.jugadores;
-  $('navLic').textContent = max ? `${usadas}/${max}` : usadas;
+  $('navStaff').textContent     = l.max_staff ? `${l.usadas||0}/${l.max_staff}` : (l.usadas||0);
+  $('licTag').textContent       = l.nombre || 'Licencia';
 }
 
-function pintar(){ pintarCabecera(); pintarEquipos(); pintarPendientes(); }
+/* ── datos ──────────────────────────────────────────────────── */
+async function cargarPlantilla(){
+  if(DEMO || !equipoId || plantillas[equipoId] !== undefined) return;
+  const r = await get('action=equipo&id=' + equipoId).catch(() => null);
+  plantillas[equipoId] = (r && r.ok) ? (r.players || []) : [];
+  if(sec === 'plantillas') pintarPlantillas();
+}
 
-/* ── carga ──────────────────────────────────────────────────── */
+async function cargarSesiones(){
+  sesiones = [];
+  if(DEMO || !equipoId){ if(sec === 'calendarios') pintarCalendarios(); return; }
+
+  const desde = isoLocal(suma(ancla, -7));
+  const hasta = isoLocal(suma(ancla, 13));
+  const r = await get(`action=sesiones&team_id=${equipoId}&desde=${desde}&hasta=${hasta}`)
+              .catch(() => null);
+  if(r && r.ok) sesiones = r.sesiones || [];
+  if(sec === 'calendarios') pintarCalendarios();
+}
+
 async function cargar(){
+  irA((location.hash || '#plantillas').slice(1), false);
+
   if(DEMO){
     $('clubName').textContent = 'Tu club';
     $('clubSub').textContent  = 'Vista sin servidor';
     $('meName').textContent   = 'Invitado';
-    pintar();
     return;
   }
 
@@ -773,17 +1156,17 @@ async function cargar(){
   if(!r) return;
   if(r.status === 401){ location.href = 'acceso.html'; return; }
 
-  /* Una cuenta de entrenador no tiene club que gestionar: se la manda a
-     su panel en vez de enseñarle una pantalla que no le sirve. */
+  /* Una cuenta de entrenador no tiene club que gestionar: a su panel. */
   if(r.status === 403){ location.href = 'PlayLoad-dashboard.html'; return; }
 
   if(!r.ok || !r.club){
-    $('headSub').textContent = r.error || 'No se ha podido cargar el club';
+    $('secSub').textContent = r.error || 'No se ha podido cargar el club';
     toast(r.error || 'No se ha podido hablar con el servidor.', 'bad');
     return;
   }
 
   D.club = r.club; D.teams = r.teams || []; D.lic = r.licencia; D.resumen = r.resumen;
+  if(!equipoId && D.teams.length) equipoId = D.teams[0].id;
 
   $('clubName').textContent  = r.club.name;
   $('clubSub').textContent   = r.club.city || 'Club';
@@ -798,14 +1181,69 @@ async function cargar(){
     $('meAvatar').textContent = ini(est.user.name || est.user.email);
   }
 
-  pintar();
+  pintarCabecera();
+  accionesDeArriba();
+  pintarSeccion();
+  cargarPlantilla();
+  cargarSesiones();
 }
 
 /* ── interacción ────────────────────────────────────────────── */
-$('buscar').addEventListener('input', pintarEquipos);
+window.addEventListener('hashchange', () => irA((location.hash || '#plantillas').slice(1), false));
 
 document.addEventListener('click', async e => {
 
+  const nav = e.target.closest('.nav-item[data-sec]');
+  if(nav){ e.preventDefault(); irA(nav.dataset.sec, true); return; }
+
+  /* elegir equipo en plantillas o calendarios */
+  const chip = e.target.closest('[data-equipo]');
+  if(chip){
+    equipoId = +chip.dataset.equipo;
+    pintarSeccion();
+    accionesDeArriba();
+    if(sec === 'plantillas') cargarPlantilla();
+    if(sec === 'calendarios') cargarSesiones();
+    return;
+  }
+
+  const sem = e.target.closest('[data-semana]');
+  if(sem){
+    const p = +sem.dataset.semana;
+    ancla = p ? suma(ancla, p*7) : lunesDe(new Date());
+    await cargarSesiones();
+    return;
+  }
+
+  /* ── jugadores ── */
+  if(e.target.closest('[data-add-jugador]')){
+    if(DEMO){ toast('Sin servidor no se pueden añadir jugadores: esta es la vista de diseño.'); return; }
+    if(!equipoId){ toast('Elige un equipo primero.', 'bad'); return; }
+    $('dlgJugSub').textContent = equipo() ? equipo().name : '';
+    $('jNombre').value = ''; $('jDorsal').value = '';
+    $('dlgJugador').classList.add('open');
+    $('jNombre').focus();
+    return;
+  }
+
+  if(e.target.closest('[data-guardar-jugador]')){
+    const btn = e.target.closest('[data-guardar-jugador]');
+    btn.disabled = true;
+    const r = await post({action:'crear_jugador', team_id:equipoId,
+      name:$('jNombre').value, dorsal:$('jDorsal').value, position:$('jPos').value});
+    btn.disabled = false;
+
+    if(r.ok){
+      $('dlgJugador').classList.remove('open');
+      delete plantillas[equipoId];      // se vuelve a pedir, ya con el nuevo
+      await cargar();
+      await cargarPlantilla();
+      toast('Jugador añadido · código ' + r.code);
+    } else toast(r.error || 'No se ha podido añadir.', 'bad');
+    return;
+  }
+
+  /* ── staff ── */
   const inv = e.target.closest('[data-invitar]');
   if(inv){
     if(DEMO){ toast('Sin servidor no se puede repartir staff: esta es la vista de diseño.'); return; }
@@ -813,7 +1251,7 @@ document.addEventListener('click', async e => {
 
     $('fEquipo').innerHTML = D.teams.map(t =>
       `<option value="${t.id}">${esc(t.name)}</option>`).join('');
-    if(inv.dataset.equipo) $('fEquipo').value = inv.dataset.equipo;
+    $('fEquipo').value = inv.dataset.equipoStaff || equipoId || D.teams[0].id;
 
     $('fEmail').value = ''; $('fNombre').value = '';
     const l = D.lic || {};
@@ -826,7 +1264,8 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  if(e.target.closest('[data-cerrar-dlg]') || e.target.id === 'dlgStaff'){
+  if(e.target.closest('[data-cerrar-dlg]') ||
+     e.target.id === 'dlgStaff' || e.target.id === 'dlgJugador'){
     document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
     return;
   }
@@ -854,6 +1293,20 @@ document.addEventListener('click', async e => {
     const r = await post({action:'quitar_staff', staff_id:+quitar.dataset.quitar});
     if(r.ok){ await cargar(); toast('Acceso retirado'); }
     else toast(r.error || 'No se ha podido quitar.', 'bad');
+    return;
+  }
+
+  /* ── perfil ── */
+  if(e.target.closest('[data-guardar-club]')){
+    if(DEMO){ toast('Sin servidor no se puede guardar: esta es la vista de diseño.'); return; }
+    const btn = e.target.closest('[data-guardar-club]');
+    btn.disabled = true;
+    const r = await post({action:'editar_club',
+      name:$('pNombre').value, city:$('pCiudad').value});
+    btn.disabled = false;
+
+    if(r.ok){ await cargar(); toast('Datos del club guardados'); }
+    else toast(r.error || 'No se ha podido guardar.', 'bad');
   }
 });
 
@@ -861,7 +1314,7 @@ document.addEventListener('keydown', e => {
   if(e.key === 'Escape') document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
 });
 
-document.addEventListener('pl-prefs', pintar);
+document.addEventListener('pl-prefs', pintarSeccion);
 
 cargar();
 </script>

@@ -212,6 +212,23 @@ switch ($action) {
             ],
         ]);
 
+    // ── Datos del club ─────────────────────────────────────────────
+    case 'editar_club':
+        $club = mi_club($userId);
+        if (!$club) {
+            fail('Esta cuenta no lleva ningún club.', 403);
+        }
+
+        $name = param('name');
+        if ($name === '') {
+            fail('El club necesita un nombre.');
+        }
+
+        $up = db()->prepare('UPDATE clubs SET name = ?, city = ? WHERE id = ?');
+        $up->execute([$name, param('city'), (int) $club['id']]);
+
+        json_out(['ok' => true]);
+
     // ── Dar acceso a alguien, por correo ───────────────────────────
     case 'invitar_staff':
         $club = mi_club($userId);

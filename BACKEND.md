@@ -111,6 +111,7 @@ correo sale con un enlace que no lleva a ninguna parte.
 | `api/app.php?action=club` | GET | Equipos del club con su staff y las licencias gastadas |
 | `api/app.php` `invitar_staff` | POST | Da acceso a un correo en un equipo del club |
 | `api/app.php` `quitar_staff` | POST | Retira ese acceso |
+| `api/app.php` `editar_club` | POST | Nombre y ciudad del club |
 
 Las tablas del staff llegan con `db/migracion-05-staff.sql`, el plan de
 las cuentas invitadas con `db/migracion-06-plan-staff.sql` y el enlace de
