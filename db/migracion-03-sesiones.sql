@@ -80,7 +80,9 @@ CREATE TABLE IF NOT EXISTS rpe_entries (
   player_id  INT UNSIGNED NOT NULL,
   rpe        TINYINT UNSIGNED NOT NULL,
   minutes    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-  load       INT UNSIGNED NOT NULL DEFAULT 0,
+  -- `load` es palabra reservada en MariaDB: la carga se llama load_ua,
+  -- que además dice la unidad (unidades arbitrarias).
+  load_ua    INT UNSIGNED NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uniq_rpe (session_id, player_id),
