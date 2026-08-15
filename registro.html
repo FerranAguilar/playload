@@ -641,7 +641,12 @@ async function next(btn){
 
   const r = await post('register.php', {
     email: S.email, password: S.pass, account_type: S.type,
-    name: S.name, role: S.role, club: S.club, city: S.city,
+    name: S.name,
+    /* Un club no tiene rol profesional. S.role arrastra su valor por
+       defecto aunque el paso donde se elige no se llegue a ver, y eso
+       acababa poniendo «Preparador físico» bajo el nombre del club. */
+    role: S.type === 'club' ? '' : S.role,
+    club: S.club, city: S.city,
     inv: S.inv
   }).catch(() => ({ok:false, error:'No hay conexión con el servidor.'}));
 

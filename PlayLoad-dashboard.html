@@ -617,6 +617,12 @@ body{transition:background .18s ease,color .18s ease}
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M4 6.6a4 4 0 0 1 8 0c0 3 .9 4.2 1.4 4.7H2.6C3.1 10.8 4 9.6 4 6.6z"/><path d="M6.6 13.2a1.6 1.6 0 0 0 2.8 0" stroke-linecap="round"/></svg>
         <span class="dot-alert"></span>
       </button>
+      <!-- Solo aparece si el equipo es de un club: si no, no hay a quién
+           avisar y el botón sería una promesa vacía. -->
+      <button class="btn btn-secondary" data-avisar-club hidden>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2.4 3.6h11.2v8H8.8L5.6 14v-2.4H2.4z"/></svg>
+        Avisar al club
+      </button>
       <a class="btn btn-primary" href="#">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
         Nueva sesión
@@ -1086,6 +1092,10 @@ async function cargar(){
   D.equipo = D.teams[0];
   $('crumbTeam').textContent = D.equipo.name;
 
+  /* El botón de avisar solo tiene sentido con un club detrás. */
+  const avisar = document.querySelector('[data-avisar-club]');
+  if(avisar) avisar.hidden = !D.equipo.club_id;
+
   const res = await get('action=resumen&team_id=' + D.equipo.id).catch(() => null);
   if(!res || !res.ok){ pasos(D.teams.length, jugadores, 0); return; }
 
@@ -1140,8 +1150,35 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  if(e.target.closest('[data-cerrar-dlg]') || e.target.id === 'dlgSes' || e.target.id === 'dlgCierre'){
+  if(e.target.closest('[data-cerrar-dlg]') || e.target.id === 'dlgSes' ||
+     e.target.id === 'dlgCierre' || e.target.id === 'dlgAviso'){
     document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
+    return;
+  }
+
+  if(e.target.closest('[data-avisar-club]')){
+    if(DEMO){ toast('Sin servidor no se pueden mandar avisos: esta es la vista de diseño.'); return; }
+    if(!D.equipo){ return; }
+    $('dlgAvisoSub').textContent = 'Desde ' + D.equipo.name;
+    $('aTexto').value = '';
+    $('aCuenta').textContent = '600 caracteres';
+    $('dlgAviso').classList.add('open');
+    $('aTexto').focus();
+    return;
+  }
+
+  if(e.target.closest('[data-enviar-aviso]')){
+    const btn = e.target.closest('[data-enviar-aviso]');
+    const texto = $('aTexto').value.trim();
+    if(!texto){ toast('Escribe el aviso antes de enviarlo.', 'bad'); return; }
+
+    btn.disabled = true;
+    const r = await post({action:'crear_mensaje', team_id:D.equipo.id,
+      body:texto, kind:$('aTipo').value});
+    btn.disabled = false;
+
+    if(r.ok){ $('dlgAviso').classList.remove('open'); toast('Aviso enviado al club'); }
+    else toast(r.error || 'No se ha podido enviar.', 'bad');
     return;
   }
 
@@ -1193,6 +1230,11 @@ function calcularCarga(){
     : 'Escribe duración y RPE para ver la carga prevista.';
 }
 document.addEventListener('input', e => {
+  if(e.target.id === 'aTexto'){
+    const quedan = 600 - e.target.value.length;
+    $('aCuenta').textContent = quedan + ' caracteres';
+    $('aCuenta').style.color = quedan < 60 ? 'var(--color-warn)' : '';
+  }
   if(e.target.id === 'sMin' || e.target.id === 'sRpe') calcularCarga();
   if(e.target.id === 'cMin' || e.target.id === 'cRpe'){
     const min = +$('cMin').value || 0, rpe = parseFloat(($('cRpe').value||'').replace(',','.')) || 0;
@@ -1243,6 +1285,30 @@ cargar();
     <div class="dialog-actions">
       <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
       <button class="btn btn-primary" data-crear-sesion>Crear sesión</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="dlgAviso">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgAvisoT">
+    <div>
+      <h2 id="dlgAvisoT">Avisar al club</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgAvisoSub"></p>
+    </div>
+    <div class="field"><label for="aTipo">Tipo</label>
+      <select class="input" id="aTipo">
+        <option value="aviso">Aviso</option>
+        <option value="incidencia">Incidencia</option>
+        <option value="material">Material</option>
+      </select></div>
+    <div class="field"><label for="aTexto">Qué quieres contarles</label>
+      <textarea class="input" id="aTexto" rows="4" maxlength="600"
+        style="resize:vertical;min-height:92px"
+        placeholder="El campo 2 está encharcado; movemos el entreno del jueves al 1."></textarea></div>
+    <p class="p-sub" id="aCuenta">600 caracteres</p>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
+      <button class="btn btn-primary" data-enviar-aviso>Enviar</button>
     </div>
   </div>
 </div>

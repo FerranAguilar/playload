@@ -194,8 +194,11 @@ svg{display:block}
 <body>
 
 <header class="top">
-  <a class="brand" href="PlayLoad-dashboard.html"><span class="mark">PL</span>PlayLoad</a>
-  <a class="btn btn-secondary btn-sm" href="PlayLoad-dashboard.html" style="margin-left:auto">← Volver al panel</a>
+  <!-- Los dos enlaces los recoloca volverA() en cuanto se sabe si la
+       cuenta es de club: el panel del entrenador no es su sitio. -->
+  <a class="brand" id="volverMarca" href="PlayLoad-dashboard.html"><span class="mark">PL</span>PlayLoad</a>
+  <a class="btn btn-secondary btn-sm" id="volverPanel" href="PlayLoad-dashboard.html"
+     style="margin-left:auto">← Volver al panel</a>
 </header>
 
 <div class="wrap">
@@ -573,8 +576,17 @@ document.addEventListener('click', async e => {
      aquí se aplica el suyo y se guarda también en este navegador. */
   if(r.user.theme)  aplicarTema(r.user.theme);
   if(r.user.locale) guarda('pl-locale', r.user.locale);
+  volverA(r.user.type);
   render();
 })();
+
+/* «Volver al panel» tiene que devolverte al tuyo. Una cuenta de club no
+   pinta nada en el panel del entrenador: el suyo es PlayLoad-club.html. */
+function volverA(tipo){
+  const destino = tipo === 'club' ? 'PlayLoad-club.html' : 'PlayLoad-dashboard.html';
+  document.getElementById('volverMarca').href = destino;
+  document.getElementById('volverPanel').href = destino;
+}
 </script>
 </body>
 </html>

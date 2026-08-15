@@ -193,10 +193,59 @@ switch ($action) {
 
         $usadas = staff_count($clubId);
 
+        // ── El día de hoy, de todos los equipos a la vez ────────────
+        // Es lo que el club quiere saber al entrar: quién entrena, a qué
+        // hora y dónde, sin ir categoría por categoría.
+        $h = db()->prepare(
+            'SELECT s.id, s.team_id, t.name AS team, t.tint, s.time, s.title, s.kind,
+                    s.md_label, s.place, s.duration_min, s.planned_load, s.actual_load, s.status
+               FROM sessions s
+               JOIN teams t ON t.id = s.team_id
+              WHERE t.club_id = ? AND s.date = CURDATE()
+              ORDER BY (s.time IS NULL), s.time, t.name'
+        );
+        $h->execute([$clubId]);
+        $hoy = $h->fetchAll();
+        foreach ($hoy as &$e) {
+            $e['team_id'] = (int) $e['team_id'];
+        }
+        unset($e);
+
+        // ── Avisos que ha dejado el staff ──────────────────────────
+        $mensajes = [];
+        $sinLeer  = 0;
+        try {
+            $m = db()->prepare(
+                'SELECT m.id, m.team_id, t.name AS team, t.tint, m.author, m.kind,
+                        m.body, m.created_at, m.read_at
+                   FROM club_messages m
+                   JOIN teams t ON t.id = m.team_id
+                  WHERE m.club_id = ?
+                  ORDER BY (m.read_at IS NOT NULL), m.created_at DESC
+                  LIMIT 30'
+            );
+            $m->execute([$clubId]);
+            $mensajes = $m->fetchAll();
+            foreach ($mensajes as &$x) {
+                $x['id']      = (int) $x['id'];
+                $x['team_id'] = (int) $x['team_id'];
+                if ($x['read_at'] === null) {
+                    $sinLeer++;
+                }
+            }
+            unset($x);
+        } catch (Throwable $e) {
+            // Sin la migración 08 todavía no hay avisos: el panel enseña
+            // el resto sin romperse.
+        }
+
         json_out([
             'ok'    => true,
             'club'  => $club,
             'teams' => $teams,
+            'hoy'      => $hoy,
+            'mensajes' => $mensajes,
+            'sin_leer' => $sinLeer,
             'resumen' => [
                 'equipos'   => count($teams),
                 'personas'  => count($personas),
@@ -211,6 +260,59 @@ switch ($action) {
                 'max_equipos' => $limits['teams'],
             ],
         ]);
+
+    // ── El staff deja un aviso al club ─────────────────────────────
+    case 'crear_mensaje':
+        $teamId = (int) (body()['team_id'] ?? 0);
+        // Lo escribe quien trabaja en el equipo, no el club: el club es
+        // quien lo lee.
+        exige_acceso($teamId, $userId, ['propietario', 'staff']);
+
+        $body = mb_substr(param('body'), 0, 600);
+        if (trim($body) === '') {
+            fail('El aviso está vacío.');
+        }
+
+        $kind = param('kind', 'aviso');
+        if (!in_array($kind, ['aviso', 'incidencia', 'material'], true)) {
+            $kind = 'aviso';
+        }
+
+        $t = db()->prepare('SELECT club_id FROM teams WHERE id = ?');
+        $t->execute([$teamId]);
+        $clubId = (int) ($t->fetch()['club_id'] ?? 0);
+
+        if (!$clubId) {
+            fail('Este equipo no es de ningún club, así que no hay a quién avisar.', 409);
+        }
+
+        try {
+            $ins = db()->prepare(
+                'INSERT INTO club_messages (club_id, team_id, user_id, author, kind, body)
+                 VALUES (?, ?, ?, ?, ?, ?)'
+            );
+            $ins->execute([$clubId, $teamId, $userId, (string) $user['name'], $kind, $body]);
+        } catch (Throwable $e) {
+            fail('Falta la migración 08: importa db/migracion-08-avisos.sql.', 500);
+        }
+
+        json_out(['ok' => true, 'id' => (int) db()->lastInsertId()], 201);
+
+    // ── El club da un aviso por leído ──────────────────────────────
+    case 'leer_mensaje':
+        $club = mi_club($userId);
+        if (!$club) {
+            fail('Solo el club marca sus avisos.', 403);
+        }
+
+        $id = (int) (body()['id'] ?? 0);
+        $up = db()->prepare(
+            'UPDATE club_messages SET read_at = NOW()
+              WHERE id = ? AND club_id = ? AND read_at IS NULL'
+        );
+        $up->execute([$id, (int) $club['id']]);
+
+        json_out(['ok' => true]);
 
     // ── Datos del club ─────────────────────────────────────────────
     case 'editar_club':

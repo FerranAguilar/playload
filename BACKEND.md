@@ -112,13 +112,16 @@ correo sale con un enlace que no lleva a ninguna parte.
 | `api/app.php` `invitar_staff` | POST | Da acceso a un correo en un equipo del club |
 | `api/app.php` `quitar_staff` | POST | Retira ese acceso |
 | `api/app.php` `editar_club` | POST | Nombre y ciudad del club |
+| `api/app.php` `crear_mensaje` | POST | El staff deja un aviso al club |
+| `api/app.php` `leer_mensaje` | POST | El club lo da por leído |
 
 Las tablas del staff llegan con `db/migracion-05-staff.sql`, el plan de
-las cuentas invitadas con `db/migracion-06-plan-staff.sql` y el enlace de
-invitación con `db/migracion-07-invitaciones.sql`. Impórtalas desde
-phpMyAdmin igual que las anteriores y en ese orden; sin la 05 la pantalla
-del club lo dice, y sin la 07 el panel invita como antes, sin mandar
-nada. El resto de la aplicación sigue funcionando en los dos casos.
+las cuentas invitadas con `db/migracion-06-plan-staff.sql`, el enlace de
+invitación con `db/migracion-07-invitaciones.sql` y los avisos con
+`db/migracion-08-avisos.sql`. Impórtalas desde phpMyAdmin igual que las
+anteriores y en ese orden; sin la 05 la pantalla del club lo dice, sin la
+07 el panel invita como antes sin mandar nada, y sin la 08 el panel del
+club enseña el día pero no los avisos. El resto sigue funcionando.
 
 ## Clubes, staff y licencias
 
