@@ -643,6 +643,288 @@ switch ($action) {
 
         json_out(['ok' => true, 'carga' => (int) round($rpe * $dur)]);
 
+    // ── RPE de una sesión, jugador a jugador ───────────────────────
+    // La plantilla entera con lo que ya haya contestado cada uno, para
+    // que la pantalla enseñe la lista completa y no solo a los que
+    // faltan: el entrenador la repasa de arriba abajo.
+    case 'rpe_sesion':
+        $id = (int) ($_GET['session_id'] ?? 0);
+
+        $st = db()->prepare(
+            'SELECT id, team_id, title, date, duration_min, status, actual_rpe, actual_load
+               FROM sessions WHERE id = ?'
+        );
+        $st->execute([$id]);
+        $ses = $st->fetch();
+
+        if (!$ses || !es_mi_equipo((int) $ses['team_id'], $userId)) {
+            fail('Esa sesión no es tuya.', 403);
+        }
+
+        $st = db()->prepare(
+            'SELECT p.id, p.name, p.dorsal, p.position,
+                    r.rpe, r.minutes, r.load_ua
+               FROM players p
+               LEFT JOIN rpe_entries r ON r.player_id = p.id AND r.session_id = ?
+              WHERE p.team_id = ? AND p.active = 1
+              ORDER BY p.dorsal IS NULL, p.dorsal, p.name'
+        );
+        $st->execute([$id, (int) $ses['team_id']]);
+
+        json_out(['ok' => true, 'sesion' => $ses, 'jugadores' => $st->fetchAll()]);
+
+    // ── Guardar el RPE de cada jugador ─────────────────────────────
+    // Llega la lista entera de una vez. Un jugador sin RPE no es un
+    // cero: es alguien que no entrenó, y su fila se borra para que no
+    // le hunda la media ni le cuente carga que no hizo.
+    case 'guardar_rpe':
+        $id = (int) (body()['session_id'] ?? 0);
+
+        $st = db()->prepare('SELECT id, team_id, duration_min FROM sessions WHERE id = ?');
+        $st->execute([$id]);
+        $ses = $st->fetch();
+
+        if (!$ses) {
+            fail('Esa sesión no es tuya.', 403);
+        }
+        exige_acceso((int) $ses['team_id'], $userId, ['propietario', 'staff']);
+
+        $entradas = body()['entradas'] ?? [];
+        if (!is_array($entradas)) {
+            fail('Faltan los RPE.');
+        }
+
+        // La duración de la sesión se puede corregir aquí mismo: se
+        // apunta lo que duró de verdad, no lo que se había previsto. Es
+        // además el valor que usan los jugadores que no tengan minutos
+        // propios, así que tiene que quedar guardado.
+        $dur = (int) (body()['duration_min'] ?? 0);
+        if ($dur > 0) {
+            $dur = min(240, $dur);
+            $up = db()->prepare('UPDATE sessions SET duration_min = ? WHERE id = ?');
+            $up->execute([$dur, $id]);
+        } else {
+            $dur = (int) $ses['duration_min'];
+        }
+
+        // Solo se tocan jugadores de este equipo: el identificador viene
+        // del navegador y podría ser el de cualquier otra plantilla.
+        $q = db()->prepare('SELECT id FROM players WHERE team_id = ?');
+        $q->execute([(int) $ses['team_id']]);
+        $suyos = array_map('intval', array_column($q->fetchAll(), 'id'));
+
+        $ins = db()->prepare(
+            'INSERT INTO rpe_entries (session_id, player_id, rpe, minutes, load_ua)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE rpe = VALUES(rpe), minutes = VALUES(minutes),
+                                     load_ua = VALUES(load_ua)'
+        );
+        $del = db()->prepare('DELETE FROM rpe_entries WHERE session_id = ? AND player_id = ?');
+
+        foreach ($entradas as $e) {
+            $pid = (int) ($e['player_id'] ?? 0);
+            if (!in_array($pid, $suyos, true)) {
+                continue;
+            }
+
+            $rpe = (int) ($e['rpe'] ?? 0);
+            if ($rpe < 1 || $rpe > 10) {
+                $del->execute([$id, $pid]);
+                continue;
+            }
+
+            // Sin minutos propios valen los de la sesión: es el caso
+            // normal, y solo se separan los que entraron a mitad.
+            $min = (int) ($e['minutes'] ?? 0);
+            $min = $min > 0 ? min(240, $min) : $dur;
+            $ins->execute([$id, $pid, $rpe, $min, $rpe * $min]);
+        }
+
+        $r = recalcular_sesion($id);
+        json_out(['ok' => true] + $r);
+
+    // ── Wellness de un día ─────────────────────────────────────────
+    case 'wellness_dia':
+        $teamId = (int) ($_GET['team_id'] ?? 0);
+        if (!es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        $fecha = (string) ($_GET['fecha'] ?? '');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            $fecha = (new DateTimeImmutable('today'))->format('Y-m-d');
+        }
+
+        $st = db()->prepare(
+            'SELECT p.id, p.name, p.dorsal, p.position,
+                    w.`sleep`, w.fatigue, w.soreness, w.stress, w.score, w.note
+               FROM players p
+               LEFT JOIN wellness_entries w ON w.player_id = p.id AND w.`date` = ?
+              WHERE p.team_id = ? AND p.active = 1
+              ORDER BY p.dorsal IS NULL, p.dorsal, p.name'
+        );
+        $st->execute([$fecha, $teamId]);
+
+        json_out(['ok' => true, 'fecha' => $fecha, 'jugadores' => $st->fetchAll()]);
+
+    // ── Guardar el wellness del día ────────────────────────────────
+    // Los cuatro valores van de 1 a 5 y TODOS en el mismo sentido: 5 es
+    // lo bueno. Dormí de maravilla, llego fresco, sin agujetas, tranquilo.
+    // Mezclar sentidos es el error clásico de estos cuestionarios: la
+    // media dejaría de significar nada.
+    case 'guardar_wellness':
+        $teamId = (int) (body()['team_id'] ?? 0);
+        exige_acceso($teamId, $userId, ['propietario', 'staff']);
+
+        $fecha = param('fecha');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            fail('La fecha debe ser AAAA-MM-DD.');
+        }
+
+        $entradas = body()['entradas'] ?? [];
+        if (!is_array($entradas)) {
+            fail('Falta el wellness.');
+        }
+
+        $q = db()->prepare('SELECT id FROM players WHERE team_id = ?');
+        $q->execute([$teamId]);
+        $suyos = array_map('intval', array_column($q->fetchAll(), 'id'));
+
+        $ins = db()->prepare(
+            // `sleep` es también el nombre de una función de MySQL y
+            // `date` el de un tipo: entre comillas no hay duda posible.
+            // Ya pasó con `load`, y se arregló tarde.
+            'INSERT INTO wellness_entries
+                (player_id, `date`, `sleep`, fatigue, soreness, stress, score, note)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE `sleep` = VALUES(`sleep`), fatigue = VALUES(fatigue),
+                                     soreness = VALUES(soreness), stress = VALUES(stress),
+                                     score = VALUES(score), note = VALUES(note)'
+        );
+        $del = db()->prepare('DELETE FROM wellness_entries WHERE player_id = ? AND `date` = ?');
+        $guardados = 0;
+
+        foreach ($entradas as $e) {
+            $pid = (int) ($e['player_id'] ?? 0);
+            if (!in_array($pid, $suyos, true)) {
+                continue;
+            }
+
+            $v = [];
+            foreach (['sleep', 'fatigue', 'soreness', 'stress'] as $k) {
+                $v[$k] = (int) ($e[$k] ?? 0);
+            }
+
+            // Sin los cuatro no hay media que valga: quien deje la fila a
+            // medias es que no ha contestado, y se borra lo que hubiera.
+            if (min($v) < 1 || max($v) > 5) {
+                $del->execute([$pid, $fecha]);
+                continue;
+            }
+
+            $ins->execute([
+                $pid, $fecha,
+                $v['sleep'], $v['fatigue'], $v['soreness'], $v['stress'],
+                round(array_sum($v) / 4, 2),
+                mb_substr((string) ($e['note'] ?? ''), 0, 200),
+            ]);
+            $guardados++;
+        }
+
+        json_out(['ok' => true, 'guardados' => $guardados]);
+
+    // ── Control de carga, jugador a jugador ────────────────────────
+    // Lo que sostiene la tabla del panel: cuánto lleva cada uno en la
+    // semana, cómo se compara con su propio mes y cómo dice que está.
+    case 'carga_plantilla':
+        $teamId = (int) ($_GET['team_id'] ?? 0);
+        if (!es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        $st = db()->prepare(
+            'SELECT id, name, dorsal, position FROM players
+              WHERE team_id = ? AND active = 1
+              ORDER BY dorsal IS NULL, dorsal, name'
+        );
+        $st->execute([$teamId]);
+        $jugadores = $st->fetchAll();
+
+        // Carga aguda (7 días) y crónica (el mes entre cuatro), por jugador.
+        $st = db()->prepare(
+            'SELECT r.player_id,
+                    COALESCE(SUM(CASE WHEN s.date > (CURDATE() - INTERVAL 7 DAY)
+                                      THEN r.load_ua END), 0) AS aguda,
+                    COALESCE(SUM(CASE WHEN s.date > (CURDATE() - INTERVAL 28 DAY)
+                                      THEN r.load_ua END), 0) AS mes,
+                    COUNT(CASE WHEN s.date > (CURDATE() - INTERVAL 7 DAY)
+                               THEN 1 END) AS sesiones
+               FROM rpe_entries r
+               JOIN sessions s ON s.id = r.session_id
+              WHERE s.team_id = ?
+              GROUP BY r.player_id'
+        );
+        $st->execute([$teamId]);
+        $carga = [];
+        foreach ($st->fetchAll() as $f) {
+            $carga[(int) $f['player_id']] = $f;
+        }
+
+        $st = db()->prepare(
+            'SELECT w.player_id,
+                    MAX(CASE WHEN w.`date` = CURDATE() THEN w.score END) AS hoy,
+                    AVG(CASE WHEN w.`date` > (CURDATE() - INTERVAL 7 DAY)
+                             THEN w.score END) AS media
+               FROM wellness_entries w
+               JOIN players p ON p.id = w.player_id
+              WHERE p.team_id = ?
+              GROUP BY w.player_id'
+        );
+        $st->execute([$teamId]);
+        $well = [];
+        foreach ($st->fetchAll() as $f) {
+            $well[(int) $f['player_id']] = $f;
+        }
+
+        // Cuántas sesiones cerradas hubo en la semana: es el denominador
+        // que dice si a alguien le falta contestar o es que no hubo nada.
+        $st = db()->prepare(
+            "SELECT COUNT(*) AS n FROM sessions
+              WHERE team_id = ? AND status = 'realizada'
+                AND date > (CURDATE() - INTERVAL 7 DAY)"
+        );
+        $st->execute([$teamId]);
+        $sesiones = (int) ($st->fetch()['n'] ?? 0);
+
+        $filas = [];
+        foreach ($jugadores as $p) {
+            $pid = (int) $p['id'];
+            $c   = $carga[$pid] ?? null;
+            $w   = $well[$pid]  ?? null;
+
+            $aguda   = $c ? (int) $c['aguda'] : 0;
+            $cronica = $c ? ((int) $c['mes']) / 4 : 0.0;
+
+            $filas[] = $p + [
+                'aguda'    => $aguda,
+                'cronica'  => (int) round($cronica),
+                // El ACWR solo significa algo con un mes detrás. Con dos
+                // sesiones sueltas sale un número enorme que asusta sin
+                // motivo, así que hasta entonces se devuelve null.
+                'acwr'     => $cronica > 0 && $sesiones > 0
+                                ? round($aguda / $cronica, 2) : null,
+                'sesiones' => $c ? (int) $c['sesiones'] : 0,
+                'wellness' => $w && $w['hoy']   !== null ? round((float) $w['hoy'], 2)   : null,
+                'wmedia'   => $w && $w['media'] !== null ? round((float) $w['media'], 2) : null,
+            ];
+        }
+
+        json_out([
+            'ok'        => true,
+            'jugadores' => $filas,
+            'sesiones'  => $sesiones,
+        ]);
+
     // ── Resumen de carga para el panel ─────────────────────────────
     case 'resumen':
         $teamId = (int) ($_GET['team_id'] ?? 0);
@@ -655,9 +937,11 @@ switch ($action) {
         $lunes    = $hoy->modify('monday this week');
         $domingo  = $lunes->modify('+6 days');
 
+        // El `id` no es un extra: sin él, el panel no puede cerrar la
+        // sesión de hoy ni pedir su RPE, que es justo lo que ofrece.
         $st = db()->prepare(
-            'SELECT date, kind, md_label, title, time, place, duration_min,
-                    planned_load, actual_load, status
+            'SELECT id, date, kind, md_label, title, time, place, duration_min,
+                    planned_rpe, planned_load, actual_rpe, actual_load, status
                FROM sessions
               WHERE team_id = ? AND date BETWEEN ? AND ?
               ORDER BY date, time'
@@ -992,4 +1276,54 @@ function vincular_staff(int $userId, string $email): void
     } catch (Throwable $e) {
         // Sin migración 05 no hay nada que vincular.
     }
+}
+
+/**
+ * Rehace la carga de una sesión a partir del RPE de sus jugadores.
+ *
+ * La carga de la sesión es la MEDIA de lo que le costó a cada uno, no la
+ * suma: así se puede comparar con la prevista, que es la de un jugador
+ * cualquiera, y no crece sola al fichar gente. La suma del equipo se
+ * devuelve aparte, que también interesa.
+ *
+ * Sin ninguna respuesta la sesión vuelve a estar planificada: es lo que
+ * pasa cuando se borra el último RPE, y dejarla «realizada» y a cero
+ * sería mentir en el gráfico.
+ */
+function recalcular_sesion(int $sessionId): array
+{
+    $st = db()->prepare(
+        'SELECT COUNT(*) AS n, AVG(rpe) AS rpe, AVG(load_ua) AS carga, SUM(load_ua) AS total
+           FROM rpe_entries WHERE session_id = ?'
+    );
+    $st->execute([$sessionId]);
+    $r = $st->fetch();
+
+    $n = (int) $r['n'];
+
+    if ($n === 0) {
+        $up = db()->prepare(
+            "UPDATE sessions SET actual_rpe = NULL, actual_load = NULL,
+                    status = 'planificada' WHERE id = ?"
+        );
+        $up->execute([$sessionId]);
+
+        return ['respuestas' => 0, 'carga' => 0, 'rpe' => null, 'total' => 0];
+    }
+
+    $rpe   = round((float) $r['rpe'], 1);
+    $carga = (int) round((float) $r['carga']);
+
+    $up = db()->prepare(
+        "UPDATE sessions SET actual_rpe = ?, actual_load = ?, status = 'realizada'
+          WHERE id = ?"
+    );
+    $up->execute([$rpe, $carga, $sessionId]);
+
+    return [
+        'respuestas' => $n,
+        'carga'      => $carga,
+        'rpe'        => $rpe,
+        'total'      => (int) $r['total'],
+    ];
 }

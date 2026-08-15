@@ -381,6 +381,39 @@ select.input{appearance:none;padding-right:28px;
   background-position:calc(100% - 15px) 16px,calc(100% - 10px) 16px;background-size:5px 5px;background-repeat:no-repeat}
 @media (max-width:520px){ .grid-2{grid-template-columns:1fr} }
 
+/* — pasar lista: RPE y wellness, jugador a jugador — */
+/* Estos dos diálogos son una lista larga, no un formulario de cuatro
+   campos: se ensanchan y el scroll se queda dentro, para que los
+   botones de guardar no se vayan de la pantalla. */
+.dialog.wide{width:min(760px,100%)}
+.lista{max-height:min(52vh,420px);overflow:auto;margin:0 -6px;padding:0 6px}
+.lista-cab{display:flex;align-items:flex-end;gap:12px;padding:0 2px 7px;
+  font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2);
+  position:sticky;top:0;background:var(--color-surface);z-index:1}
+.fila{display:flex;align-items:center;gap:12px;padding:7px 2px}
+.fila+.fila{border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)}
+.fila-quien{display:flex;align-items:center;gap:9px;min-width:0;flex:1}
+.fila-n{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* La escala se pulsa, no se despliega: con veinte jugadores, abrir un
+   menú por cada uno es la diferencia entre usarlo y no usarlo. */
+.esc{display:flex;gap:3px;flex:none}
+.esc button{width:25px;height:25px;padding:0;border-radius:6px;font-size:11.5px;
+  font-family:var(--font-heading);font-variant-numeric:tabular-nums;
+  background:transparent;color:var(--muted);cursor:pointer;
+  border:1px solid var(--color-divider);transition:background .12s ease,color .12s ease}
+.esc button:hover{border-color:var(--color-accent);color:var(--color-accent)}
+.esc button[aria-pressed="true"]{background:var(--color-accent);border-color:var(--color-accent);
+  color:#fff}
+.esc.sm button{width:22px;height:22px;font-size:11px}
+.esc-g{display:flex;flex-direction:column;gap:4px;flex:none}
+.esc-g>span{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted-2)}
+.fila-carga{width:62px;flex:none;text-align:right;font-size:12.5px;color:var(--muted)}
+@media (max-width:640px){
+  .lista{overflow-x:auto}
+  .fila,.lista-cab{min-width:520px}
+}
+
 /* — responsive — */
 @media (max-width:1320px){
   .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -553,12 +586,12 @@ body{transition:background .18s ease,color .18s ease}
       </a>
 
       <div class="nav-group">Control de carga</div>
-      <a class="nav-item" href="#">
+      <a class="nav-item" href="#panelCarga" data-wellness>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M8 13.4S2.2 10 2.2 6.3A3.1 3.1 0 0 1 8 4.7a3.1 3.1 0 0 1 5.8 1.6c0 3.7-5.8 7.1-5.8 7.1z"/></svg>
         <span>Wellness</span>
-        
+        <span class="nav-count" id="navWell"></span>
       </a>
-      <a class="nav-item" href="#">
+      <a class="nav-item" href="#panelCarga">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.4 12.2a5.8 5.8 0 1 1 11.2 0"/><path d="M8 12.2 10.9 7"/></svg>
         <span>RPE por sesión</span>
       </a>
@@ -742,15 +775,15 @@ body{transition:background .18s ease,color .18s ease}
 
       <!-- plantilla + alertas -->
       <section class="row row-b">
-        <div class="panel">
+        <div class="panel" id="panelCarga">
           <div class="card-head">
             <div>
               <div class="card-title">Plantilla · control de carga</div>
               <div class="eyebrow" style="margin-top:4px">Últimos 7 días</div>
             </div>
-            <a class="btn btn-ghost btn-sm" href="PlayLoad-equipos.html">Ir a la plantilla</a>
+            <button class="btn btn-secondary btn-sm" data-wellness>Wellness de hoy</button>
           </div>
-          <div class="panel-body">
+          <div class="panel-body" id="cargaBody">
             <div class="vacio" id="vacioPlantilla">
               <h3>Todavía no hay jugadores</h3>
               <p>Crea un equipo, sube la plantilla y cada jugador aparecerá aquí con su carga,
@@ -766,7 +799,7 @@ body{transition:background .18s ease,color .18s ease}
               <div class="card-title">Alertas del staff</div>
               <span class="eyebrow">Hoy</span>
             </div>
-            <div class="panel-body">
+            <div class="panel-body" id="alertasBody">
               <div class="vacio" style="padding:34px 20px">
                 <h3>Ninguna alerta</h3>
                 <p>Avisaremos aquí de picos de carga, wellness bajo o molestias reportadas.</p>
@@ -823,7 +856,7 @@ const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
    colocaría cada sesión un día antes en el calendario. */
 const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-let D = {teams:[], equipo:null, resumen:null, lic:null, user:null, club:null};
+let D = {teams:[], equipo:null, resumen:null, lic:null, user:null, club:null, plantilla:[]};
 
 $('hoy').textContent = new Date().toLocaleDateString('es-ES',
   {weekday:'long', day:'numeric', month:'long'});
@@ -997,11 +1030,15 @@ function sesionHoy(res){
       </div>
       <div style="font-size:14.5px">${esc(ses.title) || 'Sesión'}</div>
       <div class="eyebrow">${ses.time ? ses.time.slice(0,5) + ' · ' : ''}${esc(ses.place) || 'Sin lugar'}</div>
-      ${cerrada
-        ? `<span class="tag tag-ok" style="align-self:flex-start">Cerrada · RPE ${ses.actual_rpe}</span>`
-        : `<button class="btn btn-primary btn-sm" style="align-self:flex-start"
-             data-cerrar-sesion='${JSON.stringify({id:ses.id, min:ses.duration_min, t:ses.title})}'>
-             Cerrar con el RPE del grupo</button>`}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${cerrada
+          ? `<span class="tag tag-ok">Cerrada · RPE ${dec(ses.actual_rpe, 1)}</span>`
+          : `<button class="btn btn-primary btn-sm"
+               data-cerrar-sesion='${JSON.stringify({id:ses.id, min:ses.duration_min, t:ses.title})}'>
+               Cerrar con el RPE del grupo</button>`}
+        <button class="btn btn-secondary btn-sm" data-rpe-sesion="${ses.id}">
+          ${cerrada ? 'Ver el RPE de cada uno' : 'Pasar lista uno a uno'}</button>
+      </div>
     </div>`;
 }
 
@@ -1019,10 +1056,13 @@ function semana(res){
   }
 
   caja.style.padding = '0';
+  /* Cada día abre su lista de RPE: es la vía natural para registrar lo
+     de ayer sin salir del panel. */
   caja.innerHTML = `<div class="days">${res.semana.map(s => {
     const d = new Date(s.date + 'T00:00:00');
     const cerrada = s.status === 'realizada';
-    return `<div class="day">
+    return `<div class="day" role="button" tabindex="0" style="cursor:pointer"
+      data-rpe-sesion="${s.id}" title="RPE jugador a jugador">
       <span class="day-md">${esc(s.md_label) || DIAS[(d.getDay()+6)%7]}</span>
       <div class="day-body">
         <div class="day-name">${esc(s.title) || (s.kind === 'partido' ? 'Partido' : 'Sesión')}</div>
@@ -1033,6 +1073,216 @@ function semana(res){
         ${fmt(cerrada ? s.actual_load : (s.planned_load || 0))}</span>
     </div>`;
   }).join('')}</div>`;
+}
+
+/* ── control de carga, jugador a jugador ────────────────────── */
+/* El ACWR compara la semana con el mes: por encima de 1.3 se sube
+   demasiado deprisa, por debajo de 0.8 se está perdiendo el trabajo
+   acumulado. El wellness va de 1 a 5 y 5 es lo bueno. */
+const nivelAcwr = a => a > 1.3 ? 'risk' : a < 0.8 ? 'warn' : 'ok';
+const nivelWell = w => w < 2.5 ? 'risk' : w < 3.2 ? 'warn' : 'ok';
+
+/* Coma decimal, y con los decimales fijos: una columna donde se alternan
+   «1,29» y «1» se lee peor, porque el ojo compara el ancho antes que el
+   número. El ACWR lleva dos y el wellness uno. */
+const dec = (n, d) => (d === undefined ? String(n) : (+n).toFixed(d)).replace('.', ',');
+
+function tablaCarga(js, sesiones){
+  const caja = $('cargaBody');
+  if(!js.length) return;
+
+  // La barra es comparativa dentro de la plantilla: se mide contra el
+  // que más lleva, no contra un tope inventado.
+  const tope = Math.max(1, ...js.map(p => p.aguda));
+
+  caja.style.padding = '0';
+  caja.innerHTML = `<table class="table">
+    <thead><tr>
+      <th>Jugador</th><th>Carga 7 días</th><th>ACWR</th><th>Wellness</th><th>Sesiones</th>
+    </tr></thead>
+    <tbody>${js.map(p => `
+      <tr>
+        <td><div class="player">
+          <span class="avatar">${ini(p.name)}</span>
+          <div>
+            <div>${esc(p.name)}</div>
+            <div class="pos">${p.dorsal ? '#' + p.dorsal + ' · ' : ''}${esc(p.position) || 'Sin posición'}</div>
+          </div>
+        </div></td>
+        <td><span class="meter"><i style="width:${Math.round(p.aguda / tope * 100)}%"></i></span><span
+              class="num">${p.aguda ? fmt(p.aguda) : '—'}</span></td>
+        <td>${p.acwr === null
+              ? '<span class="pos">Sin base</span>'
+              : `<span class="tag tag-${nivelAcwr(p.acwr)}">${dec(p.acwr, 2)}</span>`}</td>
+        <td>${p.wellness === null
+              ? '<span class="pos">Sin enviar</span>'
+              : `<span class="tag tag-${nivelWell(p.wellness)}">${dec(p.wellness, 1)}</span>`}</td>
+        <td class="num">${p.sesiones} de ${sesiones}</td>
+      </tr>`).join('')}</tbody></table>`;
+}
+
+/* Las alertas no se inventan nada: son la misma tabla leída al revés,
+   contando solo lo que pide una decisión hoy. Van de más grave a menos
+   y se cortan a seis: una lista de veinte no se lee. */
+function alertasStaff(js, sesiones){
+  const av = [];
+
+  js.forEach(p => {
+    if(p.acwr !== null && p.acwr > 1.3)
+      av.push(['risk', 'Carga en subida',
+        `${p.name} va por ${dec(p.acwr, 2)} de ACWR: esta semana carga mucho más que su mes.`]);
+    if(p.wellness !== null && p.wellness < 2.5)
+      av.push(['risk', 'Wellness bajo',
+        `${p.name} ha contestado ${dec(p.wellness, 1)} sobre 5 hoy.`]);
+    if(p.acwr !== null && p.acwr < 0.8)
+      av.push(['warn', 'Por debajo de lo suyo',
+        `${p.name} lleva ${dec(p.acwr, 2)}: menos carga de la que su mes dice que aguanta.`]);
+  });
+
+  const sinRpe = js.filter(p => p.sesiones === 0);
+  if(sesiones > 0 && sinRpe.length)
+    av.push(['info', 'Sin RPE esta semana', sinRpe.length === 1
+      ? `${sinRpe[0].name} no ha registrado ninguna de las ${sesiones} sesiones.`
+      : `${sinRpe.length} jugadores no han registrado ninguna de las ${sesiones} sesiones.`]);
+
+  const sinWell = js.filter(p => p.wellness === null).length;
+  if(sinWell && sinWell < js.length)
+    av.push(['info', 'Wellness incompleto',
+      `Faltan ${sinWell} de ${js.length} por contestar hoy.`]);
+
+  const orden = {risk:0, warn:1, info:2};
+  av.sort((a,b) => orden[a[0]] - orden[b[0]]);
+
+  const caja = $('alertasBody');
+
+  if(!av.length){
+    caja.style.padding = '';
+    caja.innerHTML = `
+      <div class="vacio" style="padding:34px 20px">
+        <h3>Ninguna alerta</h3>
+        <p>${js.length
+             ? 'Nadie se sale del rango y el wellness acompaña.'
+             : 'Avisaremos aquí de picos de carga, wellness bajo o molestias reportadas.'}</p>
+      </div>`;
+    return;
+  }
+
+  caja.style.padding = '0';
+  caja.innerHTML = `<div class="alerts">${av.slice(0,6).map(([n,t,s]) => `
+    <div class="alert">
+      <span class="alert-bar ${n}"></span>
+      <div style="min-width:0">
+        <div class="alert-t">${esc(t)}</div>
+        <div class="alert-s">${esc(s)}</div>
+      </div>
+    </div>`).join('')}${av.length > 6
+      ? `<div class="alert"><span class="alert-bar"></span>
+           <div class="alert-s">y ${av.length - 6} más</div></div>` : ''}</div>`;
+}
+
+async function controlDeCarga(){
+  const r = await get('action=carga_plantilla&team_id=' + D.equipo.id).catch(() => null);
+  if(!r || !r.ok) return;
+
+  D.plantilla = r.jugadores;
+  tablaCarga(r.jugadores, r.sesiones);
+  alertasStaff(r.jugadores, r.sesiones);
+
+  const faltan = r.jugadores.filter(p => p.wellness === null).length;
+  if($('navWell')) $('navWell').textContent = faltan || '';
+}
+
+/* ── pasar lista: RPE ───────────────────────────────────────── */
+function escala(hasta, nombre, campo, valor, clase){
+  let h = `<div class="esc ${clase || ''}" role="group" aria-label="${campo} de ${esc(nombre)}">`;
+  for(let n = 1; n <= hasta; n++){
+    h += `<button type="button" data-v="${n}" aria-pressed="${valor == n}">${n}</button>`;
+  }
+  return h + '</div>';
+}
+
+async function abrirRpe(id, titulo){
+  if(DEMO){ toast('Sin servidor no se puede registrar el RPE: esta es la vista de diseño.'); return; }
+
+  const r = await get('action=rpe_sesion&session_id=' + id).catch(() => null);
+  if(!r || !r.ok){ toast((r && r.error) || 'No se ha podido abrir la sesión.', 'bad'); return; }
+  if(!r.jugadores.length){ toast('Sube la plantilla antes de pedir el RPE.', 'bad'); return; }
+
+  const dlg = $('dlgRpe');
+  dlg.dataset.id = id;
+  $('dlgRpeSub').textContent = (titulo || r.sesion.title || 'Sesión') + ' · ' +
+    new Date(r.sesion.date + 'T00:00:00').toLocaleDateString('es-ES',
+      {weekday:'long', day:'numeric', month:'long'});
+  $('rMin').value = r.sesion.duration_min;
+
+  $('rLista').innerHTML =
+    `<div class="lista-cab">
+       <span style="flex:1">Jugador</span>
+       <span style="width:277px">RPE · 1 a 10</span>
+       <span style="width:58px">Min</span>
+       <span style="width:62px;text-align:right">UA</span>
+     </div>` +
+    r.jugadores.map(p => `
+      <div class="fila" data-fila="${p.id}">
+        <div class="fila-quien">
+          <span class="avatar" style="width:24px;height:24px;font-size:10px">${ini(p.name)}</span>
+          <span class="fila-n">${p.dorsal ? '<b class="num">' + p.dorsal + '</b> ' : ''}${esc(p.name)}</span>
+        </div>
+        ${escala(10, p.name, 'RPE', p.rpe)}
+        <input class="input" data-min inputmode="numeric" aria-label="Minutos de ${esc(p.name)}"
+          style="width:58px;flex:none;padding:5px 6px;text-align:center;font-size:12.5px"
+          value="${p.minutes || ''}" placeholder="${r.sesion.duration_min}">
+        <span class="fila-carga num" data-ua>${p.load_ua ? fmt(p.load_ua) : '—'}</span>
+      </div>`).join('');
+
+  dlg.classList.add('open');
+}
+
+/* La carga de cada fila se ve al momento: el entrenador entiende de una
+   vez que lo que apunta son minutos por esfuerzo, no una nota. */
+function filaUA(fila){
+  const el = fila.querySelector('[data-ua]');
+  if(!el) return;                      // las filas de wellness no tienen carga
+
+  const on  = fila.querySelector('.esc button[aria-pressed="true"]');
+  const min = +fila.querySelector('[data-min]').value || +$('rMin').value || 0;
+  el.textContent = on && min ? fmt(+on.dataset.v * min) : '—';
+}
+
+/* ── pasar lista: wellness ──────────────────────────────────── */
+const WELL = [['sleep','Sueño'], ['fatigue','Fatiga'], ['soreness','Agujetas'], ['stress','Estrés']];
+
+async function abrirWellness(fecha){
+  if(DEMO){ toast('Sin servidor no se puede registrar el wellness: esta es la vista de diseño.'); return; }
+  if(!D.equipo){ toast('Primero crea un equipo.', 'bad'); return; }
+
+  const dia = fecha || isoLocal(new Date());
+  const r = await get(`action=wellness_dia&team_id=${D.equipo.id}&fecha=${dia}`).catch(() => null);
+  if(!r || !r.ok){ toast((r && r.error) || 'No se ha podido abrir el wellness.', 'bad'); return; }
+  if(!r.jugadores.length){ toast('Sube la plantilla antes de pasar el wellness.', 'bad'); return; }
+
+  $('dlgWellSub').textContent = D.equipo.name;
+  $('wFecha').value = r.fecha;
+
+  /* Los cuatro rótulos van arriba y se quedan pegados al desplazar: con
+     veinte jugadores, repetirlos en cada fila es ochenta palabras que
+     estorban para leer los números. */
+  $('wLista').innerHTML =
+    `<div class="lista-cab">
+       <span style="flex:1">Jugador</span>
+       ${WELL.map(([,lab]) => `<span style="width:122px">${lab}</span>`).join('')}
+     </div>` +
+    r.jugadores.map(p => `
+      <div class="fila" data-fila="${p.id}">
+        <div class="fila-quien">
+          <span class="avatar" style="width:24px;height:24px;font-size:10px">${ini(p.name)}</span>
+          <span class="fila-n">${esc(p.name)}</span>
+        </div>
+        ${WELL.map(([k,lab]) =>
+          `<div class="esc-g" data-campo="${k}">${escala(5, p.name, lab, p[k], 'sm')}</div>`).join('')}
+      </div>`).join('');
+
+  $('dlgWell').classList.add('open');
 }
 
 /* ── carga ──────────────────────────────────────────────────── */
@@ -1135,12 +1385,14 @@ async function cargar(){
   sesionHoy(res);
   semana(res);
 
-  if(jugadores > 0 && $('vacioPlantilla')){
+  if(D.equipo.players > 0){
+    await controlDeCarga();
+  } else if($('vacioPlantilla')){
     $('vacioPlantilla').innerHTML =
-      `<h3>${jugadores} jugador${jugadores===1?'':'es'} en ficha</h3>
-       <p>El detalle por jugador llega cuando empiecen a enviar su RPE y su wellness
-          desde la app.</p>
-       <a class="btn btn-secondary" href="PlayLoad-equipos.html">Ver la plantilla</a>`;
+      `<h3>${esc(D.equipo.name)} no tiene jugadores</h3>
+       <p>Sube la plantilla y cada jugador aparecerá aquí con su carga de la semana,
+          su ACWR y el wellness que conteste.</p>
+       <a class="btn btn-primary" href="PlayLoad-equipos.html">Ir a la plantilla</a>`;
   }
 }
 
@@ -1159,9 +1411,83 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  if(e.target.closest('[data-cerrar-dlg]') || e.target.id === 'dlgSes' ||
-     e.target.id === 'dlgCierre' || e.target.id === 'dlgAviso'){
+  /* Cerrar: el botón, o el fondo. Se mira la clase y no una lista de
+     identificadores, que había que ampliar con cada diálogo nuevo. */
+  if(e.target.closest('[data-cerrar-dlg]') || e.target.classList.contains('dialog-backdrop')){
     document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
+    return;
+  }
+
+  /* Escalas de RPE y wellness. Volver a pulsar lo que ya estaba puesto
+     lo quita: es como se dice «este no entrenó» sin un botón aparte. */
+  const eb = e.target.closest('.esc button');
+  if(eb){
+    const grupo = eb.parentNode;
+    const puesto = eb.getAttribute('aria-pressed') === 'true';
+    [...grupo.children].forEach(b => b.setAttribute('aria-pressed', 'false'));
+    eb.setAttribute('aria-pressed', String(!puesto));
+    const fila = eb.closest('[data-fila]');
+    if(fila) filaUA(fila);
+    return;
+  }
+
+  const rpe = e.target.closest('[data-rpe-sesion]');
+  if(rpe){ await abrirRpe(+rpe.dataset.rpeSesion); return; }
+
+  if(e.target.closest('[data-wellness]')){ await abrirWellness(); return; }
+
+  if(e.target.closest('[data-guardar-rpe]')){
+    const btn = e.target.closest('[data-guardar-rpe]');
+    const pordefecto = +$('rMin').value || 0;
+
+    const entradas = [...$('rLista').querySelectorAll('[data-fila]')].map(f => {
+      const on = f.querySelector('.esc button[aria-pressed="true"]');
+      return {
+        player_id: +f.dataset.fila,
+        rpe:       on ? +on.dataset.v : 0,
+        minutes:   +f.querySelector('[data-min]').value || pordefecto
+      };
+    });
+
+    btn.disabled = true;
+    const r = await post({action:'guardar_rpe',
+      session_id:+$('dlgRpe').dataset.id, duration_min:pordefecto, entradas});
+    btn.disabled = false;
+
+    if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
+
+    $('dlgRpe').classList.remove('open');
+    await cargar();
+    toast(r.respuestas
+      ? `${r.respuestas} jugador${r.respuestas === 1 ? '' : 'es'} · ${fmt(r.carga)} UA de media`
+      : 'Sesión sin RPE: vuelve a estar planificada.');
+    return;
+  }
+
+  if(e.target.closest('[data-guardar-well]')){
+    const btn = e.target.closest('[data-guardar-well]');
+
+    const entradas = [...$('wLista').querySelectorAll('[data-fila]')].map(f => {
+      const e2 = {player_id: +f.dataset.fila};
+      f.querySelectorAll('[data-campo]').forEach(g => {
+        const on = g.querySelector('button[aria-pressed="true"]');
+        e2[g.dataset.campo] = on ? +on.dataset.v : 0;
+      });
+      return e2;
+    });
+
+    btn.disabled = true;
+    const r = await post({action:'guardar_wellness', team_id:D.equipo.id,
+      fecha:$('wFecha').value, entradas});
+    btn.disabled = false;
+
+    if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
+
+    $('dlgWell').classList.remove('open');
+    await cargar();
+    toast(r.guardados
+      ? `Wellness de ${r.guardados} jugador${r.guardados === 1 ? '' : 'es'}`
+      : 'No has marcado a nadie.');
     return;
   }
 
@@ -1249,9 +1575,22 @@ document.addEventListener('input', e => {
     const min = +$('cMin').value || 0, rpe = parseFloat(($('cRpe').value||'').replace(',','.')) || 0;
     $('cCarga').textContent = (min && rpe) ? `Carga real: ${fmt(min * rpe)} UA` : '';
   }
+
+  /* Los minutos de una fila solo afectan a la suya; los de la sesión,
+     a todas las que no tengan los suyos propios. */
+  if(e.target.matches('[data-min]')) filaUA(e.target.closest('[data-fila]'));
+  if(e.target.id === 'rMin')
+    $('rLista').querySelectorAll('[data-fila]').forEach(filaUA);
 });
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
+
+  /* Los días de la semana son botones de verdad: se abren con el
+     teclado, no solo con el ratón. */
+  if((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.day[data-rpe-sesion]')){
+    e.preventDefault();
+    abrirRpe(+e.target.dataset.rpeSesion);
+  }
 });
 
 cargar();
@@ -1338,6 +1677,48 @@ cargar();
     <div class="dialog-actions">
       <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
       <button class="btn btn-primary" data-guardar-cierre>Guardar carga</button>
+    </div>
+  </div>
+</div>
+
+<!-- RPE jugador a jugador. La carga de la sesión pasa a ser la media de
+     lo que costó a cada uno, y de aquí sale el ACWR individual. -->
+<div class="dialog-backdrop" id="dlgRpe">
+  <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="dlgRpeT">
+    <div>
+      <h2 id="dlgRpeT">RPE de la sesión</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgRpeSub"></p>
+    </div>
+    <div class="field" style="max-width:190px">
+      <label for="rMin">Minutos de la sesión</label>
+      <input class="input" id="rMin" inputmode="numeric">
+    </div>
+    <div class="lista" id="rLista"></div>
+    <p class="p-sub" id="rPie">Quien no entrenó se queda sin marcar: no cuenta para la media.</p>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
+      <button class="btn btn-primary" data-guardar-rpe>Guardar RPE</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="dlgWell">
+  <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="dlgWellT">
+    <div>
+      <h2 id="dlgWellT">Wellness del día</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgWellSub"></p>
+    </div>
+    <div class="field" style="max-width:190px">
+      <label for="wFecha">Fecha</label>
+      <input class="input" id="wFecha" type="date">
+    </div>
+    <div class="lista" id="wLista"></div>
+    <p class="p-sub">Los cuatro van de 1 a 5 y en el mismo sentido: <b>5 es lo bueno</b>
+       —dormí de maravilla, llego fresco, sin agujetas, tranquilo—. Hace falta contestar
+       los cuatro para que cuente.</p>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
+      <button class="btn btn-primary" data-guardar-well>Guardar wellness</button>
     </div>
   </div>
 </div>

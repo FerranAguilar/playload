@@ -111,6 +111,11 @@ correo sale con un enlace que no lleva a ninguna parte.
 | `api/logout.php` | POST | Cierra la sesión |
 | `api/player_login.php` | POST | Acceso del jugador con el código del club |
 | `api/invitacion.php` | GET | Qué correo hay detrás de un enlace de invitación |
+| `api/app.php?action=rpe_sesion` | GET | La plantilla de una sesión con el RPE que ya tenga cada uno |
+| `api/app.php` `guardar_rpe` | POST | Guarda el RPE jugador a jugador y rehace la carga de la sesión |
+| `api/app.php?action=wellness_dia` | GET | La plantilla con el wellness de un día |
+| `api/app.php` `guardar_wellness` | POST | Guarda el wellness del día |
+| `api/app.php?action=carga_plantilla` | GET | Carga de la semana, ACWR y wellness de cada jugador |
 | `api/app.php?action=club` | GET | Equipos del club con su staff y las licencias gastadas |
 | `api/app.php` `invitar_staff` | POST | Da acceso a un correo en un equipo del club |
 | `api/app.php` `quitar_staff` | POST | Retira ese acceso |
@@ -125,6 +130,45 @@ invitación con `db/migracion-07-invitaciones.sql` y los avisos con
 anteriores y en ese orden; sin la 05 la pantalla del club lo dice, sin la
 07 el panel invita como antes sin mandar nada, y sin la 08 el panel del
 club enseña el día pero no los avisos. El resto sigue funcionando.
+
+El control de carga **no trae migración nueva**: `rpe_entries` y
+`wellness_entries` ya venían con la 03, esperando pantalla. Si en su día
+importaste esa, no hay nada que hacer.
+
+## Control de carga
+
+La carga se mide en unidades arbitrarias: **RPE × minutos**. Hay dos
+formas de cerrar una sesión y conviven a propósito.
+
+La rápida es `cerrar_sesion`: un RPE para todo el grupo. Sirve para salir
+del paso, pero con un solo número no se puede decir nada de nadie en
+concreto.
+
+La buena es `guardar_rpe`: el RPE de cada jugador, y los minutos de quien
+no hizo la sesión entera. De ahí sale todo lo demás. La carga de la
+sesión pasa a ser la **media** de lo que le costó a cada uno, no la suma:
+así se puede comparar con la prevista —que es la de un jugador
+cualquiera— y no crece sola al fichar gente. Quien no entrenó se queda
+sin fila, que no es lo mismo que un cero.
+
+Con eso, `carga_plantilla` responde lo que enseña la tabla del panel:
+
+- **Carga aguda**: lo que lleva cada uno en siete días.
+- **Carga crónica**: su mes dividido entre cuatro, o sea su semana media.
+- **ACWR**: aguda entre crónica. Por encima de **1,3** se sube demasiado
+  deprisa; por debajo de **0,8** se está perdiendo lo acumulado. Sin un
+  mes detrás no se calcula: con dos sesiones sueltas sale un número
+  enorme que asusta sin motivo.
+
+El **wellness** son cuatro preguntas de 1 a 5 —sueño, fatiga, agujetas,
+estrés— y las cuatro **en el mismo sentido: 5 es lo bueno**. Mezclar
+sentidos es el error clásico de estos cuestionarios y deja la media sin
+significar nada. Hacen falta las cuatro para que la fila cuente; a medias
+se borra lo que hubiera.
+
+De momento lo pasa el entrenador desde el panel, porque el jugador
+todavía no tiene pantalla propia. `player_login.php` ya existe: cuando la
+tenga, escribirá en estas mismas tablas y el panel no se entera.
 
 ## Clubes, staff y licencias
 
@@ -218,11 +262,13 @@ nombre y si no se haría pasar por propietaria.
 
 ## Lo que falta
 
-- Las páginas de la aplicación (`PlayLoad-dashboard.html`,
-  `PlayLoad-equipos.html`) **todavía no comprueban la sesión**: siguen
-  con datos de ejemplo dentro del propio archivo. El siguiente paso
-  natural es que pidan `api/me.php` al abrir y redirijan a `acceso.html`
-  si no hay sesión, y que la plantilla salga de la base de datos.
+- **El jugador no tiene pantalla.** El wellness y el RPE los pasa hoy el
+  entrenador uno a uno, que funciona pero no escala: lo natural es que
+  cada jugador entre con su código —`player_login.php` ya lo permite— y
+  contestara él. Las tablas no cambiarían.
+- **El calendario cierra las sesiones con el RPE del grupo**, sin la
+  lista jugador a jugador que sí tiene el panel. Mientras tanto, desde el
+  panel se puede abrir cualquier sesión de la semana.
 - La verificación en dos pasos viene apagada (`two_factor = 0`). Para
   probarla, pon a 1 esa columna en tu usuario.
 - No hay confirmación del correo en el alta: la cuenta entra directa.
