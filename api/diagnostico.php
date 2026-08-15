@@ -57,6 +57,22 @@ if (str_contains($d['name'], '123456789') || str_contains($d['user'], '123456789
     echo "   ⚠ Siguen los valores de ejemplo: cámbialos por los tuyos.\n\n";
 }
 
+// En hosting compartido, Hostinger antepone siempre uNNNNNNNNN_ al
+// nombre que escribes en el formulario. Sin ese prefijo, MySQL responde
+// «Access denied» aunque la contraseña sea correcta, porque el usuario
+// que buscas sencillamente no existe.
+$sinPrefijo = [];
+if (!preg_match('/^u\d+_/', $d['name'])) { $sinPrefijo[] = "name ({$d['name']})"; }
+if (!preg_match('/^u\d+_/', $d['user'])) { $sinPrefijo[] = "user ({$d['user']})"; }
+
+if ($sinPrefijo) {
+    echo "   ⚠ Sin el prefijo de Hostinger: " . implode(' y ', $sinPrefijo) . "\n";
+    echo "     En hosting compartido los nombres reales empiezan por uNNNNNNNNN_\n";
+    echo "     aunque en el formulario escribieras solo la parte final.\n";
+    echo "     Cópialos completos desde hPanel → Bases de datos → Lista de bases\n";
+    echo "     de datos MySQL actuales. Esta es casi seguro la causa del fallo.\n\n";
+}
+
 // ── 3. Conexión ────────────────────────────────────────────────────
 echo "3. Conexión\n";
 $dsn = "mysql:host={$d['host']};dbname={$d['name']};charset={$d['charset']}";
