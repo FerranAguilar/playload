@@ -16,9 +16,11 @@ return [
         'charset' => 'utf8mb4',
     ],
 
-    // Google Cloud Console → Credenciales → ID de cliente de OAuth 2.0
-    // (tipo «Aplicación web»). Vacío = el botón de Google queda apagado.
-    'google_client_id' => '',
+    // ID de cliente de OAuth (tipo «Aplicación web»). Es un identificador
+    // público: viaja en el HTML de acceso.html, y lo que protege la cuenta
+    // es la lista de orígenes autorizados en Google Cloud Console, no que
+    // este valor sea secreto. Debe ser idéntico al de acceso.html.
+    'google_client_id' => '677151412548-tiel2gkq6vbhdjlphejskrph9adop5d0.apps.googleusercontent.com',
 
     // Sin barra final. Se usa para los enlaces de los correos.
     'app_url' => 'https://tudominio.com',

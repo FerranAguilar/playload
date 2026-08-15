@@ -241,7 +241,7 @@ svg{display:block}
    vacío, el botón queda en modo demostración.                        */
 const API   = 'api/';
 const DEMO  = !/^https?:$/.test(location.protocol);   /* file:, data:… = sin servidor */
-const GOOGLE_CLIENT_ID = '';
+const GOOGLE_CLIENT_ID = '677151412548-tiel2gkq6vbhdjlphejskrph9adop5d0.apps.googleusercontent.com';
 
 async function post(endpoint, data){
   const r = await fetch(API + endpoint, {
