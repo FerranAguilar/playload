@@ -15,6 +15,9 @@
     if(t !== 'sistema') document.documentElement.setAttribute('data-theme', t);
   })();
 </script>
+<!-- Guardián de sesión: va antes que nada porque decide si esta cuenta
+     debe estar aquí, y eso hay que saberlo antes de pintar. -->
+<script src="js/sesion.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════
    PlayLoad · club
@@ -743,6 +746,40 @@ body{transition:background .18s ease,color .18s ease}
   </div>
 </div>
 
+<div class="dialog-backdrop" id="dlgEquipo">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgEqT">
+    <div>
+      <h2 id="dlgEqT">Nuevo equipo</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)">
+        Una categoría del club. Después le subes la plantilla y le pones staff.</p>
+    </div>
+    <div class="field"><label for="eNombre">Nombre</label>
+      <input class="input" id="eNombre" placeholder="Cadete A"></div>
+    <div class="grid-2">
+      <div class="field"><label for="eCategoria">Categoría</label>
+        <input class="input" id="eCategoria" placeholder="Cadete"></div>
+      <div class="field"><label for="eModalidad">Modalidad</label>
+        <select class="input" id="eModalidad">
+          <option>Fútbol 11</option>
+          <option>Fútbol 7</option>
+          <option>Fútbol sala</option>
+        </select></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label for="eSistema">Sistema</label>
+        <input class="input" id="eSistema" value="1-4-3-3" placeholder="1-4-3-3"></div>
+      <div class="field"><label for="eColor">Color</label>
+        <input class="input" id="eColor" type="color" value="#9184d9"
+               style="padding:4px;height:36px"></div>
+    </div>
+    <p class="p-sub" id="eAviso"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
+      <button class="btn btn-primary" data-guardar-equipo>Crear equipo</button>
+    </div>
+  </div>
+</div>
+
 <div class="dialog-backdrop" id="dlgJugador">
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgJugT">
     <div>
@@ -897,10 +934,14 @@ function irA(nombre, empujar){
 function accionesDeArriba(){
   const caja = $('topAcciones');
   if(sec === 'plantillas'){
-    caja.innerHTML = equipoId
-      ? `<button class="btn btn-primary" data-add-jugador>
-           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
-           Añadir jugador</button>` : '';
+    /* Crear equipos es del club: ya no puede ir a la pantalla del
+       entrenador a hacerlo, así que la puerta está aquí. */
+    caja.innerHTML =
+      `<button class="btn btn-secondary" data-nuevo-equipo>Nuevo equipo</button>` +
+      (equipoId
+        ? `<button class="btn btn-primary" data-add-jugador>
+             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
+             Añadir jugador</button>` : '');
   } else if(sec === 'staff'){
     caja.innerHTML = `<button class="btn btn-primary" data-invitar>
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
@@ -1273,7 +1314,7 @@ function vacioSinEquipos(enRejilla){
       <h3>El club todavía no tiene equipos</h3>
       <p>Crea las categorías del club y después sube las plantillas y reparte
          el cuerpo técnico.</p>
-      <a class="btn btn-primary" href="PlayLoad-equipos.html">Crear el primer equipo</a>
+      <button class="btn btn-primary" data-nuevo-equipo>Crear el primer equipo</button>
     </div>`;
 }
 
@@ -1328,14 +1369,23 @@ async function cargar(){
   if(!r) return;
   if(r.status === 401){ location.href = 'acceso.html'; return; }
 
-  /* Una cuenta de entrenador no tiene club que gestionar: a su panel. */
-  if(r.status === 403){ location.href = 'PlayLoad-dashboard.html'; return; }
+  /* Una cuenta de entrenador no tiene club que gestionar: a su panel. Se
+     corrige antes el tipo recordado, o el guardián la devolvería aquí. */
+  if(r.status === 403){
+    if(window.plCuenta) plCuenta.marcar('pro');
+    location.replace('PlayLoad-dashboard.html');
+    return;
+  }
 
   if(!r.ok || !r.club){
     $('secSub').textContent = r.error || 'No se ha podido cargar el club';
     toast(r.error || 'No se ha podido hablar con el servidor.', 'bad');
     return;
   }
+
+  /* Confirmado por el servidor: esta cuenta es de club. Con esto, las
+     pantallas del entrenador la devuelven aquí sin llegar a pintarse. */
+  if(window.plCuenta) plCuenta.marcar('club');
 
   D.club = r.club; D.teams = r.teams || []; D.lic = r.licencia; D.resumen = r.resumen;
   D.hoy = r.hoy || []; D.mensajes = r.mensajes || [];
@@ -1407,6 +1457,37 @@ document.addEventListener('click', async e => {
     return;
   }
 
+  /* ── equipos ── */
+  if(e.target.closest('[data-nuevo-equipo]')){
+    if(DEMO){ toast('Sin servidor no se pueden crear equipos: esta es la vista de diseño.'); return; }
+    const l = D.lic || {};
+    $('eNombre').value = ''; $('eCategoria').value = '';
+    $('eAviso').textContent = l.max_equipos
+      ? `Llevas ${D.teams.length} de ${l.max_equipos} equipos que permite tu plan.`
+      : 'Tu plan no limita los equipos.';
+    $('dlgEquipo').classList.add('open');
+    $('eNombre').focus();
+    return;
+  }
+
+  if(e.target.closest('[data-guardar-equipo]')){
+    const btn = e.target.closest('[data-guardar-equipo]');
+    btn.disabled = true;
+    const r = await post({action:'crear_equipo', name:$('eNombre').value,
+      category:$('eCategoria').value, modality:$('eModalidad').value,
+      formation:$('eSistema').value, tint:$('eColor').value});
+    btn.disabled = false;
+
+    if(r.ok){
+      $('dlgEquipo').classList.remove('open');
+      equipoId = r.id;              // se abre el recién creado
+      await cargar();
+      await cargarPlantilla();
+      toast('Equipo creado');
+    } else toast(r.error || 'No se ha podido crear.', 'bad');
+    return;
+  }
+
   /* ── jugadores ── */
   if(e.target.closest('[data-add-jugador]')){
     if(DEMO){ toast('Sin servidor no se pueden añadir jugadores: esta es la vista de diseño.'); return; }
@@ -1456,8 +1537,8 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  if(e.target.closest('[data-cerrar-dlg]') ||
-     e.target.id === 'dlgStaff' || e.target.id === 'dlgJugador'){
+  if(e.target.closest('[data-cerrar-dlg]') || e.target.id === 'dlgStaff' ||
+     e.target.id === 'dlgJugador' || e.target.id === 'dlgEquipo'){
     document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
     return;
   }
@@ -1643,6 +1724,9 @@ cargar();
       if(/^https?:$/.test(location.protocol)){
         await fetch('api/logout.php', {method:'POST', credentials:'same-origin'}).catch(() => {});
       }
+      /* Se olvida de quién era: si no, el siguiente que entre en este
+         navegador heredaría su tipo de cuenta. */
+      if(window.plCuenta) plCuenta.olvidar();
       location.href = 'acceso.html';
     }
   });

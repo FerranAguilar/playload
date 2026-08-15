@@ -37,10 +37,13 @@ Todo va a `public_html/`, manteniendo la estructura:
 
 ```
 public_html/
-  index.html  acceso.html  registro.html
+  index.html  acceso.html  registro.html  perfil.html  precios.html  admin.html
   PlayLoad-dashboard.html  PlayLoad-equipos.html
+  PlayLoad-calendario.html  PlayLoad-club.html
   .htaccess
   img/
+  js/         ← no lo olvides: sin js/sesion.js las cuentas de club
+                entran en las pantallas del entrenador
   api/        ← incluido config.php
   db/         ← opcional; el .htaccess bloquea los .sql
 ```
@@ -173,6 +176,14 @@ Si el envío falla, la fila se queda igual: esa persona puede registrarse
 a mano y desde el panel se le puede **reenviar** el enlace. Las
 invitaciones anteriores a la migración 07 salen como «Sin enviar» y
 tienen su botón para mandarles uno.
+
+Las dos formas de usar PlayLoad tienen pantallas distintas y no se
+mezclan: `js/sesion.js` devuelve a su panel a la cuenta de club que caiga
+en una del entrenador. Lo hace antes de pintar, porque enseñar un menú
+que hay que retirar es peor que esperar un momento; para eso recuerda el
+tipo de cuenta en el navegador. Esa copia solo decide **qué enseñar** —
+quién puede **hacer** qué lo sigue diciendo el servidor, equipo por
+equipo, en la tabla de abajo.
 
 Quién puede qué en un equipo lo decide `acceso_equipo()`, que devuelve
 tres niveles. El orden importa: **el club se mira antes que la

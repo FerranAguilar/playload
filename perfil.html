@@ -524,6 +524,9 @@ document.addEventListener('click', async e => {
     e.preventDefault();
     if(DEMO){ location.href = 'acceso.html'; return; }
     await fetch(API + 'logout.php', {method:'POST', credentials:'same-origin'});
+    /* El tipo de cuenta recordado se va con la sesión: el siguiente que
+       entre en este navegador no debe heredarlo. */
+    try { localStorage.removeItem('pl-account-type'); } catch(e){}
     location.href = 'acceso.html';
     return;
   }

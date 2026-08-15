@@ -15,6 +15,9 @@
     if(t !== 'sistema') document.documentElement.setAttribute('data-theme', t);
   })();
 </script>
+<!-- Guardián de sesión: va antes que nada porque decide si esta cuenta
+     debe estar aquí, y eso hay que saberlo antes de pintar. -->
+<script src="js/sesion.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════
    PlayLoad · calendario
@@ -1035,15 +1038,20 @@ async function cargar(){
   }
 
   const r = await get('action=estado').catch(() => null);
-  if(!r) return;
+  if(!r){ window.plCuenta && plCuenta.mostrar(); return; }
   if(r.status === 401){ location.href = 'acceso.html'; return; }
 
   /* `ok` puede venir de fetch y no del API: si la respuesta no es el JSON
      que se espera, se sigue con el calendario vacío en vez de romperse. */
   if(!r.ok || !r.user){
+    window.plCuenta && plCuenta.mostrar();
     $('calSub').textContent = 'No se ha podido leer la cuenta';
     return;
   }
+
+  /* El calendario del club está en su propia pantalla, y de solo lectura. */
+  if(window.plCuenta) plCuenta.marcar(r.user.type);
+  if(r.user.type === 'club') return;
 
   D.user = r.user; D.club = r.club; D.teams = r.teams || [];
 
@@ -1368,6 +1376,9 @@ cargar();
       if(/^https?:$/.test(location.protocol)){
         await fetch('api/logout.php', {method:'POST', credentials:'same-origin'}).catch(() => {});
       }
+      /* Se olvida de quién era: si no, el siguiente que entre en este
+         navegador heredaría su tipo de cuenta. */
+      if(window.plCuenta) plCuenta.olvidar();
       location.href = 'acceso.html';
     }
   });

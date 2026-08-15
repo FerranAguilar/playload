@@ -15,6 +15,9 @@
     if(t !== 'sistema') document.documentElement.setAttribute('data-theme', t);
   })();
 </script>
+<!-- Guardián de sesión: va antes que nada porque decide si esta cuenta
+     debe estar aquí, y eso hay que saberlo antes de pintar. -->
+<script src="js/sesion.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════
    PlayLoad · Gestor de equipos
@@ -704,7 +707,12 @@ async function cargar(){
   const r = await get('action=estado').catch(() => ({status:0}));
 
   if(r.status === 401){ location.href = 'acceso.html'; return; }
-  if(!r.ok){ avisoServidor(); return; }
+  if(!r.ok || !r.user){ window.plCuenta && plCuenta.mostrar(); avisoServidor(); return; }
+
+  /* Una cuenta de club no gestiona equipos desde aquí: tiene su propia
+     pantalla, y se va antes de que se pinte nada. */
+  if(window.plCuenta) plCuenta.marcar(r.user.type);
+  if(r.user.type === 'club') return;
 
   S.user  = r.user;
   S.club  = r.club;
@@ -1407,6 +1415,9 @@ cargar();
       if(/^https?:$/.test(location.protocol)){
         await fetch('api/logout.php', {method:'POST', credentials:'same-origin'}).catch(() => {});
       }
+      /* Se olvida de quién era: si no, el siguiente que entre en este
+         navegador heredaría su tipo de cuenta. */
+      if(window.plCuenta) plCuenta.olvidar();
       location.href = 'acceso.html';
     }
   });
