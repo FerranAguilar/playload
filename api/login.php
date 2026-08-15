@@ -42,6 +42,7 @@ if (!password_verify($pass, $hash) || empty($user['password_hash'])) {
 
 record_attempt($email, true);
 $userId = (int) $user['id'];
+assert_active($userId);
 
 // Rehash si el coste por defecto de PHP ha subido desde el alta.
 if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT)) {

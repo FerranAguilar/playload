@@ -167,7 +167,8 @@ function current_user(): ?array
         return null;
     }
     $st = db()->prepare(
-        'SELECT id, email, name, account_type, role, avatar_url, two_factor
+        'SELECT id, email, name, account_type, role, avatar_url, two_factor,
+                is_admin, plan, plan_until
            FROM users WHERE id = ?'
     );
     $st->execute([$_SESSION['uid']]);
@@ -182,6 +183,53 @@ function require_user(): array
         fail('No has iniciado sesión.', 401);
     }
     return $u;
+}
+
+function require_admin(): array
+{
+    $u = require_user();
+    if (empty($u['is_admin'])) {
+        fail('Esta zona es solo para administradores.', 403);
+    }
+    return $u;
+}
+
+/**
+ * Pruebas cerradas: solo se puede crear cuenta con un correo invitado.
+ * Devuelve la fila de allowed_emails, o null si no está autorizado.
+ */
+function invitation_for(string $email): ?array
+{
+    $st = db()->prepare('SELECT * FROM allowed_emails WHERE email = ? LIMIT 1');
+    $st->execute([mb_strtolower($email)]);
+    $row = $st->fetch();
+    return $row ?: null;
+}
+
+function mark_invitation_used(string $email): void
+{
+    $st = db()->prepare(
+        'UPDATE allowed_emails SET registered_at = NOW()
+          WHERE email = ? AND registered_at IS NULL'
+    );
+    $st->execute([mb_strtolower($email)]);
+}
+
+/** Una cuenta suspendida existe, pero no entra. */
+function assert_active(int $userId): void
+{
+    $st = db()->prepare('SELECT plan FROM users WHERE id = ?');
+    $st->execute([$userId]);
+    if (($st->fetch()['plan'] ?? '') === 'suspendido') {
+        fail('Esta cuenta está suspendida. Escríbenos si crees que es un error.', 403);
+    }
+}
+
+/** Mensaje único para quien intenta entrar sin invitación. */
+function fail_not_invited(): void
+{
+    fail('PlayLoad está en pruebas cerradas: por ahora solo pueden crear cuenta '
+       . 'los correos invitados. Escríbenos si quieres entrar en la lista.', 403);
 }
 
 /**

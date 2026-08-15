@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlayLoad · Administración</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  Herramienta interna: invitar testers y otorgar licencias.
+  Requiere sesión iniciada con una cuenta que tenga is_admin = 1.
+-->
+<style>
+:root{
+  --color-bg:#13151f; --color-surface:#20222f; --color-text:#f1f1f5;
+  --color-accent:#9184d9; --line:#414553;
+  --color-neutral-200:#e4e7f5; --color-neutral-800:#3f424d;
+  --color-accent-100:#f5f4ff; --color-accent-300:#d2cefd; --color-accent-800:#423a6a;
+  --color-ok:#a9df90; --color-ok-bg:#2e3d2b;
+  --color-warn:#e0ab8d; --color-warn-bg:#3d3129;
+  --color-risk:#e08d96; --color-risk-bg:#3d2c2f;
+  --font-heading:"Inter",system-ui,sans-serif;
+  --radius-md:8px; --radius-lg:14px;
+  --muted:color-mix(in srgb,var(--color-text) 74%,transparent);
+  --muted-2:color-mix(in srgb,var(--color-text) 56%,transparent);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--color-bg);color:var(--color-text);font-family:"Inter",system-ui,sans-serif;
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2{font-family:var(--font-heading);font-weight:500;letter-spacing:-.022em;margin:0}
+h1{font-size:27px} h2{font-size:18px}
+p{margin:0}
+a{color:var(--color-accent-300);text-decoration:none}
+button{font:inherit;color:inherit;background:transparent;border:0;cursor:pointer}
+input,select,textarea{font:inherit}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+svg{display:block}
+
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2)}
+.num{font-family:var(--font-heading);font-weight:500;letter-spacing:-.015em}
+.mark{width:25px;height:25px;border-radius:4px;border:1px solid var(--color-accent);display:inline-flex;
+  align-items:center;justify-content:center;font-size:11px;color:var(--color-accent);flex:none}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:var(--font-heading);
+  font-weight:500;font-size:14px;line-height:1.2;border:1px solid transparent;padding:9px 14px;
+  border-radius:var(--radius-md);transition:background .14s ease,border-color .14s ease,color .14s ease}
+.btn-primary{color:var(--color-accent-300);border-color:var(--color-accent)}
+.btn-primary:hover{background:color-mix(in srgb,var(--color-accent) 18%,transparent)}
+.btn-secondary{border-color:var(--line);color:var(--muted)}
+.btn-secondary:hover{background:color-mix(in srgb,var(--color-text) 8%,transparent);color:var(--color-text)}
+.btn-sm{font-size:13px;padding:5px 10px}
+.btn-danger{color:var(--color-risk);border-color:color-mix(in srgb,var(--color-risk) 55%,transparent)}
+.btn-danger:hover{background:color-mix(in srgb,var(--color-risk) 15%,transparent)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+
+.input{width:100%;min-height:40px;padding:9px 11px;font-size:14px;color:var(--color-text);
+  background:#191b26;border:1px solid var(--line);border-radius:var(--radius-md);
+  caret-color:var(--color-accent)}
+.input::placeholder{color:var(--muted-2)}
+.input:focus-visible{border-color:var(--color-accent);outline-offset:0}
+textarea.input{min-height:92px;resize:vertical;line-height:1.5}
+select.input{appearance:none;padding-right:28px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 18px,calc(100% - 10px) 18px;background-size:5px 5px;background-repeat:no-repeat}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label{font-size:13px;color:var(--muted)}
+
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:3px 9px;border-radius:6px;
+  white-space:nowrap}
+.tag-ok{background:var(--color-ok-bg);color:var(--color-ok)}
+.tag-warn{background:var(--color-warn-bg);color:var(--color-warn)}
+.tag-risk{background:var(--color-risk-bg);color:var(--color-risk)}
+.tag-neutral{background:var(--color-neutral-800);color:var(--color-neutral-200)}
+.tag-accent{background:var(--color-accent-800);color:var(--color-accent-100)}
+
+/* — estructura — */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;padding:14px 30px;
+  background:color-mix(in srgb,var(--color-bg) 92%,transparent);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-heading);font-weight:500;
+  font-size:17px;color:var(--color-text)}
+.wrap{max-width:1180px;margin:0 auto;padding:30px 30px 64px;display:flex;flex-direction:column;gap:26px}
+
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);
+  border-radius:var(--radius-lg);background:var(--color-surface);overflow:hidden}
+.stat{padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.stat+.stat{border-left:1px solid var(--line)}
+.stat b{font-family:var(--font-heading);font-weight:500;font-size:27px;letter-spacing:-.028em;line-height:1}
+
+.panel{border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--color-surface);
+  overflow:hidden}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;
+  border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-head p{font-size:13px;color:var(--muted-2);margin-top:3px}
+.panel-body{padding:18px}
+
+.table{width:100%;border-collapse:collapse;font-size:14px}
+.table th{text-align:left;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2);
+  padding:10px 12px;font-weight:400}
+.table td{padding:10px 12px}
+.table th:first-child,.table td:first-child{padding-left:18px}
+.table th:last-child,.table td:last-child{padding-right:18px;text-align:right}
+.table thead tr{border-bottom:1px solid var(--line)}
+.table tbody tr+tr{border-top:1px solid color-mix(in srgb,var(--color-text) 11%,transparent)}
+.table tbody tr:hover{background:color-mix(in srgb,var(--color-text) 6%,transparent)}
+.mail{font-size:14px}
+.sub{font-size:12.5px;color:var(--muted-2);margin-top:2px}
+.empty{padding:28px 18px;text-align:center;color:var(--muted-2);font-size:14px}
+
+.grid-invite{display:grid;grid-template-columns:minmax(0,1fr) 220px 180px;gap:14px;align-items:end}
+.rowsel{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.rowsel select,.rowsel input{min-height:34px;padding:5px 9px;font-size:13.5px}
+.rowsel select{width:130px} .rowsel input{width:130px}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;
+  padding:11px 18px;border-radius:var(--radius-md);font-size:14px;
+  background:var(--color-surface);border:1px solid var(--line);box-shadow:0 12px 30px rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .18s ease}
+.toast.show{opacity:1}
+.toast.bad{border-color:color-mix(in srgb,var(--color-risk) 60%,transparent);color:var(--color-risk)}
+.toast.good{border-color:color-mix(in srgb,var(--color-ok) 60%,transparent);color:var(--color-ok)}
+
+.gate{max-width:420px;margin:14vh auto;text-align:center;display:flex;flex-direction:column;
+  align-items:center;gap:16px;padding:0 20px}
+
+@media (max-width:900px){
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat:nth-child(3),.stat:nth-child(4){border-top:1px solid var(--line)}
+  .stat:nth-child(3){border-left:0}
+  .grid-invite{grid-template-columns:minmax(0,1fr)}
+  .wrap,.top{padding-left:18px;padding-right:18px}
+  .panel{overflow-x:auto}
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'api/';
+let D = null;   /* estado del servidor */
+
+async function call(data){
+  const opt = data
+    ? {method:'POST', headers:{'Content-Type':'application/json'},
+       credentials:'same-origin', body:JSON.stringify(data)}
+    : {credentials:'same-origin'};
+  const url = API + 'admin.php' + (data ? '' : '?action=estado');
+  const r = await fetch(url, opt);
+  let body = {};
+  try { body = await r.json(); } catch(e){}
+  return {status:r.status, ok:r.ok, ...body};
+}
+
+function toast(msg, kind){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (kind || '');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => { t.className = 'toast ' + (kind || ''); }, 3200);
+}
+
+const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const fecha = s => s ? new Date(s.replace(' ','T')).toLocaleDateString('es-ES',
+  {day:'2-digit', month:'short', year:'2-digit'}) : '—';
+
+const PLAN_TAG = {
+  'tester':'tag-accent', 'rookie':'tag-neutral', 'amateur':'tag-neutral', 'pro':'tag-ok',
+  'club-amateur':'tag-neutral', 'club-pro':'tag-ok', 'suspendido':'tag-risk'
+};
+
+/* ── pantalla de acceso denegado ─────────────────────────────────── */
+function gate(msg, link){
+  document.getElementById('app').innerHTML = `
+    <div class="gate">
+      <span class="mark">PL</span>
+      <h1>Administración</h1>
+      <p style="color:var(--muted)">${esc(msg)}</p>
+      ${link ? `<a class="btn btn-primary" href="acceso.html">Iniciar sesión</a>` : ''}
+      <p style="font-size:13px;color:var(--muted-2)">
+        Para convertir una cuenta en administradora:<br>
+        <code style="font-size:12.5px">UPDATE users SET is_admin = 1 WHERE email = '…';</code>
+      </p>
+    </div>`;
+}
+
+/* ── pantalla principal ──────────────────────────────────────────── */
+function render(){
+  const r = D.resumen;
+  document.getElementById('app').innerHTML = `
+    <header class="top">
+      <a class="brand" href="PlayLoad-dashboard.html"><span class="mark">PL</span>PlayLoad</a>
+      <span class="tag tag-warn">Pruebas cerradas</span>
+      <span style="margin-left:auto;font-size:13.5px;color:var(--muted-2)">
+        ${esc(D.admin.email)}
+      </span>
+      <button class="btn btn-secondary btn-sm" data-logout>Salir</button>
+    </header>
+
+    <div class="wrap">
+      <div>
+        <h1>Testers y licencias</h1>
+        <p style="color:var(--muted);margin-top:8px;max-width:70ch">
+          Mientras el alta esté cerrada, solo pueden crear cuenta los correos de esta lista.
+          Quien ya tiene cuenta sigue entrando con normalidad.
+        </p>
+      </div>
+
+      <section class="stats">
+        <div class="stat"><span class="eyebrow">Invitados</span><b class="num">${r.invitados}</b></div>
+        <div class="stat"><span class="eyebrow">Sin registrar</span>
+          <b class="num" style="${r.pendientes ? 'color:var(--color-warn)' : ''}">${r.pendientes}</b></div>
+        <div class="stat"><span class="eyebrow">Cuentas creadas</span><b class="num">${r.cuentas}</b></div>
+        <div class="stat"><span class="eyebrow">Activas</span>
+          <b class="num" style="color:var(--color-ok)">${r.activas}</b></div>
+      </section>
+
+      <!-- ── invitar ── -->
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Invitar testers</h2>
+            <p>Pega uno o varios correos: valen comas, espacios o saltos de línea.</p></div>
+        </div>
+        <div class="panel-body">
+          <div class="grid-invite">
+            <div class="field">
+              <label for="emails">Correos</label>
+              <textarea class="input" id="emails"
+                placeholder="ferran@club.com&#10;preparador@academia.es, analista@club.com"></textarea>
+            </div>
+            <div class="field">
+              <label for="note">Nota (para ti)</label>
+              <input class="input" id="note" placeholder="CF Bellvitge · pretemporada">
+            </div>
+            <div class="field">
+              <label for="plan">Licencia al registrarse</label>
+              <select class="input" id="plan">
+                ${D.planes.filter(p => p !== 'suspendido')
+                  .map(p => `<option value="${p}" ${p==='tester'?'selected':''}>${p}</option>`).join('')}
+              </select>
+              <button class="btn btn-primary" data-invitar style="margin-top:8px">Invitar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── lista de invitados ── -->
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Lista de acceso</h2>
+            <p>${r.invitados} correo${r.invitados===1?'':'s'} autorizado${r.invitados===1?'':'s'}</p></div>
+        </div>
+        ${D.invitados.length ? `
+        <table class="table">
+          <thead><tr><th>Correo</th><th>Nota</th><th>Licencia</th><th>Estado</th><th></th></tr></thead>
+          <tbody>${D.invitados.map(i => `
+            <tr>
+              <td><div class="mail">${esc(i.email)}</div>
+                  <div class="sub">Invitado el ${fecha(i.created_at)}</div></td>
+              <td style="color:var(--muted)">${esc(i.note) || '—'}</td>
+              <td><span class="tag ${PLAN_TAG[i.plan]||'tag-neutral'}">${esc(i.plan)}</span></td>
+              <td>${i.registered_at
+                    ? `<span class="tag tag-ok">Registrado</span>`
+                    : `<span class="tag tag-warn">Pendiente</span>`}</td>
+              <td><button class="btn btn-secondary btn-sm" data-quitar="${i.id}"
+                    title="Quitar de la lista">Quitar</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : `<div class="empty">Todavía no has invitado a nadie.</div>`}
+      </section>
+
+      <!-- ── cuentas ── -->
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Cuentas y licencias</h2>
+            <p>Cambia el plan o la fecha de caducidad y pulsa Guardar en esa fila.</p></div>
+        </div>
+        ${D.cuentas.length ? `
+        <table class="table">
+          <thead><tr><th>Cuenta</th><th>Tipo</th><th>Equipos</th><th>Último acceso</th>
+            <th style="text-align:right">Licencia</th></tr></thead>
+          <tbody>${D.cuentas.map(c => `
+            <tr data-user="${c.id}">
+              <td>
+                <div class="mail">${esc(c.name) || esc(c.email)}
+                  ${+c.is_admin ? '<span class="tag tag-accent" style="margin-left:6px">admin</span>' : ''}
+                </div>
+                <div class="sub">${esc(c.email)}${+c.con_google ? ' · Google' : ''}</div>
+              </td>
+              <td style="color:var(--muted)">${c.account_type === 'club' ? 'Club' : 'Profesional'}
+                ${c.role ? `<div class="sub">${esc(c.role)}</div>` : ''}</td>
+              <td class="num">${c.equipos}</td>
+              <td style="color:var(--muted)">${fecha(c.last_login_at)}</td>
+              <td>
+                <div class="rowsel">
+                  <select class="input" data-plan>
+                    ${D.planes.map(p => `<option value="${p}" ${p===c.plan?'selected':''}>${p}</option>`).join('')}
+                  </select>
+                  <input class="input" type="date" data-until value="${c.plan_until || ''}"
+                         title="Caduca el (opcional)">
+                  <button class="btn btn-secondary btn-sm" data-guardar>Guardar</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : `<div class="empty">Todavía no hay cuentas creadas.</div>`}
+      </section>
+    </div>`;
+}
+
+/* ── acciones ────────────────────────────────────────────────────── */
+document.addEventListener('click', async e => {
+
+  if(e.target.closest('[data-logout]')){
+    await fetch(API + 'logout.php', {method:'POST', credentials:'same-origin'});
+    location.href = 'acceso.html';
+    return;
+  }
+
+  const inv = e.target.closest('[data-invitar]');
+  if(inv){
+    const emails = document.getElementById('emails').value.trim();
+    if(!emails){ toast('Escribe al menos un correo.', 'bad'); return; }
+
+    inv.disabled = true;
+    const r = await call({action:'invitar', emails,
+      note: document.getElementById('note').value,
+      plan: document.getElementById('plan').value});
+    inv.disabled = false;
+
+    if(!r.ok){ toast(r.error || 'No se ha podido invitar.', 'bad'); return; }
+
+    const partes = [];
+    if(r.invitados.length) partes.push(`${r.invitados.length} invitado${r.invitados.length===1?'':'s'}`);
+    if(r.repetidos.length) partes.push(`${r.repetidos.length} ya estaba${r.repetidos.length===1?'':'n'}`);
+    if(r.invalidos.length) partes.push(`${r.invalidos.length} sin formato válido`);
+    toast(partes.join(' · ') || 'Nada que añadir', r.invitados.length ? 'good' : 'bad');
+
+    await load();
+    return;
+  }
+
+  const q = e.target.closest('[data-quitar]');
+  if(q){
+    const fila = q.closest('tr');
+    const mail = fila.querySelector('.mail').textContent.trim();
+    if(!confirm(`¿Quitar ${mail} de la lista?\n\nSi ya tiene cuenta, la cuenta NO se borra: solo deja de poder registrarse de nuevo.`)) return;
+
+    const r = await call({action:'quitar_invitacion', id:+q.dataset.quitar});
+    if(r.ok){ toast('Quitado de la lista', 'good'); await load(); }
+    else toast(r.error || 'No se ha podido quitar.', 'bad');
+    return;
+  }
+
+  const g = e.target.closest('[data-guardar]');
+  if(g){
+    const fila  = g.closest('tr');
+    const plan  = fila.querySelector('[data-plan]').value;
+    const until = fila.querySelector('[data-until]').value;
+
+    if(plan === 'suspendido' &&
+       !confirm('Suspender cierra su sesión y le impide entrar. ¿Seguimos?')) return;
+
+    g.disabled = true;
+    const r = await call({action:'licencia', user_id:+fila.dataset.user, plan, until});
+    g.disabled = false;
+
+    if(r.ok){ toast('Licencia actualizada', 'good'); await load(); }
+    else toast(r.error || 'No se ha podido guardar.', 'bad');
+  }
+});
+
+/* ── carga ───────────────────────────────────────────────────────── */
+async function load(){
+  const r = await call(null).catch(() => ({status:0}));
+
+  if(r.status === 401){ gate('Necesitas iniciar sesión para entrar aquí.', true); return; }
+  if(r.status === 403){ gate('Tu cuenta no es administradora.', false); return; }
+  if(!r.ok){ gate('No se ha podido hablar con el servidor.', false); return; }
+
+  D = r;
+  render();
+}
+
+load();
+</script>
+</body>
+</html>

@@ -35,6 +35,12 @@ if ($type === 'pro' && $name === '') {
 
 $pdo = db();
 
+// Pruebas cerradas: sin invitación no se crea cuenta.
+$invitacion = invitation_for($email);
+if (!$invitacion) {
+    fail_not_invited();
+}
+
 $st = $pdo->prepare('SELECT id FROM users WHERE email = ?');
 $st->execute([$email]);
 if ($st->fetch()) {
@@ -45,8 +51,8 @@ try {
     $pdo->beginTransaction();
 
     $ins = $pdo->prepare(
-        'INSERT INTO users (email, password_hash, name, account_type, role)
-         VALUES (?, ?, ?, ?, ?)'
+        'INSERT INTO users (email, password_hash, name, account_type, role, plan)
+         VALUES (?, ?, ?, ?, ?, ?)'
     );
     $ins->execute([
         $email,
@@ -54,8 +60,10 @@ try {
         $name !== '' ? $name : $club,
         $type,
         $role,
+        $invitacion['plan'] ?: 'tester',
     ]);
     $userId = (int) $pdo->lastInsertId();
+    mark_invitation_used($email);
 
     if ($type === 'club') {
         $c = $pdo->prepare('INSERT INTO clubs (name, city, owner_user_id) VALUES (?, ?, ?)');

@@ -9,10 +9,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!--
-  ⚠ LOS IMPORTES SON PROVISIONALES.
-  Todos los planes, límites y precios viven en la constante PLANES, al
-  principio del <script>. Cambia ahí los números y la página entera
-  (tarjetas y tabla comparativa) se actualiza sola.
+  Los precios están sin fijar: PRECIOS_PUBLICOS = false hace que las
+  tarjetas muestren «Por determinar» y esconde el selector de ciclo.
+  Cuando decidas los importes, rellena `m` e `y` en PLANES y pon esa
+  constante a true.
 -->
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -136,6 +136,7 @@ svg{display:block}
 .price{display:flex;align-items:baseline;gap:7px}
 .price b{font-family:var(--font-heading);font-weight:500;font-size:44px;letter-spacing:-.03em;line-height:1}
 .price span{font-size:13.5px;color:var(--muted-2)}
+.price b.tbd{font-size:26px;letter-spacing:-.02em;color:var(--muted)}
 .price-note{font-size:12.5px;color:var(--muted-2);margin-top:6px;min-height:1.4em}
 .limits{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--color-neutral-800);
   border-bottom:1px solid var(--color-neutral-800)}
@@ -226,16 +227,18 @@ footer{padding:56px var(--pad) 36px;display:flex;flex-direction:column;gap:var(-
 </header>
 
 <section class="head">
-  <span class="tag tag-outline"><span class="pulse"></span>30 días de prueba · sin tarjeta</span>
+  <span class="tag tag-outline"><span class="pulse"></span>En pruebas cerradas · acceso por invitación</span>
   <h1>Un plan por cada forma de trabajar</h1>
-  <p class="lead">Todos los módulos están en todos los planes: planificación, sesiones, wellness, RPE, convocatorias e informes. Lo que cambia es cuántos equipos, cuántos jugadores y cuánta gente del staff caben dentro.</p>
+  <p class="lead">Todos los módulos están en todos los planes: planificación, sesiones, wellness, RPE, convocatorias e informes. Lo que cambia es cuántos equipos, cuántos jugadores y cuánta gente del staff caben dentro.<br>
+    <b style="font-weight:400;color:var(--color-text)">Los precios se anunciarán al abrir el registro:
+    quien entre ahora como tester los conocerá antes que nadie.</b></p>
 
   <div class="track" role="group" aria-label="Tipo de cuenta">
     <button data-track="pro"  aria-pressed="true">Profesional independiente</button>
     <button data-track="club" aria-pressed="false">Club o academia</button>
   </div>
 
-  <div class="cycle">
+  <div class="cycle" id="cycleRow">
     <span id="lblM">Mensual</span>
     <button class="switch" id="cycle" role="switch" aria-checked="false" aria-label="Pago anual"></button>
     <span id="lblY">Anual</span>
@@ -373,6 +376,10 @@ const PLANES = {
 
 const TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg>';
 
+/* Mientras esté en false, las tarjetas dicen «Por determinar» y no se
+   enseña el selector mensual/anual. Los importes de PLANES se ignoran. */
+const PRECIOS_PUBLICOS = false;
+
 let track = 'pro';
 let anual = false;
 
@@ -386,9 +393,13 @@ function renderPlans(){
 
   box.innerHTML = list.map(p => {
     const precio = anual ? Math.round(p.y / 12) : p.m;
-    const nota   = anual
-      ? `${euros(p.y)} € al año, facturado de una vez`
-      : `${euros(p.m * 12)} € al año si pagas mes a mes`;
+    const bloquePrecio = PRECIOS_PUBLICOS
+      ? `<div class="price"><b class="num">${euros(precio)} €</b><span>al mes</span></div>
+         <div class="price-note">${anual
+            ? `${euros(p.y)} € al año, facturado de una vez`
+            : `${euros(p.m * 12)} € al año si pagas mes a mes`}</div>`
+      : `<div class="price"><b class="num tbd">Por determinar</b></div>
+         <div class="price-note">Lo sabrás antes de que acabe tu prueba</div>`;
 
     return `<article class="plan ${p.best ? 'best' : ''}">
       ${p.best ? '<span class="tag tag-accent plan-badge">El más elegido</span>' : ''}
@@ -398,10 +409,7 @@ function renderPlans(){
         <div class="plan-tag">${p.tag}</div>
       </div>
 
-      <div>
-        <div class="price"><b class="num">${euros(precio)} €</b><span>al mes</span></div>
-        <div class="price-note">${nota}</div>
-      </div>
+      <div>${bloquePrecio}</div>
 
       <div class="limits">
         <div class="limit"><b class="num">${p.teams}</b><span>${p.teamsLabel}</span></div>
@@ -412,7 +420,7 @@ function renderPlans(){
       <ul class="feats">${p.feats.map(f => `<li>${TICK}<span>${f}</span></li>`).join('')}</ul>
 
       <a class="btn ${p.best ? 'btn-primary' : 'btn-secondary'} btn-block"
-         href="registro.html?plan=${p.id}">Empezar 30 días</a>
+         href="registro.html?plan=${p.id}">${PRECIOS_PUBLICOS ? 'Empezar 30 días' : 'Pedir acceso'}</a>
     </article>`;
   }).join('');
 }
@@ -492,6 +500,9 @@ if(qs.get('tipo') === 'club'){
     b.setAttribute('aria-pressed', String(b.dataset.track === 'club')));
 }
 
+if(!PRECIOS_PUBLICOS){
+  document.getElementById('cycleRow').style.display = 'none';
+}
 document.getElementById('lblM').style.color = 'var(--color-text)';
 document.getElementById('lblY').style.color = 'var(--muted-2)';
 render();

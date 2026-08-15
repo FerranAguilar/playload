@@ -81,16 +81,24 @@ if (!$user) {
         );
         $up->execute([$sub, $picture, $user['id']]);
     } else {
+        // Cuenta nueva: durante las pruebas cerradas hace falta invitación.
+        // Quien ya tenga cuenta sigue entrando con normalidad.
+        $invitacion = invitation_for($email);
+        if (!$invitacion) {
+            fail_not_invited();
+        }
+
         $type = body()['account_type'] ?? 'pro';
         $type = in_array($type, ['pro', 'club'], true) ? $type : 'pro';
 
         $ins = $pdo->prepare(
             'INSERT INTO users (email, password_hash, name, account_type, google_sub,
-                                avatar_url, email_verified)
-             VALUES (?, NULL, ?, ?, ?, ?, 1)'
+                                avatar_url, email_verified, plan)
+             VALUES (?, NULL, ?, ?, ?, ?, 1, ?)'
         );
-        $ins->execute([$email, $name, $type, $sub, $picture]);
+        $ins->execute([$email, $name, $type, $sub, $picture, $invitacion['plan'] ?: 'tester']);
         $newId = (int) $pdo->lastInsertId();
+        mark_invitation_used($email);
 
         $mem = $pdo->prepare(
             "INSERT INTO memberships (user_id, scope_type, scope_id, role)
@@ -103,6 +111,7 @@ if (!$user) {
 }
 
 $userId = (int) $user['id'];
+assert_active($userId);
 record_attempt($email, true);
 login_user($userId);
 

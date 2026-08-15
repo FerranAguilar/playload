@@ -398,6 +398,15 @@ function step1(){
 
   return `<div class="panel">
     <h1>¿Cómo vas a usar PlayLoad?</h1>
+    <div style="display:flex;gap:11px;align-items:flex-start;padding:12px 14px;margin-bottom:22px;
+                border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-warn) 14%,transparent);
+                border:1px solid color-mix(in srgb,var(--color-warn) 45%,transparent);font-size:13.5px;line-height:1.5">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--color-warn)" stroke-width="1.6"
+           stroke-linecap="round" style="flex:none;margin-top:2px"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.9v3.6M8 11.1v.1"/></svg>
+      <div><b style="font-weight:400">PlayLoad está en pruebas cerradas.</b>
+        Por ahora solo pueden crear cuenta los correos invitados. Si el tuyo no está en la lista,
+        el último paso te lo dirá.</div>
+    </div>
     <p class="lead">Elige el tipo de cuenta. Cambia lo que te pedimos después y cómo se organiza el trabajo dentro; podrás pasar de una a otra más adelante.</p>
     <div class="types">
       ${card('pro', icoPro, 'Profesional independiente',
