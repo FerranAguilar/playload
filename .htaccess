@@ -1,0 +1,37 @@
+# PlayLoad · Apache (Hostinger, hosting compartido)
+
+# ── HTTPS obligatorio ──────────────────────────────────────────────
+# Las cookies de sesión se marcan Secure: sin HTTPS no habría sesión.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# ── Archivos que nunca deben servirse ──────────────────────────────
+<FilesMatch "^(config\.php|config\.example\.php)$">
+  Require all denied
+</FilesMatch>
+
+<FilesMatch "\.(sql|md|log)$">
+  Require all denied
+</FilesMatch>
+
+RedirectMatch 404 /\.git
+
+# ── Cabeceras ──────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# ── Caché de las fotos ─────────────────────────────────────────────
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpeg "access plus 30 days"
+  ExpiresByType image/png  "access plus 30 days"
+</IfModule>
+
+DirectoryIndex index.html

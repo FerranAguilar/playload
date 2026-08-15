@@ -234,16 +234,39 @@ svg{display:block}
 </div>
 
 <script>
+/* ── conexión con el servidor ────────────────────────────────────
+   Abierto desde el disco (file://) no hay API: la página funciona en
+   modo demostración. Servido desde Hostinger habla con api/*.php.
+   Pega aquí el ID de cliente de Google para que salga su botón real;
+   vacío, el botón queda en modo demostración.                        */
+const API   = 'api/';
+const DEMO  = !/^https?:$/.test(location.protocol);   /* file:, data:… = sin servidor */
+const GOOGLE_CLIENT_ID = '';
+
+async function post(endpoint, data){
+  const r = await fetch(API + endpoint, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'same-origin',
+    body:JSON.stringify(data)
+  });
+  let body = {};
+  try { body = await r.json(); } catch(e){ /* respuesta no JSON */ }
+  return { status:r.status, ok:r.ok, ...body };
+}
+
 /* ── estado ──────────────────────────────────────────────────── */
 const S = {
-  view:'login',           // login · code · space · recover · sent · player · playerOk
-  email:'', pass:'', show:false, keep:true, error:null,
+  view:'login',           // login · code · space · recover · sent · reset · player · playerOk
+  email:'', pass:'', show:false, keep:true, error:null, busy:false,
   code:['','','','','',''], codeErr:false,
   resend:0, timer:null,
-  playerCode:''
+  playerCode:'', player:null,
+  spaces:null,            // se rellena con lo que devuelva el servidor
+  token:'', pass2:''      // pantalla de contraseña nueva
 };
 
-/* Prototipo sin servidor: esta es la contraseña que "acierta". */
+/* Solo en modo demostración: la contraseña que "acierta". */
 const DEMO_PASS = 'playload';
 
 const TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg>';
@@ -323,7 +346,9 @@ function vLogin(){
     ${S.error ? `<div class="alert" style="margin-bottom:18px">${WARN}
       <div>${S.error} Si no la recuerdas, <a href="#" data-go="recover">crea una nueva</a>.</div></div>` : ''}
 
-    <button class="google" data-google>${GMARK}Continuar con Google</button>
+    ${GOOGLE_CLIENT_ID && !DEMO
+      ? '<div id="gbtn" style="display:flex;justify-content:center;min-height:44px"></div>'
+      : `<button class="google" data-google>${GMARK}Continuar con Google</button>`}
     <div class="sep">o con tu correo</div>
 
     <form class="form" data-submit="login">
@@ -385,12 +410,13 @@ function vCode(){
 }
 
 function vSpace(){
+  const list = S.spaces && S.spaces.length ? S.spaces : SPACES;
   return `<div class="card" style="max-width:460px">
     <h1>¿Dónde quieres entrar?</h1>
     <p class="lead">Tu cuenta tiene acceso a varios espacios. Podrás cambiar desde la barra lateral en cualquier momento.</p>
 
     <div class="spaces">
-      ${SPACES.map(s=>`
+      ${list.map(s=>`
         <a class="space" href="${s.href}" style="--tint:${s.tint}">
           <span class="sp-badge">${s.badge}</span>
           <span style="flex:1;min-width:0">
@@ -442,6 +468,33 @@ function vSent(){
   </div>`;
 }
 
+/* pantalla a la que lleva el enlace del correo de recuperación */
+function vReset(){
+  const ok = S.pass.length>=8 && S.pass===S.pass2;
+  return `<div class="card">
+    <h1>Crea una contraseña nueva</h1>
+    <p class="lead">Solo para esta cuenta. Al guardarla se cierran las sesiones abiertas en otros dispositivos.</p>
+
+    ${S.error ? `<div class="alert" style="margin-bottom:18px">${WARN}<div>${S.error}</div></div>` : ''}
+
+    <form class="form" data-submit="reset">
+      <div class="field">
+        <label for="np1">Contraseña nueva</label>
+        <input class="input" id="np1" type="password" autocomplete="new-password"
+               placeholder="Mínimo 8 caracteres" value="${S.pass}" autofocus>
+      </div>
+      <div class="field">
+        <label for="np2">Repítela</label>
+        <input class="input ${S.pass2 && S.pass!==S.pass2 ? 'bad':''}" id="np2" type="password"
+               autocomplete="new-password" placeholder="La misma otra vez" value="${S.pass2}">
+        ${S.pass2 && S.pass!==S.pass2 ? '<span class="hint" style="color:var(--color-risk)">No coinciden.</span>' : ''}
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" ${ok?'':'disabled'}>Guardar y entrar</button>
+    </form>
+    <div class="foot-note"><a href="#" data-go="login">Volver al acceso</a></div>
+  </div>`;
+}
+
 function vPlayer(){
   const ok = S.playerCode.replace(/\s/g,'').length>=6;
   return `<div class="card">
@@ -462,12 +515,15 @@ function vPlayer(){
 }
 
 function vPlayerOk(){
+  const p = S.player || { name:'Marc', team:'Juvenil A', dorsal:8 };
+  const first = (p.name||'').split(' ')[0];
+  const sub = [p.team, p.dorsal ? 'dorsal '+p.dorsal : ''].filter(Boolean).join(' · ');
   return `<div class="card">
     <div class="big-ico ok">
       <svg width="26" height="26" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg>
     </div>
-    <h1>Hola, Marc</h1>
-    <p class="lead">Juvenil A · dorsal 8. Esto es lo que tienes hoy, miércoles 6 de noviembre.</p>
+    <h1>Hola, ${first}</h1>
+    <p class="lead">${sub}. Esto es lo que tienes hoy, miércoles 6 de noviembre.</p>
 
     <div class="todo">
       <div class="todo-row"><span class="dot" style="background:var(--color-warn)"></span>
@@ -485,11 +541,36 @@ function vPlayerOk(){
 
 /* ── pintado ─────────────────────────────────────────────────── */
 const VIEWS = {login:vLogin, code:vCode, space:vSpace, recover:vRecover, sent:vSent,
-               player:vPlayer, playerOk:vPlayerOk};
+               reset:vReset, player:vPlayer, playerOk:vPlayerOk};
 function render(){
   document.getElementById('view').innerHTML = VIEWS[S.view]();
   renderAside(); renderTop();
   document.querySelector('[autofocus]')?.focus();
+  mountGoogle();
+}
+
+/* Botón oficial de Google, solo si hay ID de cliente y estamos servidos */
+function mountGoogle(){
+  const slot = document.getElementById('gbtn');
+  if(!slot || !window.google?.accounts?.id) return;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: async ({credential}) => {
+      const r = await post('google.php', {credential});
+      if(r.ok){ S.spaces = r.spaces || []; enter(); }
+      else { S.error = r.error || 'No se ha podido entrar con Google.'; render(); }
+    }
+  });
+  google.accounts.id.renderButton(slot, {
+    theme:'outline', size:'large', width:340, text:'continue_with', locale:'es'
+  });
+}
+
+/* Con un solo espacio no hay nada que elegir: se entra directo. */
+function enter(){
+  const list = S.spaces && S.spaces.length ? S.spaces : SPACES;
+  if(list.length === 1){ location.href = list[0].href; return; }
+  go('space');
 }
 
 function go(v){ S.view=v; S.error=null; S.codeErr=false; render(); }
@@ -511,31 +592,85 @@ document.addEventListener('click', e => {
   if(e.target.closest('[data-eye]')){ S.show=!S.show; render();
     const p=document.getElementById('pass'); p.focus(); p.setSelectionRange(p.value.length,p.value.length); return; }
 
-  /* Google no pide segundo factor: entra directo al selector de espacio */
+  /* Botón de demostración: Google no pide segundo factor */
   if(e.target.closest('[data-google]')){ S.email = S.email || 'ferran@bellvitge.cat'; go('space'); return; }
 
-  if(e.target.closest('[data-resend]')){ e.preventDefault(); countdown(30); render(); return; }
+  if(e.target.closest('[data-resend]')){ e.preventDefault(); resend(); return; }
 
   if(e.target.closest('[data-verify]')){ verify(); return; }
 });
 
-document.addEventListener('submit', e => {
+document.addEventListener('submit', async e => {
   e.preventDefault();
   const kind = e.target.dataset.submit;
+  if(S.busy) return;
 
-  if(kind==='login'){
-    if(S.pass !== DEMO_PASS){ S.error='Correo o contraseña incorrectos.'; render(); return; }
-    S.error=null; S.view='code'; S.code=['','','','','','']; countdown(30); render(); return;
+  /* ── modo demostración: archivo abierto en local, sin servidor ── */
+  if(DEMO){
+    if(kind==='login'){
+      if(S.pass !== DEMO_PASS){ S.error='Correo o contraseña incorrectos.'; render(); return; }
+      S.error=null; S.view='code'; S.code=['','','','','','']; countdown(30); render(); return;
+    }
+    if(kind==='recover'){ S.view='sent'; countdown(30); render(); return; }
+    if(kind==='reset'){ S.error=null; go('space'); return; }
+    if(kind==='player'){ S.view='playerOk'; render(); return; }
+    return;
   }
-  if(kind==='recover'){ S.view='sent'; countdown(30); render(); return; }
-  if(kind==='player'){ S.view='playerOk'; render(); return; }
+
+  /* ── contra la API ── */
+  S.busy = true;
+  const btn = e.target.querySelector('[type="submit"]');
+  if(btn){ btn.disabled = true; btn.textContent = 'Un momento…'; }
+
+  try{
+    if(kind==='login'){
+      const r = await post('login.php', {email:S.email, password:S.pass, keep:S.keep});
+      if(r.needs_code){ S.error=null; S.view='code'; S.code=['','','','','','']; countdown(30); render(); return; }
+      if(r.ok){ S.spaces = r.spaces || []; S.error=null; enter(); return; }
+      S.error = r.error || 'Correo o contraseña incorrectos.';
+      render(); return;
+    }
+
+    if(kind==='recover'){
+      await post('forgot.php', {email:S.email});   /* responde 200 exista o no */
+      S.view='sent'; countdown(30); render(); return;
+    }
+
+    if(kind==='reset'){
+      const r = await post('reset.php', {token:S.token, password:S.pass});
+      if(r.ok){ S.spaces = r.spaces || []; S.error=null; enter(); return; }
+      S.error = r.error || 'No se ha podido cambiar la contraseña.';
+      render(); return;
+    }
+
+    if(kind==='player'){
+      const r = await post('player_login.php', {code:S.playerCode});
+      if(r.ok){ S.player = r.player; S.error=null; S.view='playerOk'; render(); return; }
+      S.error = r.error || 'Ese código no existe o ya no está activo.';
+      render(); return;
+    }
+  } catch(err){
+    S.error = 'No hay conexión con el servidor. Inténtalo de nuevo.';
+    render();
+  } finally {
+    S.busy = false;
+  }
 });
+
+async function resend(){
+  countdown(30);
+  render();
+  if(DEMO) return;
+  if(S.view==='sent')      await post('forgot.php', {email:S.email});
+  else if(S.view==='code') await post('login.php', {email:S.email, password:S.pass, keep:S.keep});
+}
 
 document.addEventListener('input', e => {
   const el = e.target;
 
   if(el.id==='email' || el.id==='rmail'){ S.email = el.value; toggleSubmit(); return; }
-  if(el.id==='pass'){ S.pass = el.value; toggleSubmit(); return; }
+  if(el.id==='pass' || el.id==='np1'){ S.pass = el.value; toggleSubmit(); return; }
+  if(el.id==='np2'){ S.pass2 = el.value; toggleSubmit(); return; }
   if(el.id==='pcode'){ S.playerCode = el.value.toUpperCase(); el.value = S.playerCode; toggleSubmit(); return; }
 
   const box = el.closest('[data-code] input');
@@ -575,25 +710,59 @@ function toggleSubmit(){
   if(!btn) return;
   btn.disabled = S.view==='login'   ? !(S.email.includes('@') && S.pass.length>0)
                : S.view==='recover' ? !S.email.includes('@')
+               : S.view==='reset'   ? !(S.pass.length>=8 && S.pass===S.pass2)
                : S.view==='player'  ? S.playerCode.replace(/\s/g,'').length<6
                : false;
 }
 
-/* Cualquier código de 6 dígitos vale en el prototipo, salvo 000000,
-   que sirve para enseñar el estado de error. */
-function verify(){
+async function verify(){
   const c = S.code.join('');
-  if(c.length<6) return;
-  if(c==='000000'){ S.codeErr=true; S.code=['','','','','','']; render(); focusCode(0); return; }
-  go('space');
+  if(c.length<6 || S.busy) return;
+
+  /* En demostración vale cualquier código salvo 000000, que sirve para
+     enseñar el estado de error. */
+  if(DEMO){
+    if(c==='000000'){ S.codeErr=true; S.code=['','','','','','']; render(); focusCode(0); return; }
+    go('space'); return;
+  }
+
+  S.busy = true;
+  try{
+    const r = await post('verify_code.php', {code:c});
+    if(r.ok){ S.spaces = r.spaces || []; S.codeErr=false; enter(); return; }
+    S.codeErr = true; S.code=['','','','','','']; render(); focusCode(0);
+  } catch(err){
+    S.codeErr = true; render();
+  } finally {
+    S.busy = false;
+  }
 }
 
-/* correo traído desde otra página: acceso.html?email=… */
+/* parámetros de entrada: correo prerrellenado, vista directa y el
+   testigo del enlace de recuperación (acceso.html?v=reset&token=…) */
 const qs = new URLSearchParams(location.search);
 if(qs.get('email')) S.email = qs.get('email');
+if(qs.get('token')){ S.token = qs.get('token'); S.view = 'reset'; }
 if(qs.get('v') && VIEWS[qs.get('v')]) S.view = qs.get('v');
 
 render();
+
+/* La biblioteca de Google solo se carga si hay ID de cliente. */
+if(GOOGLE_CLIENT_ID && !DEMO){
+  const g = document.createElement('script');
+  g.src = 'https://accounts.google.com/gsi/client';
+  g.async = true; g.defer = true;
+  g.onload = mountGoogle;
+  document.head.appendChild(g);
+}
+
+/* Si ya hay sesión abierta, no hace falta volver a entrar. */
+if(!DEMO && S.view==='login'){
+  fetch(API + 'me.php', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if(d && d.ok){ S.spaces = d.spaces || []; enter(); } })
+    .catch(() => {});
+}
 </script>
 </body>
 </html>

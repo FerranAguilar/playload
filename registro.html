@@ -279,6 +279,22 @@ select.input{appearance:none;padding-right:30px;
 </div>
 
 <script>
+/* ── conexión con el servidor ──────────────────────────────────
+   Igual que en acceso.html: abierto en local (file://) el alta es una
+   demostración; servido desde Hostinger crea la cuenta de verdad. */
+const API  = 'api/';
+const DEMO = !/^https?:$/.test(location.protocol);   /* file:, data:… = sin servidor */
+
+async function post(endpoint, data){
+  const r = await fetch(API + endpoint, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body:JSON.stringify(data)
+  });
+  let body = {};
+  try { body = await r.json(); } catch(e){ /* respuesta no JSON */ }
+  return { status:r.status, ok:r.ok, ...body };
+}
+
 /* ── estado del alta ─────────────────────────────────────────── */
 const S = {
   step: 1,
@@ -593,12 +609,40 @@ function step4(){
 /* ── pintado ─────────────────────────────────────────────────── */
 function render(){ renderSteps(); renderAside(); renderPanel(); }
 
+/* ── avance de paso ──────────────────────────────────────────────
+   El paso 3 es el que crea la cuenta de verdad: hasta entonces no se
+   envía nada al servidor. */
+async function next(btn){
+  if(S.step < 3 || DEMO){ S.step = Math.min(4, S.step+1); render(); return; }
+
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Creando…';
+
+  const r = await post('register.php', {
+    email: S.email, password: S.pass, account_type: S.type,
+    name: S.name, role: S.role, club: S.club, city: S.city
+  }).catch(() => ({ok:false, error:'No hay conexión con el servidor.'}));
+
+  if(r.ok){ S.step = 4; render(); return; }
+
+  btn.disabled = false; btn.textContent = label;
+  const box = document.querySelector('.actions');
+  let msg = box.querySelector('.err');
+  if(!msg){
+    msg = document.createElement('span');
+    msg.className = 'err';
+    msg.style.cssText = 'font-size:13px;color:var(--color-risk);flex-basis:100%';
+    box.appendChild(msg);
+  }
+  msg.textContent = r.error || 'No se ha podido crear la cuenta.';
+}
+
 /* ── interacción ─────────────────────────────────────────────── */
 document.addEventListener('click', e => {
   const t = e.target.closest('.type');
   if(t){ S.type = t.dataset.type; render(); return; }
 
-  if(e.target.closest('[data-next]')){ S.step = Math.min(4, S.step+1); render(); return; }
+  if(e.target.closest('[data-next]')){ next(e.target.closest('[data-next]')); return; }
   if(e.target.closest('[data-back]')){ S.step = Math.max(1, S.step-1); render(); return; }
 
   /* Google: en el prototipo salta al perfil con un correo de ejemplo */
