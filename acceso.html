@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlayLoad · Iniciar sesión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  Proceso de acceso. Estados: login · verificación en dos pasos ·
+  selector de espacio · recuperar contraseña · correo enviado ·
+  acceso de jugador con código.
+
+  Prototipo sin servidor. Para poder enseñar el camino de error, la
+  contraseña correcta de la demostración es "playload"; cualquier otra
+  muestra el aviso de credenciales incorrectas.
+-->
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   PlayLoad · acceso
+   Mismo armazón que el alta (registro.html) para que las dos mitades
+   del acceso se sientan como una sola pieza.
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --color-bg:#13151f; --color-surface:#20222f; --color-text:#f1f1f5;
+  --color-accent:#9184d9;
+  --line:#414553;
+
+  --color-neutral-200:#e4e7f5; --color-neutral-600:#75798c; --color-neutral-800:#3f424d;
+  --color-accent-100:#f5f4ff; --color-accent-300:#d2cefd; --color-accent-400:#b5abfc;
+  --color-accent-800:#423a6a;
+  --color-section:#262a60; --color-section-glow:#353b80;
+
+  --color-ok:#a9df90; --color-ok-bg:#2e3d2b;
+  --color-warn:#e0ab8d;
+  --color-risk:#e08d96; --color-risk-bg:#3d2c2f;
+
+  --font-heading:"Inter",system-ui,sans-serif; --font-heading-weight:500;
+  --font-body:"Inter",system-ui,sans-serif;
+  --radius-sm:4px; --radius-md:8px; --radius-lg:14px;
+
+  --muted:color-mix(in srgb,var(--color-text) 74%,transparent);
+  --muted-2:color-mix(in srgb,var(--color-text) 56%,transparent);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1{font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:28px;
+  line-height:1.16;letter-spacing:-.024em;margin:0}
+h2{font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:26px;
+  line-height:1.16;letter-spacing:-.024em;margin:0}
+p{margin:0}
+a{color:var(--color-accent-300);text-decoration:none}
+a:hover{color:var(--color-accent-400)}
+button{font:inherit;color:inherit;background:transparent;border:0;cursor:pointer}
+input{font:inherit}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+::selection{background:color-mix(in srgb,var(--color-accent) 32%,transparent)}
+svg{display:block}
+@keyframes plIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes plShake{10%,90%{transform:translateX(-1px)}30%,70%{transform:translateX(2px)}50%{transform:translateX(-2px)}}
+
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2)}
+.mark{width:25px;height:25px;border-radius:var(--radius-sm);border:1px solid var(--color-accent);
+  display:inline-flex;align-items:center;justify-content:center;font-size:11px;
+  color:var(--color-accent);font-family:var(--font-heading);flex:none}
+.hint{font-size:12.5px;color:var(--muted-2)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:14.5px;
+  line-height:1.2;border:1px solid transparent;padding:11px 16px;border-radius:var(--radius-md);
+  transition:background .14s ease,border-color .14s ease,color .14s ease}
+.btn-primary{color:var(--color-accent-300);border-color:var(--color-accent)}
+.btn-primary:hover{background:color-mix(in srgb,var(--color-accent) 18%,transparent);color:var(--color-accent-100)}
+.btn-secondary{border-color:var(--line);color:var(--muted)}
+.btn-secondary:hover{background:color-mix(in srgb,var(--color-text) 8%,transparent);color:var(--color-text)}
+.btn-ghost{color:var(--muted);padding:8px 10px}
+.btn-ghost:hover{color:var(--color-text)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn-block{width:100%}
+
+.input{width:100%;min-height:44px;padding:10px 12px;font-size:14.5px;color:var(--color-text);
+  caret-color:var(--color-accent);background:#191b26;border:1px solid var(--line);
+  border-radius:var(--radius-md)}
+.input::placeholder{color:var(--muted-2)}
+.input:hover{border-color:color-mix(in srgb,var(--color-text) 50%,transparent)}
+.input:focus-visible{border-color:var(--color-accent);outline-offset:0}
+.input.bad{border-color:var(--color-risk)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label{font-size:13px;color:var(--muted)}
+.pw{position:relative}
+.pw .input{padding-right:44px}
+.pw button{position:absolute;right:6px;top:6px;width:32px;height:32px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;color:var(--muted-2)}
+.pw button:hover{color:var(--color-text);background:color-mix(in srgb,var(--color-text) 8%,transparent)}
+
+/* ═══════════ ESTRUCTURA ═══════════ */
+.wrap{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);min-height:100vh}
+
+.aside{position:relative;padding:34px 38px;display:flex;flex-direction:column;gap:26px;
+  border-right:1px solid var(--line);overflow:hidden;background:#0f111a}
+.aside .bg{position:absolute;inset:0;z-index:0}
+.aside .bg img{width:100%;height:100%;object-fit:cover;mix-blend-mode:lighten;opacity:.32}
+.aside .veil{position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,#0f111a 8%,color-mix(in srgb,#0f111a 78%,transparent) 55%,#0f111a 100%)}
+.aside>*{position:relative;z-index:2}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-heading);
+  font-weight:500;font-size:17px;color:var(--color-text)}
+.aside h2{text-wrap:balance}
+.aside .sell{font-size:14.5px;line-height:1.6;color:var(--muted)}
+.points{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
+.points li{display:flex;gap:11px;align-items:flex-start;font-size:14px;color:var(--muted)}
+.points svg{width:16px;height:16px;flex:none;margin-top:2px;color:var(--color-accent)}
+.aside-foot{margin-top:auto;display:flex;flex-direction:column;gap:16px}
+.trust{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--muted-2)}
+
+.main{padding:34px 44px 56px;display:flex;flex-direction:column;min-width:0}
+.top{display:flex;align-items:center;justify-content:flex-end;gap:16px;font-size:13.5px;
+  color:var(--muted-2);margin-bottom:auto}
+.card{width:100%;max-width:404px;margin:34px auto auto;animation:plIn .25s ease both}
+.card h1{margin-bottom:10px}
+.card .lead{font-size:14.5px;color:var(--muted);margin-bottom:26px}
+.form{display:flex;flex-direction:column;gap:16px}
+.rowbetween{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.foot-note{margin-top:26px;font-size:13.5px;color:var(--muted-2);text-align:center}
+.back{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--muted);margin-bottom:20px}
+.back:hover{color:var(--color-accent-300)}
+
+/* — google — */
+.google{width:100%;display:flex;align-items:center;justify-content:center;gap:11px;background:#fff;
+  color:#1f1f1f;border-radius:var(--radius-md);padding:12px 16px;
+  font-family:var(--font-heading);font-weight:500;font-size:14.5px;transition:background .14s ease}
+.google:hover{background:#ececf1}
+.sep{display:flex;align-items:center;gap:14px;margin:20px 0;color:var(--muted-2);font-size:12px}
+.sep::before,.sep::after{content:"";height:1px;flex:1;background:var(--line)}
+
+/* — casilla — */
+.check{display:inline-flex;gap:9px;align-items:center;font-size:13.5px;color:var(--muted);cursor:pointer}
+.check input{position:absolute;opacity:0;width:0;height:0}
+.check .box{width:17px;height:17px;border-radius:4px;border:1px solid var(--line);flex:none;
+  display:flex;align-items:center;justify-content:center;color:#14161f}
+.check .box svg{width:11px;height:11px;opacity:0}
+.check input:checked+.box{background:var(--color-accent);border-color:var(--color-accent)}
+.check input:checked+.box svg{opacity:1}
+.check input:focus-visible+.box{outline:2px solid var(--color-accent);outline-offset:2px}
+
+/* — aviso de error — */
+.alert{display:flex;gap:11px;align-items:flex-start;padding:12px 14px;border-radius:var(--radius-md);
+  background:var(--color-risk-bg);border:1px solid color-mix(in srgb,var(--color-risk) 45%,transparent);
+  font-size:13.5px;line-height:1.5;animation:plShake .32s ease both}
+.alert svg{width:16px;height:16px;flex:none;margin-top:2px;color:var(--color-risk)}
+.alert a{color:var(--color-risk);text-decoration:underline;text-underline-offset:2px}
+
+/* — código de 6 casillas — */
+.code{display:flex;gap:9px}
+.code input{width:100%;height:56px;text-align:center;font-family:var(--font-heading);font-weight:500;
+  font-size:22px;letter-spacing:.02em;color:var(--color-text);background:#191b26;
+  border:1px solid var(--line);border-radius:var(--radius-md);caret-color:var(--color-accent)}
+.code input:focus-visible{border-color:var(--color-accent);outline:none}
+.code.bad input{border-color:var(--color-risk)}
+
+/* — selector de espacio — */
+.spaces{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius-lg);
+  background:var(--color-surface);overflow:hidden}
+.space{display:flex;align-items:center;gap:13px;padding:15px 16px;text-align:left;width:100%;
+  transition:background .14s ease}
+.space+.space{border-top:1px solid color-mix(in srgb,var(--color-text) 11%,transparent)}
+.space:hover{background:color-mix(in srgb,var(--color-text) 7%,transparent)}
+.sp-badge{width:38px;height:38px;border-radius:10px;flex:none;display:flex;align-items:center;
+  justify-content:center;font-family:var(--font-heading);font-weight:600;font-size:13px;color:#14161f;
+  background:linear-gradient(150deg,var(--tint),color-mix(in srgb,var(--tint) 68%,#14161f))}
+.sp-name{font-size:14.5px;line-height:1.25}
+.sp-sub{font-size:12.5px;color:var(--muted-2);margin-top:2px}
+.sp-role{font-size:11.5px;padding:3px 9px;border-radius:6px;background:var(--color-neutral-800);
+  color:var(--color-neutral-200);white-space:nowrap}
+
+/* — confirmaciones — */
+.big-ico{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  margin-bottom:20px}
+.big-ico.ok{background:var(--color-ok-bg);color:var(--color-ok)}
+.big-ico.mail{background:color-mix(in srgb,var(--color-accent) 20%,transparent);color:var(--color-accent-300)}
+.todo{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius-lg);
+  background:var(--color-surface);overflow:hidden;margin-top:22px}
+.todo-row{display:flex;align-items:center;gap:12px;padding:13px 15px;font-size:14px}
+.todo-row+.todo-row{border-top:1px solid color-mix(in srgb,var(--color-text) 11%,transparent)}
+.todo-row .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.todo-row .s{margin-left:auto;font-size:12.5px;color:var(--muted-2)}
+
+@media (max-width:1080px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  .aside{border-right:0;border-bottom:1px solid var(--line);padding:26px 24px;gap:18px}
+  .aside h2{font-size:22px} .points{display:none} .aside-foot{margin-top:0}
+  .main{padding:26px 24px 48px}
+  .top{margin-bottom:20px}
+  .card{margin-top:0}
+}
+@media (max-width:520px){
+  .code{gap:6px} .code input{height:50px;font-size:19px}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ══════════ PANEL IZQUIERDO ══════════ -->
+  <aside class="aside">
+    <div class="bg"><img src="img/sesiones.jpg" alt=""></div>
+    <div class="veil"></div>
+
+    <a class="brand" href="index.html"><span class="mark">PL</span>PlayLoad</a>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <h2 id="asideTitle">Bienvenido de vuelta</h2>
+      <p class="sell" id="asideText">Entra con tu cuenta y sigue donde lo dejaste: el microciclo, las sesiones y el parte de la semana.</p>
+    </div>
+
+    <ul class="points" id="asidePoints"></ul>
+
+    <div class="aside-foot">
+      <div class="trust"><span>Datos en la UE</span><span>Acceso por roles</span><span>Sesión cifrada</span></div>
+    </div>
+  </aside>
+
+  <!-- ══════════ PANEL DERECHO ══════════ -->
+  <main class="main">
+    <div class="top" id="top"></div>
+    <div id="view"></div>
+  </main>
+</div>
+
+<script>
+/* ── estado ──────────────────────────────────────────────────── */
+const S = {
+  view:'login',           // login · code · space · recover · sent · player · playerOk
+  email:'', pass:'', show:false, keep:true, error:null,
+  code:['','','','','',''], codeErr:false,
+  resend:0, timer:null,
+  playerCode:''
+};
+
+/* Prototipo sin servidor: esta es la contraseña que "acierta". */
+const DEMO_PASS = 'playload';
+
+const TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg>';
+const WARN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.9v3.6M8 11.1v.1"/></svg>';
+const ARROW= '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>';
+
+const ASIDE = {
+  login:{ t:'Bienvenido de vuelta',
+    x:'Entra con tu cuenta y sigue donde lo dejaste: el microciclo, las sesiones y el parte de la semana.',
+    p:['Tu sesión recuerda el último equipo abierto',
+       'Cada miembro del staff ve solo lo que le toca',
+       'Los datos del club se alojan en la UE'] },
+  code:{ t:'Un paso más y entras',
+    x:'La verificación en dos pasos protege los datos médicos y de rendimiento de la plantilla.',
+    p:['Solo se pide en dispositivos nuevos',
+       'El código caduca a los 10 minutos',
+       'Puedes desactivarla en Ajustes del club'] },
+  space:{ t:'Elige dónde entrar',
+    x:'Una misma cuenta puede trabajar en varios clubes y equipos. Cambias de espacio cuando quieras desde la barra lateral.',
+    p:['Tu perfil profesional es siempre el mismo',
+       'Cada espacio tiene su propio rol y permisos',
+       'El último espacio abierto se recuerda'] },
+  recover:{ t:'Recupera el acceso',
+    x:'Te enviamos un enlace para crear una contraseña nueva. El anterior deja de valer al usarlo.',
+    p:['El enlace caduca a los 30 minutos','Se puede usar una sola vez',
+       'Si no llega, revisa el correo no deseado'] },
+  sent:{ t:'Revisa tu correo',
+    x:'Si ese correo tiene cuenta en PlayLoad, el enlace ya está de camino.',
+    p:['El enlace caduca a los 30 minutos','Se puede usar una sola vez',
+       'Si no llega, revisa el correo no deseado'] },
+  player:{ t:'Acceso de jugador',
+    x:'Sin contraseña y sin instalar nada: el código que te dio el club te abre tu día.',
+    p:['Wellness al despertar, RPE al terminar',
+       'Convocatoria, horario y sesión del día',
+       'Aviso de molestias directo al fisio'] }
+};
+ASIDE.playerOk = ASIDE.player;
+
+const SPACES = [
+  { id:'club',  badge:'CFB', tint:'#9184d9', name:'CF Bellvitge', sub:'Club · 6 equipos',
+    role:'Coordinador', href:'PlayLoad-equipos.html' },
+  { id:'juva',  badge:'JA',  tint:'#84b6d9', name:'Juvenil A', sub:'Sub-19 · División de Honor',
+    role:'Preparador físico', href:'PlayLoad-dashboard.html' },
+  { id:'propio',badge:'FA',  tint:'#9fd984', name:'Mi cuenta profesional', sub:'2 equipos propios',
+    role:'Propietario', href:'PlayLoad-dashboard.html' }
+];
+
+/* ── panel lateral ───────────────────────────────────────────── */
+function renderAside(){
+  const a = ASIDE[S.view] || ASIDE.login;
+  document.getElementById('asideTitle').textContent = a.t;
+  document.getElementById('asideText').textContent  = a.x;
+  document.getElementById('asidePoints').innerHTML =
+    a.p.map(p=>`<li>${TICK}<span>${p}</span></li>`).join('');
+}
+
+/* ── esquina superior ────────────────────────────────────────── */
+function renderTop(){
+  document.getElementById('top').innerHTML =
+    (S.view==='player' || S.view==='playerOk')
+      ? `¿Eres del cuerpo técnico? <a href="#" data-go="login">Entra por aquí</a>`
+      : `¿Todavía no tienes cuenta? <a href="registro.html">Crear cuenta</a>`;
+}
+
+/* ── vistas ──────────────────────────────────────────────────── */
+const GMARK = `<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="11" fill="#fff" stroke="#dadce0"/>
+    <text x="12" y="16.4" text-anchor="middle" font-family="Inter,Arial,sans-serif"
+          font-size="13" font-weight="700" fill="#4285F4">G</text></svg>`;
+
+function vLogin(){
+  const ok = S.email.includes('@') && S.pass.length>0;
+  return `<div class="card">
+    <h1>Entra en PlayLoad</h1>
+    <p class="lead">Con el correo de tu cuenta o con Google.</p>
+
+    ${S.error ? `<div class="alert" style="margin-bottom:18px">${WARN}
+      <div>${S.error} Si no la recuerdas, <a href="#" data-go="recover">crea una nueva</a>.</div></div>` : ''}
+
+    <button class="google" data-google>${GMARK}Continuar con Google</button>
+    <div class="sep">o con tu correo</div>
+
+    <form class="form" data-submit="login">
+      <div class="field">
+        <label for="email">Correo electrónico</label>
+        <input class="input ${S.error?'bad':''}" id="email" type="email" inputmode="email"
+               autocomplete="username" placeholder="tu@club.com" value="${S.email}" autofocus>
+      </div>
+      <div class="field">
+        <label for="pass">Contraseña</label>
+        <div class="pw">
+          <input class="input ${S.error?'bad':''}" id="pass" type="${S.show?'text':'password'}"
+                 autocomplete="current-password" placeholder="Tu contraseña" value="${S.pass}">
+          <button type="button" data-eye aria-label="${S.show?'Ocultar':'Mostrar'} contraseña">
+            ${S.show
+              ? '<svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 2l12 12"/><path d="M6.2 6.3A2.2 2.2 0 0 0 8 10.2M13.8 8s-2.4 3.7-5.8 3.7c-.8 0-1.5-.2-2.2-.5M4.2 4.6C2.9 5.6 2.2 8 2.2 8"/></svg>'
+              : '<svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.6 8S4 4.3 8 4.3 14.4 8 14.4 8 12 11.7 8 11.7 1.6 8 1.6 8z"/><circle cx="8" cy="8" r="1.9"/></svg>'}
+          </button>
+        </div>
+      </div>
+      <div class="rowbetween">
+        <label class="check"><input type="checkbox" id="keep" ${S.keep?'checked':''}>
+          <span class="box">${TICK}</span><span>Mantener la sesión</span></label>
+        <a href="#" data-go="recover" style="font-size:13.5px">¿Has olvidado la contraseña?</a>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" ${ok?'':'disabled'}>Entrar</button>
+    </form>
+
+    <div class="sep" style="margin:24px 0 16px">o si eres jugador</div>
+    <button class="btn btn-secondary btn-block" data-go="player">Entrar con mi código de jugador</button>
+  </div>`;
+}
+
+function vCode(){
+  return `<div class="card">
+    <a class="back" href="#" data-go="login">← Volver</a>
+    <h1>Verifica que eres tú</h1>
+    <p class="lead">Hemos enviado un código de 6 dígitos a <b style="color:var(--color-text);font-weight:400">${S.email}</b>.
+      Caduca en 10 minutos.</p>
+
+    ${S.codeErr ? `<div class="alert" style="margin-bottom:18px">${WARN}
+      <div>Ese código no es correcto o ya ha caducado.</div></div>` : ''}
+
+    <div class="code ${S.codeErr?'bad':''}" data-code>
+      ${S.code.map((c,i)=>`<input inputmode="numeric" maxlength="1" data-i="${i}" value="${c}"
+        aria-label="Dígito ${i+1}" ${i===0?'autofocus':''}>`).join('')}
+    </div>
+
+    <div class="rowbetween" style="margin-top:18px">
+      <span class="hint">${S.resend>0 ? `Puedes reenviarlo en ${S.resend} s` : '¿No te ha llegado?'}</span>
+      ${S.resend>0 ? '' : '<a href="#" data-resend style="font-size:13.5px">Reenviar código</a>'}
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:22px" data-verify
+      ${S.code.every(c=>c!=='')?'':'disabled'}>Verificar y entrar</button>
+
+    <div class="foot-note">¿Perdiste el acceso al correo? <a href="#">Escríbenos</a></div>
+  </div>`;
+}
+
+function vSpace(){
+  return `<div class="card" style="max-width:460px">
+    <h1>¿Dónde quieres entrar?</h1>
+    <p class="lead">Tu cuenta tiene acceso a varios espacios. Podrás cambiar desde la barra lateral en cualquier momento.</p>
+
+    <div class="spaces">
+      ${SPACES.map(s=>`
+        <a class="space" href="${s.href}" style="--tint:${s.tint}">
+          <span class="sp-badge">${s.badge}</span>
+          <span style="flex:1;min-width:0">
+            <span class="sp-name" style="display:block">${s.name}</span>
+            <span class="sp-sub" style="display:block">${s.sub}</span>
+          </span>
+          <span class="sp-role">${s.role}</span>
+          <span style="color:var(--muted-2)">${ARROW}</span>
+        </a>`).join('')}
+    </div>
+
+    <div class="foot-note">¿No es tu cuenta? <a href="#" data-go="login">Cambiar de usuario</a></div>
+  </div>`;
+}
+
+function vRecover(){
+  return `<div class="card">
+    <a class="back" href="#" data-go="login">← Volver al acceso</a>
+    <h1>Recupera el acceso</h1>
+    <p class="lead">Escribe el correo de tu cuenta y te enviamos un enlace para crear una contraseña nueva.</p>
+    <form class="form" data-submit="recover">
+      <div class="field">
+        <label for="rmail">Correo electrónico</label>
+        <input class="input" id="rmail" type="email" inputmode="email" placeholder="tu@club.com"
+               value="${S.email}" autofocus>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" ${S.email.includes('@')?'':'disabled'}>Enviar enlace</button>
+    </form>
+    <div class="foot-note">¿Entras con Google? Entonces no tienes contraseña: usa <a href="#" data-go="login">Continuar con Google</a>.</div>
+  </div>`;
+}
+
+function vSent(){
+  return `<div class="card">
+    <div class="big-ico mail">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+        <rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>
+    </div>
+    <h1>Revisa tu correo</h1>
+    <p class="lead">Si <b style="color:var(--color-text);font-weight:400">${S.email}</b> tiene cuenta en PlayLoad,
+      el enlace para crear una contraseña nueva ya está de camino. Caduca en 30 minutos.</p>
+
+    <div class="rowbetween">
+      <a class="btn btn-secondary" href="#" data-go="login">Volver al acceso</a>
+      ${S.resend>0
+        ? `<span class="hint">Reenviar en ${S.resend} s</span>`
+        : `<a href="#" data-resend style="font-size:13.5px">Reenviar el enlace</a>`}
+    </div>
+  </div>`;
+}
+
+function vPlayer(){
+  const ok = S.playerCode.replace(/\s/g,'').length>=6;
+  return `<div class="card">
+    <a class="back" href="#" data-go="login">← Acceso del cuerpo técnico</a>
+    <h1>Entra con tu código</h1>
+    <p class="lead">El que te dio tu club, de seis caracteres. No necesitas contraseña ni instalar nada.</p>
+    <form class="form" data-submit="player">
+      <div class="field">
+        <label for="pcode">Código de jugador</label>
+        <input class="input" id="pcode" placeholder="BLV-8K2" autocapitalize="characters"
+               style="font-family:var(--font-heading);font-size:19px;letter-spacing:.14em;text-align:center;min-height:54px"
+               value="${S.playerCode}" autofocus>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" ${ok?'':'disabled'}>Entrar</button>
+    </form>
+    <div class="foot-note">¿No lo tienes? Pídeselo a tu preparador físico o al delegado.</div>
+  </div>`;
+}
+
+function vPlayerOk(){
+  return `<div class="card">
+    <div class="big-ico ok">
+      <svg width="26" height="26" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg>
+    </div>
+    <h1>Hola, Marc</h1>
+    <p class="lead">Juvenil A · dorsal 8. Esto es lo que tienes hoy, miércoles 6 de noviembre.</p>
+
+    <div class="todo">
+      <div class="todo-row"><span class="dot" style="background:var(--color-warn)"></span>
+        Wellness de hoy<span class="s">Pendiente</span></div>
+      <div class="todo-row"><span class="dot" style="background:var(--color-ok)"></span>
+        RPE de ayer<span class="s">Enviado · 8</span></div>
+      <div class="todo-row"><span class="dot" style="background:var(--color-accent)"></span>
+        Sesión MD-3<span class="s">18:30 · Campo 2</span></div>
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:22px">Abrir mi día</button>
+    <div class="foot-note">La vista del jugador está pensada para el móvil.</div>
+  </div>`;
+}
+
+/* ── pintado ─────────────────────────────────────────────────── */
+const VIEWS = {login:vLogin, code:vCode, space:vSpace, recover:vRecover, sent:vSent,
+               player:vPlayer, playerOk:vPlayerOk};
+function render(){
+  document.getElementById('view').innerHTML = VIEWS[S.view]();
+  renderAside(); renderTop();
+  document.querySelector('[autofocus]')?.focus();
+}
+
+function go(v){ S.view=v; S.error=null; S.codeErr=false; render(); }
+
+function countdown(sec){
+  clearInterval(S.timer); S.resend=sec;
+  S.timer = setInterval(()=>{
+    S.resend--;
+    if(S.resend<=0){ clearInterval(S.timer); S.timer=null; }
+    if(S.view==='code'||S.view==='sent') render();
+  },1000);
+}
+
+/* ── interacción ─────────────────────────────────────────────── */
+document.addEventListener('click', e => {
+  const g = e.target.closest('[data-go]');
+  if(g){ e.preventDefault(); go(g.dataset.go); return; }
+
+  if(e.target.closest('[data-eye]')){ S.show=!S.show; render();
+    const p=document.getElementById('pass'); p.focus(); p.setSelectionRange(p.value.length,p.value.length); return; }
+
+  /* Google no pide segundo factor: entra directo al selector de espacio */
+  if(e.target.closest('[data-google]')){ S.email = S.email || 'ferran@bellvitge.cat'; go('space'); return; }
+
+  if(e.target.closest('[data-resend]')){ e.preventDefault(); countdown(30); render(); return; }
+
+  if(e.target.closest('[data-verify]')){ verify(); return; }
+});
+
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  const kind = e.target.dataset.submit;
+
+  if(kind==='login'){
+    if(S.pass !== DEMO_PASS){ S.error='Correo o contraseña incorrectos.'; render(); return; }
+    S.error=null; S.view='code'; S.code=['','','','','','']; countdown(30); render(); return;
+  }
+  if(kind==='recover'){ S.view='sent'; countdown(30); render(); return; }
+  if(kind==='player'){ S.view='playerOk'; render(); return; }
+});
+
+document.addEventListener('input', e => {
+  const el = e.target;
+
+  if(el.id==='email' || el.id==='rmail'){ S.email = el.value; toggleSubmit(); return; }
+  if(el.id==='pass'){ S.pass = el.value; toggleSubmit(); return; }
+  if(el.id==='pcode'){ S.playerCode = el.value.toUpperCase(); el.value = S.playerCode; toggleSubmit(); return; }
+
+  const box = el.closest('[data-code] input');
+  if(box){
+    const i = +box.dataset.i;
+    const digits = box.value.replace(/\D/g,'');
+    if(digits.length>1){                       /* pegado de los 6 de golpe */
+      digits.split('').slice(0,6-i).forEach((d,n)=>S.code[i+n]=d);
+      render(); focusCode(Math.min(5,i+digits.length));
+    } else {
+      S.code[i]=digits; box.value=digits;
+      document.querySelector('[data-verify]').disabled = !S.code.every(c=>c!=='');
+      if(digits && i<5) focusCode(i+1);
+      else if(digits && i===5) verify();
+    }
+  }
+});
+
+document.addEventListener('keydown', e => {
+  const box = e.target.closest('[data-code] input');
+  if(!box) return;
+  const i = +box.dataset.i;
+  if(e.key==='Backspace' && !box.value && i>0){ S.code[i-1]=''; focusCode(i-1); }
+  if(e.key==='ArrowLeft' && i>0) focusCode(i-1);
+  if(e.key==='ArrowRight' && i<5) focusCode(i+1);
+});
+
+document.addEventListener('change', e => { if(e.target.id==='keep') S.keep = e.target.checked; });
+
+function focusCode(i){
+  const el = document.querySelector(`[data-code] [data-i="${i}"]`);
+  if(el){ el.focus(); el.select(); }
+}
+
+function toggleSubmit(){
+  const btn = document.querySelector('[type="submit"]');
+  if(!btn) return;
+  btn.disabled = S.view==='login'   ? !(S.email.includes('@') && S.pass.length>0)
+               : S.view==='recover' ? !S.email.includes('@')
+               : S.view==='player'  ? S.playerCode.replace(/\s/g,'').length<6
+               : false;
+}
+
+/* Cualquier código de 6 dígitos vale en el prototipo, salvo 000000,
+   que sirve para enseñar el estado de error. */
+function verify(){
+  const c = S.code.join('');
+  if(c.length<6) return;
+  if(c==='000000'){ S.codeErr=true; S.code=['','','','','','']; render(); focusCode(0); return; }
+  go('space');
+}
+
+/* correo traído desde otra página: acceso.html?email=… */
+const qs = new URLSearchParams(location.search);
+if(qs.get('email')) S.email = qs.get('email');
+if(qs.get('v') && VIEWS[qs.get('v')]) S.view = qs.get('v');
+
+render();
+</script>
+</body>
+</html>
