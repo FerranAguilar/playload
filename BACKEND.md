@@ -106,9 +106,10 @@ mensajes se marcan como spam o se rechazan.
 | `api/app.php` `invitar_staff` | POST | Da acceso a un correo en un equipo del club |
 | `api/app.php` `quitar_staff` | POST | Retira ese acceso |
 
-Las tablas de estas dos últimas llegan con `db/migracion-05-staff.sql`.
-Impórtala desde phpMyAdmin igual que las anteriores; sin ella la pantalla
-del club lo dice y el resto de la aplicación sigue funcionando como antes.
+Las tablas de estas dos últimas llegan con `db/migracion-05-staff.sql`, y
+el plan de las cuentas invitadas con `db/migracion-06-plan-staff.sql`.
+Impórtalas desde phpMyAdmin igual que las anteriores; sin la 05 la
+pantalla del club lo dice y el resto de la aplicación sigue como antes.
 
 ## Clubes, staff y licencias
 
@@ -135,6 +136,23 @@ Las dos reglas que sostienen el negocio:
 - **Los equipos de un club no le cuentan al entrenador.** `team_count()`
   mira `owner_user_id`, no `team_staff`: quien entrena tres categorías de
   un club y además quiere la suya propia solo paga por la suya.
+
+### Cómo entra alguien a quien un club ha dado una plaza
+
+No se le manda ningún enlace. Va a `registro.html` y crea la cuenta con
+**ese mismo correo**; la plaza que le espera en `team_staff` le sirve de
+permiso de alta aunque el registro esté cerrado y aunque no esté en
+`allowed_emails` (lo resuelve `check_signup_allowed()`).
+
+Esa cuenta nace con el plan **`staff`**, que permite **cero equipos
+propios**: lo que le han dado es acceso a los del club, no una licencia.
+Si algún día quiere los suyos, paga un plan normal y los del club siguen
+sin contarle.
+
+Es distinto de la lista de pruebas cerradas: `allowed_emails` la lleva el
+administrador desde `admin.html` y también es solo un permiso, no un
+correo que se envíe — quien lo esté se registra normal y hereda el `plan`
+de su fila.
 
 Quién puede qué en un equipo lo decide `acceso_equipo()`, que devuelve
 tres niveles. El orden importa: **el club se mira antes que la

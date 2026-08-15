@@ -308,12 +308,18 @@ switch ($action) {
         if ($limits['teams'] !== null && $usados >= $limits['teams']) {
             json_out([
                 'ok'    => false,
-                'error' => sprintf(
-                    'Tu plan %s permite %d equipo%s y ya %s. Cambia de plan para añadir más.',
-                    $limits['name'], $limits['teams'],
-                    $limits['teams'] === 1 ? '' : 's',
-                    $limits['teams'] === 1 ? 'tienes uno' : 'los tienes todos'
-                ),
+                // Con cero equipos la frase de siempre quedaba absurda
+                // («permite 0 equipos y ya los tienes todos»), y encima
+                // se callaba lo único que esa persona necesita saber.
+                'error' => $limits['teams'] === 0
+                    ? 'Tu acceso viene de un club: puedes trabajar en sus equipos, pero para '
+                    . 'crear los tuyos necesitas una licencia propia. Los del club no te contarían.'
+                    : sprintf(
+                        'Tu plan %s permite %d equipo%s y ya %s. Cambia de plan para añadir más.',
+                        $limits['name'], $limits['teams'],
+                        $limits['teams'] === 1 ? '' : 's',
+                        $limits['teams'] === 1 ? 'tienes uno' : 'los tienes todos'
+                    ),
                 'limite' => 'equipos',
             ], 409);
         }

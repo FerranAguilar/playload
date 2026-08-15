@@ -210,6 +210,15 @@ function plan_limits(string $plan): array
     $row = $st->fetch();
 
     if (!$row) {
+        // 'staff' se define también aquí a propósito. El caso de abajo no
+        // pone techo, y para este plan eso sería justo lo contrario de lo
+        // que significa: quien importe la 05 y se salte la 06 acabaría
+        // regalando equipos propios ilimitados a las cuentas invitadas.
+        if ($plan === 'staff') {
+            return ['plan' => 'staff', 'name' => 'Staff de club',
+                    'teams' => 0, 'players' => 30, 'staff' => 0];
+        }
+
         // Plan desconocido: se trata como tester para no bloquear a nadie
         // por un dato mal escrito en la base.
         return ['plan' => $plan, 'name' => $plan, 'teams' => null, 'players' => null, 'staff' => null];
@@ -285,10 +294,38 @@ function registration_open(): bool
 function check_signup_allowed(string $email): ?array
 {
     $inv = invitation_for($email);
-    if (!$inv && !registration_open()) {
+    if ($inv) {
+        return $inv;
+    }
+
+    // Un club ya ha reservado una plaza para este correo, y la paga. Eso
+    // es permiso de alta por sí solo: sin esto, el club podía repartir su
+    // cuerpo técnico y esa gente se topaba con «pruebas cerradas» al ir a
+    // registrarse, con la plaza esperando a alguien que no podía entrar.
+    //
+    // Nace con el plan 'staff': lo que le han dado es acceso a los
+    // equipos del club, no una licencia para tener los suyos.
+    if (staff_seat_for($email)) {
+        return ['plan' => 'staff'];
+    }
+
+    if (!registration_open()) {
         fail_not_invited();
     }
-    return $inv;
+    return null;
+}
+
+/** ¿Hay alguna plaza de staff reservada a este correo? */
+function staff_seat_for(string $email): bool
+{
+    try {
+        $st = db()->prepare('SELECT id FROM team_staff WHERE email = ? LIMIT 1');
+        $st->execute([mb_strtolower($email)]);
+        return (bool) $st->fetch();
+    } catch (Throwable $e) {
+        // Sin la migración 05 no hay plazas que valgan.
+        return false;
+    }
 }
 
 /**
