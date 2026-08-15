@@ -24,20 +24,48 @@ switch ($action) {
 
     // ── Estado general ─────────────────────────────────────────────
     case 'estado':
+        // Lo primero, atar lo que el club dejó invitado a este correo:
+        // si no, la persona entraría y no vería sus equipos.
+        vincular_staff($userId, (string) $user['email']);
+
         $club = db()->prepare('SELECT id, name, city FROM clubs WHERE owner_user_id = ? LIMIT 1');
         $club->execute([$userId]);
         $club = $club->fetch() ?: null;
 
         $st = db()->prepare(
-            'SELECT t.id, t.name, t.category, t.modality, t.formation, t.tint, t.club_id,
-                    (SELECT COUNT(*) FROM players p WHERE p.team_id = t.id AND p.active = 1) AS players
+            "SELECT t.id, t.name, t.category, t.modality, t.formation, t.tint, t.club_id,
+                    (SELECT COUNT(*) FROM players p WHERE p.team_id = t.id AND p.active = 1) AS players,
+                    -- Mismo orden que acceso_equipo(): el club manda sobre
+                    -- la propiedad, porque los equipos del club los creó él.
+                    CASE WHEN c.owner_user_id = ? THEN 'club'
+                         WHEN t.owner_user_id = ? THEN 'propietario'
+                         ELSE 'staff' END AS acceso
                FROM teams t
+               LEFT JOIN clubs c ON c.id = t.club_id
               WHERE t.owner_user_id = ?
-                 OR t.club_id IN (SELECT id FROM clubs WHERE owner_user_id = ?)
-              ORDER BY t.id'
+                 OR c.owner_user_id = ?
+                 OR t.id IN (SELECT team_id FROM team_staff
+                              WHERE user_id = ? AND status = 'activo')
+              ORDER BY t.id"
         );
-        $st->execute([$userId, $userId]);
-        $teams = $st->fetchAll();
+
+        try {
+            $st->execute([$userId, $userId, $userId, $userId, $userId]);
+            $teams = $st->fetchAll();
+        } catch (Throwable $e) {
+            // Sin migración 05: la lista de siempre, sin equipos de staff.
+            $st = db()->prepare(
+                "SELECT t.id, t.name, t.category, t.modality, t.formation, t.tint, t.club_id,
+                        (SELECT COUNT(*) FROM players p WHERE p.team_id = t.id AND p.active = 1) AS players,
+                        CASE WHEN t.owner_user_id = ? THEN 'propietario' ELSE 'club' END AS acceso
+                   FROM teams t
+                  WHERE t.owner_user_id = ?
+                     OR t.club_id IN (SELECT id FROM clubs WHERE owner_user_id = ?)
+                  ORDER BY t.id"
+            );
+            $st->execute([$userId, $userId, $userId]);
+            $teams = $st->fetchAll();
+        }
 
         foreach ($teams as &$t) {
             $t['id']      = (int) $t['id'];
@@ -66,8 +94,13 @@ switch ($action) {
                 'max_equipos'   => $limits['teams'],
                 'max_jugadores' => $limits['players'],
                 'max_staff'     => $limits['staff'],
-                'equipos_usados' => count($teams),
-                'puede_crear_equipo' => $limits['teams'] === null || count($teams) < $limits['teams'],
+                // Los equipos que gastan licencia son los suyos, no los que
+                // le ha dado un club: por eso se cuenta con team_count() y
+                // no con el tamaño de la lista de arriba.
+                'equipos_usados' => team_count($userId),
+                'puede_crear_equipo' => $limits['teams'] === null
+                    || team_count($userId) < $limits['teams'],
+                'licencias_staff' => $club ? staff_count((int) $club['id']) : 0,
             ],
             'club'  => $club,
             'teams' => $teams,
@@ -107,6 +140,162 @@ switch ($action) {
                 'nombre'        => $limits['name'],
             ],
         ]);
+
+    // ── Panel del club: equipos con su staff ───────────────────────
+    case 'club':
+        $club = mi_club($userId);
+        if (!$club) {
+            fail('Esta cuenta no lleva ningún club.', 403);
+        }
+        $clubId = (int) $club['id'];
+
+        $st = db()->prepare(
+            'SELECT t.id, t.name, t.category, t.modality, t.tint,
+                    (SELECT COUNT(*) FROM players p WHERE p.team_id = t.id AND p.active = 1) AS players
+               FROM teams t WHERE t.club_id = ? ORDER BY t.name, t.id'
+        );
+        $st->execute([$clubId]);
+        $teams = $st->fetchAll();
+
+        $porEquipo = [];
+        try {
+            $s = db()->prepare(
+                'SELECT s.id, s.team_id, s.email, s.name, s.role, s.status, s.invited_at,
+                        u.name AS user_name
+                   FROM team_staff s
+                   LEFT JOIN users u ON u.id = s.user_id
+                  WHERE s.club_id = ? ORDER BY s.invited_at'
+            );
+            $s->execute([$clubId]);
+            foreach ($s->fetchAll() as $row) {
+                $row['id']      = (int) $row['id'];
+                $row['team_id'] = (int) $row['team_id'];
+                // El nombre de la cuenta manda sobre el que escribió el
+                // club: si la persona ya entró, es como se llama de verdad.
+                $row['name'] = $row['user_name'] ?: $row['name'];
+                unset($row['user_name']);
+                $porEquipo[$row['team_id']][] = $row;
+            }
+        } catch (Throwable $e) {
+            fail('Falta la migración 05: importa db/migracion-05-staff.sql.', 500);
+        }
+
+        $personas = [];
+        foreach ($teams as &$t) {
+            $t['id']      = (int) $t['id'];
+            $t['players'] = (int) $t['players'];
+            $t['staff']   = $porEquipo[$t['id']] ?? [];
+            foreach ($t['staff'] as $m) {
+                $personas[$m['email']] = true;
+            }
+        }
+        unset($t);
+
+        $usadas = staff_count($clubId);
+
+        json_out([
+            'ok'    => true,
+            'club'  => $club,
+            'teams' => $teams,
+            'resumen' => [
+                'equipos'   => count($teams),
+                'personas'  => count($personas),
+                'jugadores' => array_sum(array_column($teams, 'players')),
+            ],
+            'licencia' => [
+                'nombre'      => $limits['name'],
+                'hasta'       => $user['plan_until'],
+                'max_staff'   => $limits['staff'],
+                'usadas'      => $usadas,
+                'puede_mas'   => $limits['staff'] === null || $usadas < $limits['staff'],
+                'max_equipos' => $limits['teams'],
+            ],
+        ]);
+
+    // ── Dar acceso a alguien, por correo ───────────────────────────
+    case 'invitar_staff':
+        $club = mi_club($userId);
+        if (!$club) {
+            fail('Solo una cuenta de club reparte accesos.', 403);
+        }
+        $clubId = (int) $club['id'];
+        $teamId = (int) (body()['team_id'] ?? 0);
+
+        $t = db()->prepare('SELECT id FROM teams WHERE id = ? AND club_id = ?');
+        $t->execute([$teamId, $clubId]);
+        if (!$t->fetch()) {
+            fail('Ese equipo no es de tu club.', 403);
+        }
+
+        $email = strtolower(param('email'));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            fail('Escribe un correo válido.');
+        }
+
+        // El límite se mira antes de insertar, y cuenta parejas
+        // persona-equipo: es lo que el club paga.
+        $usadas = staff_count($clubId);
+        if ($limits['staff'] !== null && $usadas >= $limits['staff']) {
+            json_out([
+                'ok'    => false,
+                'error' => sprintf(
+                    'Tu plan %s incluye %d licencias de staff y ya están todas dadas. '
+                  . 'Quita a alguien de un equipo o cambia de plan.',
+                    $limits['name'], $limits['staff']
+                ),
+                'limite' => 'staff',
+            ], 409);
+        }
+
+        // Si esa persona ya tiene cuenta, entra activa y ve el equipo en
+        // cuanto recargue. Si no, la fila espera a que se dé de alta.
+        $u = db()->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
+        $u->execute([$email]);
+        $existente = $u->fetch();
+
+        try {
+            $ins = db()->prepare(
+                'INSERT INTO team_staff (club_id, team_id, email, user_id, name, role, status, linked_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $ins->execute([
+                $clubId, $teamId, $email,
+                $existente ? (int) $existente['id'] : null,
+                param('name'),
+                param('role', 'Entrenador'),
+                $existente ? 'activo' : 'invitado',
+                $existente ? date('Y-m-d H:i:s') : null,
+            ]);
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23000') {
+                fail('Esa persona ya está en este equipo.', 409);
+            }
+            throw $e;
+        }
+
+        json_out([
+            'ok' => true,
+            'id' => (int) db()->lastInsertId(),
+            // No se llama `status` a propósito: el navegador mete ahí el
+            // código HTTP y una clave repetida se pisaría sola.
+            'estado' => $existente ? 'activo' : 'invitado',
+        ], 201);
+
+    // ── Quitar a alguien de un equipo ──────────────────────────────
+    case 'quitar_staff':
+        $club = mi_club($userId);
+        if (!$club) {
+            fail('Solo una cuenta de club reparte accesos.', 403);
+        }
+
+        $id = (int) (body()['staff_id'] ?? 0);
+        $del = db()->prepare('DELETE FROM team_staff WHERE id = ? AND club_id = ?');
+        $del->execute([$id, (int) $club['id']]);
+
+        if (!$del->rowCount()) {
+            fail('Ese acceso no existe o no es de tu club.', 404);
+        }
+        json_out(['ok' => true]);
 
     // ── Crear equipo ───────────────────────────────────────────────
     case 'crear_equipo':
@@ -159,9 +348,8 @@ switch ($action) {
             fail('El jugador necesita un nombre.');
         }
 
-        if (!es_mi_equipo($teamId, $userId)) {
-            fail('Ese equipo no es tuyo.', 403);
-        }
+        // La plantilla la lleva el club; el staff del equipo planifica.
+        exige_acceso($teamId, $userId, ['propietario', 'club']);
 
         $c = db()->prepare('SELECT COUNT(*) AS n FROM players WHERE team_id = ? AND active = 1');
         $c->execute([$teamId]);
@@ -209,9 +397,7 @@ switch ($action) {
         if ($name === '') {
             fail('El equipo necesita un nombre.');
         }
-        if (!es_mi_equipo($teamId, $userId)) {
-            fail('Ese equipo no es tuyo.', 403);
-        }
+        exige_acceso($teamId, $userId, ['propietario', 'club']);
 
         $form = param('formation', '1-4-3-3');
         if (!preg_match('/^\d(-\d{1,2}){2,3}$/', $form)) {
@@ -270,9 +456,8 @@ switch ($action) {
     // ── Crear sesión ───────────────────────────────────────────────
     case 'crear_sesion':
         $teamId = (int) (body()['team_id'] ?? 0);
-        if (!es_mi_equipo($teamId, $userId)) {
-            fail('Ese equipo no es tuyo.', 403);
-        }
+        // Planificar es del staff del equipo. El club lo ve, no lo toca.
+        exige_acceso($teamId, $userId, ['propietario', 'staff']);
 
         $date = param('date');
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
@@ -314,9 +499,10 @@ switch ($action) {
         $st->execute([$id]);
         $ses = $st->fetch();
 
-        if (!$ses || !es_mi_equipo((int) $ses['team_id'], $userId)) {
+        if (!$ses) {
             fail('Esa sesión no es tuya.', 403);
         }
+        exige_acceso((int) $ses['team_id'], $userId, ['propietario', 'staff']);
 
         $rpe = (float) str_replace(',', '.', (string) (body()['actual_rpe'] ?? 0));
         if ($rpe < 1 || $rpe > 10) {
@@ -553,7 +739,82 @@ switch ($action) {
 
 
 /** ¿Este equipo es de esta cuenta, directamente o por su club? */
-function es_mi_equipo(int $teamId, int $userId): bool
+/**
+ * Qué es esta cuenta para este equipo. Tres caminos, y el orden importa
+ * porque una misma persona puede cumplir varios:
+ *
+ *   'propietario' → lo creó ella; puede todo
+ *   'club'        → es del club del que es dueña; gestiona el equipo y
+ *                   la plantilla, y lo deportivo solo lo lee
+ *   'staff'       → el club le dio acceso por correo; lo deportivo
+ *                   entero, pero no toca el equipo ni la plantilla
+ *
+ * null = no tiene nada que hacer aquí.
+ */
+function acceso_equipo(int $teamId, int $userId): ?string
+{
+    try {
+        $st = db()->prepare(
+            "SELECT t.owner_user_id, c.owner_user_id AS club_owner, s.id AS staff_id
+               FROM teams t
+               LEFT JOIN clubs c ON c.id = t.club_id
+               LEFT JOIN team_staff s
+                      ON s.team_id = t.id AND s.user_id = ? AND s.status = 'activo'
+              WHERE t.id = ?"
+        );
+        $st->execute([$userId, $teamId]);
+        $r = $st->fetch();
+    } catch (Throwable $e) {
+        // Sin la migración 05 no existe `team_staff`. Antes que dejar la
+        // aplicación entera sin acceso a ningún equipo, se cae al modelo
+        // viejo: propietario y dueño del club.
+        return es_mi_equipo_legacy($teamId, $userId) ? 'propietario' : null;
+    }
+
+    if (!$r) {
+        return null;
+    }
+
+    // El club va PRIMERO, y no es un detalle: los equipos que crea una
+    // cuenta de club quedan con su `owner_user_id`, así que mirar la
+    // propiedad antes la haría 'propietario' y podría planificar. Quien
+    // lleva el club gestiona y mira; entrenar es de otro.
+    if ($r['club_owner'] !== null && (int) $r['club_owner'] === $userId) {
+        return 'club';
+    }
+    if ((int) $r['owner_user_id'] === $userId) {
+        return 'propietario';
+    }
+    if ($r['staff_id'] !== null) {
+        return 'staff';
+    }
+    return null;
+}
+
+/**
+ * Licencias de staff gastadas por un club. Cuenta parejas persona-equipo:
+ * quien lleva tres categorías gasta tres. Es lo que se cobra.
+ */
+function staff_count(int $clubId): int
+{
+    try {
+        $st = db()->prepare('SELECT COUNT(*) AS n FROM team_staff WHERE club_id = ?');
+        $st->execute([$clubId]);
+        return (int) ($st->fetch()['n'] ?? 0);
+    } catch (Throwable $e) {
+        return 0;
+    }
+}
+
+/** El club del que es dueña esta cuenta, o null si no tiene. */
+function mi_club(int $userId): ?array
+{
+    $st = db()->prepare('SELECT id, name, city FROM clubs WHERE owner_user_id = ? LIMIT 1');
+    $st->execute([$userId]);
+    return $st->fetch() ?: null;
+}
+
+function es_mi_equipo_legacy(int $teamId, int $userId): bool
 {
     $st = db()->prepare(
         'SELECT id FROM teams
@@ -562,4 +823,48 @@ function es_mi_equipo(int $teamId, int $userId): bool
     );
     $st->execute([$teamId, $userId, $userId]);
     return (bool) $st->fetch();
+}
+
+function es_mi_equipo(int $teamId, int $userId): bool
+{
+    return acceso_equipo($teamId, $userId) !== null;
+}
+
+/**
+ * Corta la petición si la cuenta no tiene el nivel que hace falta. El
+ * mensaje distingue «no es tuyo» de «sí es tuyo, pero eso no te toca»:
+ * son dos errores distintos y el segundo se arregla pidiéndoselo a otro.
+ */
+function exige_acceso(int $teamId, int $userId, array $niveles): string
+{
+    $a = acceso_equipo($teamId, $userId);
+
+    if ($a === null) {
+        fail('Ese equipo no es tuyo.', 403);
+    }
+    if (!in_array($a, $niveles, true)) {
+        fail($a === 'club'
+            ? 'La cuenta del club no planifica: eso lo hace el staff del equipo.'
+            : 'Esto lo lleva el club, no el staff del equipo.', 403);
+    }
+    return $a;
+}
+
+/**
+ * Ata las invitaciones pendientes a la cuenta que acaba de entrar. El
+ * club invita a un correo, no a una cuenta: hasta que alguien entra con
+ * ese correo, la fila no sabe a quién pertenece.
+ */
+function vincular_staff(int $userId, string $email): void
+{
+    try {
+        $up = db()->prepare(
+            "UPDATE team_staff
+                SET user_id = ?, status = 'activo', linked_at = NOW()
+              WHERE email = ? AND user_id IS NULL"
+        );
+        $up->execute([$userId, $email]);
+    } catch (Throwable $e) {
+        // Sin migración 05 no hay nada que vincular.
+    }
 }

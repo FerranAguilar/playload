@@ -81,6 +81,18 @@ try {
         $m->execute([$userId, $role !== '' ? $role : 'Propietario']);
     }
 
+    // Si un club ya había dado acceso a este correo, la cuenta nace con
+    // esos equipos dentro en vez de con la pantalla vacía.
+    try {
+        $s = $pdo->prepare(
+            "UPDATE team_staff SET user_id = ?, status = 'activo', linked_at = NOW()
+              WHERE email = ? AND user_id IS NULL"
+        );
+        $s->execute([$userId, $email]);
+    } catch (Throwable $e) {
+        // Sin la migración 05 no hay invitaciones que atar.
+    }
+
     $pdo->commit();
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {

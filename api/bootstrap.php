@@ -226,7 +226,15 @@ function plan_limits(string $plan): array
     ];
 }
 
-/** Equipos que ya tiene una cuenta, contando los de su club. */
+/**
+ * Equipos que le gastan licencia a una cuenta: los que ha creado ella y
+ * los de su propio club.
+ *
+ * Los equipos que un club le ha dado como staff NO entran, y por eso la
+ * consulta mira `owner_user_id` y no `team_staff`: quien entrena tres
+ * categorías de un club y quiere además la suya propia solo paga por la
+ * suya. Es la regla que hace que merezca la pena repartir staff.
+ */
 function team_count(int $userId): int
 {
     $st = db()->prepare(
@@ -350,7 +358,7 @@ function spaces_for(int $userId): array
                 'sub'   => 'Club · ' . (int) $r['club_teams'] . ' equipos',
                 'role'  => $r['role'],
                 'tint'  => '#9184d9',
-                'href'  => 'PlayLoad-equipos.html',
+                'href'  => 'PlayLoad-club.html',
                 'badge' => initials($r['club_name'] ?? ''),
             ];
         } elseif ($r['scope_type'] === 'team') {

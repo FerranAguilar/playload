@@ -102,6 +102,50 @@ mensajes se marcan como spam o se rechazan.
 | `api/me.php` | GET | Quién ha iniciado sesión; reanuda «mantener la sesión» |
 | `api/logout.php` | POST | Cierra la sesión |
 | `api/player_login.php` | POST | Acceso del jugador con el código del club |
+| `api/app.php?action=club` | GET | Equipos del club con su staff y las licencias gastadas |
+| `api/app.php` `invitar_staff` | POST | Da acceso a un correo en un equipo del club |
+| `api/app.php` `quitar_staff` | POST | Retira ese acceso |
+
+Las tablas de estas dos últimas llegan con `db/migracion-05-staff.sql`.
+Impórtala desde phpMyAdmin igual que las anteriores; sin ella la pantalla
+del club lo dice y el resto de la aplicación sigue funcionando como antes.
+
+## Clubes, staff y licencias
+
+Hay dos formas de usar PlayLoad y no se parecen.
+
+Una **cuenta profesional** lleva sus equipos: los crea, sube la plantilla
+y planifica. Cada equipo suyo le gasta una licencia de su plan.
+
+Una **cuenta de club** no entrena. Crea los equipos del club, sube las
+plantillas y reparte el acceso: escribe el correo de un entrenador y lo
+mete en un equipo. Ese correo **no necesita tener cuenta**; la fila queda
+en `team_staff` con `status = 'invitado'` y se ata sola (`user_id`,
+`status = 'activo'`) la primera vez que alguien entra con él, ya sea
+dándose de alta o abriendo la aplicación.
+
+Quien recibe el acceso **entra con todas las funciones**, pero solo en
+los equipos que el club le ha dado.
+
+Las dos reglas que sostienen el negocio:
+
+- **El club paga por pareja persona-equipo.** Quien lleva tres
+  categorías gasta tres licencias del plan del club. Se cuenta en
+  `staff_count()` y el límite sale de la columna `staff` de `plans`.
+- **Los equipos de un club no le cuentan al entrenador.** `team_count()`
+  mira `owner_user_id`, no `team_staff`: quien entrena tres categorías de
+  un club y además quiere la suya propia solo paga por la suya.
+
+Quién puede qué en un equipo lo decide `acceso_equipo()`, que devuelve
+tres niveles. El orden importa: **el club se mira antes que la
+propiedad**, porque los equipos que crea una cuenta de club quedan a su
+nombre y si no se haría pasar por propietaria.
+
+| Nivel | Quién es | Equipo y plantilla | Calendario y carga |
+|---|---|---|---|
+| `club` | dueño del club al que pertenece el equipo | escribe | **solo lee** |
+| `propietario` | creó el equipo por su cuenta | escribe | escribe |
+| `staff` | el club le dio el acceso | solo lee | escribe |
 
 ## Decisiones de seguridad
 
