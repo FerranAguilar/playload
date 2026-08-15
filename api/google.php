@@ -83,10 +83,7 @@ if (!$user) {
     } else {
         // Cuenta nueva: durante las pruebas cerradas hace falta invitación.
         // Quien ya tenga cuenta sigue entrando con normalidad.
-        $invitacion = invitation_for($email);
-        if (!$invitacion) {
-            fail_not_invited();
-        }
+        $invitacion = check_signup_allowed($email);
 
         $type = body()['account_type'] ?? 'pro';
         $type = in_array($type, ['pro', 'club'], true) ? $type : 'pro';
@@ -96,7 +93,7 @@ if (!$user) {
                                 avatar_url, email_verified, plan)
              VALUES (?, NULL, ?, ?, ?, ?, 1, ?)'
         );
-        $ins->execute([$email, $name, $type, $sub, $picture, $invitacion['plan'] ?: 'tester']);
+        $ins->execute([$email, $name, $type, $sub, $picture, $invitacion['plan'] ?? 'tester']);
         $newId = (int) $pdo->lastInsertId();
         mark_invitation_used($email);
 

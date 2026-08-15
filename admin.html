@@ -127,6 +127,16 @@ select.input{appearance:none;padding-right:28px;
 .gate{max-width:420px;margin:14vh auto;text-align:center;display:flex;flex-direction:column;
   align-items:center;gap:16px;padding:0 20px}
 
+/* — interruptor — */
+.sw{width:42px;height:24px;border-radius:20px;background:var(--color-neutral-800);position:relative;
+  flex:none;transition:background .18s ease}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:var(--muted);transition:transform .18s ease,background .18s ease}
+.sw.on{background:color-mix(in srgb,var(--color-accent) 62%,transparent)}
+.sw.on::after{transform:translateX(18px);background:var(--color-accent-100)}
+.swrow{display:flex;align-items:flex-start;gap:14px;padding:14px 0}
+.swrow+.swrow{border-top:1px solid color-mix(in srgb,var(--color-text) 11%,transparent)}
+
 @media (max-width:900px){
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stat:nth-child(3),.stat:nth-child(4){border-top:1px solid var(--line)}
@@ -190,6 +200,19 @@ function gate(msg, link){
     </div>`;
 }
 
+/* fila con interruptor: título, explicación y el estado actual */
+function sw(clave, on, titulo, explica){
+  return `<div class="swrow">
+    <button class="sw ${on?'on':''}" data-ajuste="${clave}" role="switch" aria-checked="${on}"
+            aria-label="${titulo}"></button>
+    <div>
+      <div style="font-size:14.5px">${titulo}</div>
+      <div class="sub" style="margin-top:3px">${explica}</div>
+    </div>
+    <span class="tag ${on?'tag-ok':'tag-warn'}" style="margin-left:auto">${on?'Activado':'Desactivado'}</span>
+  </div>`;
+}
+
 /* ── pantalla principal ──────────────────────────────────────────── */
 function render(){
   const r = D.resumen;
@@ -219,6 +242,67 @@ function render(){
         <div class="stat"><span class="eyebrow">Cuentas creadas</span><b class="num">${r.cuentas}</b></div>
         <div class="stat"><span class="eyebrow">Activas</span>
           <b class="num" style="color:var(--color-ok)">${r.activas}</b></div>
+      </section>
+
+      <!-- ── interruptores ── -->
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Registro y precios</h2>
+            <p>Lo que ve cualquiera que entre en la web pública.</p></div>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:2px">
+          ${sw('registro_abierto', D.ajustes.registro_abierto,
+               'Registro abierto a cualquiera',
+               D.ajustes.registro_abierto
+                 ? 'Cualquiera puede crear cuenta desde registro.html.'
+                 : 'Solo pueden crear cuenta los correos de la lista de abajo.')}
+          ${sw('precios_publicos', D.ajustes.precios_publicos,
+               'Mostrar los precios en la web',
+               D.ajustes.precios_publicos
+                 ? 'Las tarifas de abajo se ven en precios.html.'
+                 : 'La página de precios dice «Por determinar» y no envía los importes al navegador.')}
+        </div>
+      </section>
+
+      <!-- ── tarifas ── -->
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Tarifas</h2>
+            <p>Deja un importe vacío para que ese plan siga en «Por determinar».
+               Desactivar un plan lo retira de la web y de las invitaciones nuevas.</p></div>
+        </div>
+        <table class="table">
+          <thead><tr><th>Plan</th><th>Límites</th>
+            <th style="text-align:right">€ / mes</th><th style="text-align:right">€ / año</th>
+            <th style="text-align:center">Se ofrece</th><th></th></tr></thead>
+          <tbody>${D.tarifas.map(t => `
+            <tr data-plan-id="${t.id}">
+              <td>
+                <div class="mail">${esc(t.name)} ${t.best ? '<span class="tag tag-accent" style="margin-left:4px">destacado</span>' : ''}</div>
+                <div class="sub">${t.track === 'club' ? 'Club' : 'Profesional'} · ${esc(t.id)}</div>
+              </td>
+              <td style="color:var(--muted)">
+                ${t.teams === '∞' ? 'Equipos ilimitados'
+                                  : t.teams + (t.teams === '1' ? ' equipo' : ' equipos')} ·
+                ${t.players === '∞' ? 'jugadores ilimitados' : t.players + ' jugadores'}
+                <div class="sub">${esc(t.staff)}</div>
+              </td>
+              <td style="text-align:right">
+                <input class="input" data-m inputmode="decimal" placeholder="—"
+                       style="width:96px;text-align:right;min-height:34px"
+                       value="${t.price_m ?? ''}"></td>
+              <td style="text-align:right">
+                <input class="input" data-y inputmode="decimal" placeholder="—"
+                       style="width:96px;text-align:right;min-height:34px"
+                       value="${t.price_y ?? ''}"></td>
+              <td style="text-align:center">
+                <button class="sw ${+t.active ? 'on' : ''}" data-activo
+                        role="switch" aria-checked="${!!+t.active}"
+                        aria-label="Se ofrece"></button></td>
+              <td><button class="btn btn-secondary btn-sm" data-tarifa>Guardar</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
       </section>
 
       <!-- ── invitar ── -->
@@ -320,6 +404,60 @@ document.addEventListener('click', async e => {
   if(e.target.closest('[data-logout]')){
     await fetch(API + 'logout.php', {method:'POST', credentials:'same-origin'});
     location.href = 'acceso.html';
+    return;
+  }
+
+  /* interruptores generales */
+  const aj = e.target.closest('[data-ajuste]');
+  if(aj){
+    const clave = aj.dataset.ajuste;
+    const valor = !aj.classList.contains('on');
+
+    if(clave === 'registro_abierto' && valor &&
+       !confirm('Vas a abrir el registro a cualquiera.\n\nDejará de hacer falta invitación para crear cuenta. ¿Seguimos?')) return;
+
+    aj.classList.toggle('on', valor);          /* respuesta inmediata */
+    const r = await call({action:'ajuste', clave, valor});
+    if(r.ok){
+      toast(valor ? 'Activado' : 'Desactivado', 'good');
+      await load();
+    } else {
+      aj.classList.toggle('on', !valor);
+      toast(r.error || 'No se ha podido guardar.', 'bad');
+    }
+    return;
+  }
+
+  /* interruptor de «se ofrece» dentro de la fila de tarifa */
+  const act = e.target.closest('[data-activo]');
+  if(act){
+    const on = !act.classList.contains('on');
+    act.classList.toggle('on', on);
+    act.setAttribute('aria-checked', String(on));
+    return;                                     /* se guarda con el botón */
+  }
+
+  /* guardar tarifa */
+  const tf = e.target.closest('[data-tarifa]');
+  if(tf){
+    const fila = tf.closest('tr');
+    const m = fila.querySelector('[data-m]').value.trim();
+    const y = fila.querySelector('[data-y]').value.trim();
+    const activo = fila.querySelector('[data-activo]').classList.contains('on');
+
+    const num = v => v === '' || /^\d+([.,]\d{1,2})?$/.test(v);
+    if(!num(m) || !num(y)){
+      toast('Los importes solo admiten números, con dos decimales como mucho.', 'bad');
+      return;
+    }
+
+    tf.disabled = true;
+    const r = await call({action:'tarifa', id:fila.dataset.planId,
+                          price_m:m, price_y:y, active:activo});
+    tf.disabled = false;
+
+    if(r.ok){ toast('Tarifa guardada', 'good'); await load(); }
+    else toast(r.error || 'No se ha podido guardar.', 'bad');
     return;
   }
 

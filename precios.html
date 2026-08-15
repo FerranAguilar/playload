@@ -376,12 +376,41 @@ const PLANES = {
 
 const TICK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg>';
 
-/* Mientras esté en false, las tarjetas dicen «Por determinar» y no se
-   enseña el selector mensual/anual. Los importes de PLANES se ignoran. */
-const PRECIOS_PUBLICOS = false;
+/* Los planes y los precios los manda el servidor (api/plans.php), que a
+   su vez los saca de la tabla `plans`: se cambian desde el panel de
+   administración, no tocando este archivo. Lo de arriba queda como
+   respaldo para cuando la página se abre sin servidor. */
+const API  = 'api/';
+const DEMO = !/^https?:$/.test(location.protocol);
 
+let PRECIOS_PUBLICOS = false;
 let track = 'pro';
 let anual = false;
+
+async function cargarPlanes(){
+  if(DEMO) return;
+  try{
+    const r = await fetch(API + 'plans.php', {credentials:'same-origin'});
+    if(!r.ok) return;
+    const d = await r.json();
+    if(!d.ok) return;
+
+    PRECIOS_PUBLICOS = !!d.precios_publicos;
+
+    for(const via of ['pro','club']){
+      if(Array.isArray(d.planes[via]) && d.planes[via].length){
+        PLANES[via] = d.planes[via].map(p => ({
+          id:p.id, name:p.name, best:p.best, tag:p.tag,
+          m:p.m, y:p.y,
+          teams:p.teams, players:p.players, staff:p.staff,
+          teamsLabel:  p.teams === '∞' ? 'equipos ilimitados' : 'equipos',
+          playersLabel:p.players === '∞' ? 'jugadores ilimitados' : 'jugadores por equipo',
+          feats:p.feats
+        }));
+      }
+    }
+  }catch(e){ /* sin servidor se usan los de respaldo */ }
+}
 
 const euros = n => n.toLocaleString('es-ES');
 
@@ -392,8 +421,8 @@ function renderPlans(){
   box.style.setProperty('--cols', list.length);
 
   box.innerHTML = list.map(p => {
-    const precio = anual ? Math.round(p.y / 12) : p.m;
-    const bloquePrecio = PRECIOS_PUBLICOS
+    const precio = anual ? Math.round((p.y || 0) / 12) : p.m;
+    const bloquePrecio = (PRECIOS_PUBLICOS && p.m != null)
       ? `<div class="price"><b class="num">${euros(precio)} €</b><span>al mes</span></div>
          <div class="price-note">${anual
             ? `${euros(p.y)} € al año, facturado de una vez`
@@ -500,12 +529,17 @@ if(qs.get('tipo') === 'club'){
     b.setAttribute('aria-pressed', String(b.dataset.track === 'club')));
 }
 
-if(!PRECIOS_PUBLICOS){
-  document.getElementById('cycleRow').style.display = 'none';
-}
 document.getElementById('lblM').style.color = 'var(--color-text)';
 document.getElementById('lblY').style.color = 'var(--muted-2)';
+
+function pintarCiclo(){
+  document.getElementById('cycleRow').style.display = PRECIOS_PUBLICOS ? '' : 'none';
+}
+
 render();
+pintarCiclo();
+
+cargarPlanes().then(() => { render(); pintarCiclo(); });
 </script>
 </body>
 </html>

@@ -41,10 +41,20 @@ switch ($action) {
               ORDER BY u.created_at DESC"
         )->fetchAll();
 
+        $tarifas = db()->query(
+            'SELECT id, track, name, price_m, price_y, teams, players, staff, best, active, sort
+               FROM plans ORDER BY track, sort'
+        )->fetchAll();
+
         json_out([
             'ok'        => true,
             'admin'     => ['email' => $admin['email'], 'name' => $admin['name']],
             'planes'    => PLANES,
+            'ajustes'   => [
+                'registro_abierto' => setting('registro_abierto', '0') === '1',
+                'precios_publicos' => setting('precios_publicos', '0') === '1',
+            ],
+            'tarifas'   => $tarifas,
             'invitados' => $invitados,
             'cuentas'   => $cuentas,
             'resumen'   => [
@@ -130,6 +140,49 @@ switch ($action) {
             $rm = db()->prepare('DELETE FROM remember_tokens WHERE user_id = ?');
             $rm->execute([$userId]);
         }
+
+        json_out(['ok' => true]);
+
+    // ── Interruptores generales ────────────────────────────────────
+    case 'ajuste':
+        $clave = param('clave');
+        $valor = !empty(body()['valor']) ? '1' : '0';
+
+        if (!in_array($clave, ['registro_abierto', 'precios_publicos'], true)) {
+            fail('Ese ajuste no existe.');
+        }
+        set_setting($clave, $valor);
+
+        json_out(['ok' => true, 'clave' => $clave, 'valor' => $valor === '1']);
+
+    // ── Tarifa de un plan ──────────────────────────────────────────
+    case 'tarifa':
+        $id     = param('id');
+        $activo = !empty(body()['active']) ? 1 : 0;
+
+        $st = db()->prepare('SELECT id FROM plans WHERE id = ?');
+        $st->execute([$id]);
+        if (!$st->fetch()) {
+            fail('Ese plan no existe.', 404);
+        }
+
+        // Vacío significa «por determinar», que no es lo mismo que cero.
+        $precio = function (string $campo): ?float {
+            $v = body()[$campo] ?? '';
+            if ($v === '' || $v === null) {
+                return null;
+            }
+            $v = (float) str_replace(',', '.', (string) $v);
+            return $v >= 0 ? round($v, 2) : null;
+        };
+
+        $m = $precio('price_m');
+        $y = $precio('price_y');
+
+        $up = db()->prepare(
+            'UPDATE plans SET price_m = ?, price_y = ?, active = ? WHERE id = ?'
+        );
+        $up->execute([$m, $y, $activo, $id]);
 
         json_out(['ok' => true]);
 

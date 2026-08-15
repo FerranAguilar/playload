@@ -35,11 +35,9 @@ if ($type === 'pro' && $name === '') {
 
 $pdo = db();
 
-// Pruebas cerradas: sin invitación no se crea cuenta.
-$invitacion = invitation_for($email);
-if (!$invitacion) {
-    fail_not_invited();
-}
+// Con el registro cerrado hace falta invitación; con el registro
+// abierto entra cualquiera. Lo decide el panel de administración.
+$invitacion = check_signup_allowed($email);
 
 $st = $pdo->prepare('SELECT id FROM users WHERE email = ?');
 $st->execute([$email]);
@@ -60,7 +58,7 @@ try {
         $name !== '' ? $name : $club,
         $type,
         $role,
-        $invitacion['plan'] ?: 'tester',
+        $invitacion['plan'] ?? 'tester',
     ]);
     $userId = (int) $pdo->lastInsertId();
     mark_invitation_used($email);

@@ -194,6 +194,51 @@ function require_admin(): array
     return $u;
 }
 
+// ── Ajustes ────────────────────────────────────────────────────────
+function setting(string $key, string $default = ''): string
+{
+    static $cache = null;
+    if ($cache === null) {
+        $cache = [];
+        try {
+            foreach (db()->query('SELECT k, v FROM settings')->fetchAll() as $r) {
+                $cache[$r['k']] = $r['v'];
+            }
+        } catch (Throwable $e) {
+            // Tabla aún no migrada: se usan los valores por defecto.
+        }
+    }
+    return $cache[$key] ?? $default;
+}
+
+function set_setting(string $key, string $value): void
+{
+    $st = db()->prepare(
+        'INSERT INTO settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)'
+    );
+    $st->execute([$key, $value]);
+}
+
+/** ¿Puede registrarse cualquiera, o solo los correos invitados? */
+function registration_open(): bool
+{
+    return setting('registro_abierto', '0') === '1';
+}
+
+/**
+ * Puerta del alta. Con el registro abierto deja pasar a cualquiera; con
+ * el registro cerrado exige invitación y corta si no la hay.
+ * Devuelve la invitación cuando existe, para heredar su licencia.
+ */
+function check_signup_allowed(string $email): ?array
+{
+    $inv = invitation_for($email);
+    if (!$inv && !registration_open()) {
+        fail_not_invited();
+    }
+    return $inv;
+}
+
 /**
  * Pruebas cerradas: solo se puede crear cuenta con un correo invitado.
  * Devuelve la fila de allowed_emails, o null si no está autorizado.
