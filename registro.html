@@ -300,6 +300,8 @@ const S = {
   step: 1,
   type: null,            // 'pro' | 'club'
   email: '', pass: '', terms: false,
+  // invitación por enlace: testigo, correo que trae fijado y qué falló
+  inv:'', invEmail:'', invError:'',
   // perfil profesional
   name:'', role:'Preparador físico', teams:'2 – 3', cats:[], worksAt:'',
   // perfil club
@@ -448,7 +450,15 @@ function step2(){
       <div class="field">
         <label for="email">Correo electrónico</label>
         <input class="input" id="email" type="email" inputmode="email" autocomplete="email"
-               placeholder="${S.type==='club'?'tu@club.com':'tu@correo.com'}" value="${S.email}">
+               placeholder="${S.type==='club'?'tu@club.com':'tu@correo.com'}" value="${S.email}"
+               ${S.invEmail ? 'readonly style="opacity:.75;cursor:not-allowed"' : ''}>
+        ${S.invEmail
+          ? `<span class="hint">Es el correo al que te enviamos la invitación, y ya queda
+               verificado.</span>`
+          : ''}
+        ${S.invError
+          ? `<span class="hint" style="color:var(--color-risk)">${S.invError}</span>`
+          : ''}
       </div>
       <div class="field">
         <label for="pass">Contraseña</label>
@@ -598,7 +608,9 @@ function step4(){
   return `<div class="panel">
     <div class="done-mark"><svg width="26" height="26" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.2 11.6 13 4.8"/></svg></div>
     <h1>Listo, ${who} ya está en PlayLoad</h1>
-    <p class="lead">Tienes 30 días completos, sin tarjeta. Te hemos enviado un correo de confirmación a <b style="color:var(--color-text);font-weight:400">${S.email||'tu correo'}</b>.</p>
+    <p class="lead">Tienes 30 días completos, sin tarjeta. ${S.invEmail
+      ? `Tu correo <b style="color:var(--color-text);font-weight:400">${S.email}</b> ya está verificado: entraste por el enlace que te mandamos.`
+      : `Te hemos enviado un correo de confirmación a <b style="color:var(--color-text);font-weight:400">${S.email||'tu correo'}</b>.`}</p>
 
     <div class="next">
       ${next.map(([t,s],i)=>`<div class="next-row"><span class="next-n">${i+1}</span>
@@ -629,7 +641,8 @@ async function next(btn){
 
   const r = await post('register.php', {
     email: S.email, password: S.pass, account_type: S.type,
-    name: S.name, role: S.role, club: S.club, city: S.city
+    name: S.name, role: S.role, club: S.club, city: S.city,
+    inv: S.inv
   }).catch(() => ({ok:false, error:'No hay conexión con el servidor.'}));
 
   if(r.ok){ S.step = 4; render(); return; }
@@ -712,7 +725,37 @@ document.addEventListener('change', e => {
 const qs = new URLSearchParams(location.search);
 if(qs.get('email')) S.email = qs.get('email');
 
-render();
+/* Invitación por correo: registro.html?inv=… El enlace trae el correo,
+   así que se pregunta al servidor cuál es en vez de fiarse de la URL, y
+   se deja fijo: cambiarlo rompería la invitación sin avisar. */
+S.inv = qs.get('inv') || '';
+
+async function abrirInvitacion(){
+  /* Se pinta ya y se corrige después: esperar a la red dejaría la
+     página en blanco mientras tanto. */
+  render();
+  if(!S.inv || DEMO) return;
+
+  const r = await fetch('api/invitacion.php?token=' + encodeURIComponent(S.inv),
+                        {credentials:'same-origin'})
+    .then(async res => { let b = null; try{ b = await res.json(); }catch(e){}
+                         return (b && typeof b.ok !== 'undefined') ? b
+                              : {ok:false, error:'El servidor no ha contestado como se esperaba.'}; })
+    .catch(() => ({ok:false, error:'No hay conexión con el servidor.'}));
+
+  if(r.ok){
+    S.email = r.email;
+    S.invEmail = r.email;
+  } else {
+    /* El enlace no vale, pero la persona sí puede seguir a mano: se le
+       dice lo que pasa en vez de dejarla con un formulario mudo. */
+    S.inv = '';
+    S.invError = r.error;
+  }
+  render();
+}
+
+abrirInvitacion();
 </script>
 </body>
 </html>

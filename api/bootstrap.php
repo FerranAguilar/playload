@@ -340,6 +340,66 @@ function invitation_for(string $email): ?array
     return $row ?: null;
 }
 
+/**
+ * Genera un enlace de invitación para un correo ya autorizado y lo
+ * manda. Devuelve si el correo salió.
+ *
+ * El testigo se guarda en hash y se sustituye cada vez: solo vale el
+ * último enlace enviado, como en la recuperación de contraseña.
+ */
+function send_invitation(string $email): bool
+{
+    global $CONFIG;
+
+    $token = bin2hex(random_bytes(32));
+
+    $up = db()->prepare(
+        'UPDATE allowed_emails
+            SET token_hash = ?, token_expires = DATE_ADD(NOW(), INTERVAL 14 DAY), sent_at = NOW()
+          WHERE email = ? AND registered_at IS NULL'
+    );
+    $up->execute([hash('sha256', $token), mb_strtolower($email)]);
+
+    // Sin fila pendiente no hay nada que mandar: o no está invitado, o
+    // ya se registró y el enlace no le serviría de nada.
+    if (!$up->rowCount()) {
+        return false;
+    }
+
+    $link = rtrim($CONFIG['app_url'], '/') . '/registro.html?inv=' . $token;
+
+    return send_mail(
+        $email,
+        'Tu acceso a PlayLoad',
+        "Ya puedes crear tu cuenta en PlayLoad.\n\n" .
+        "Abre este enlace y elige una contraseña:\n{$link}\n\n" .
+        "El enlace confirma que este buzón es tuyo, así que no tendrás que\n" .
+        "verificar el correo después. Caduca en 14 días.\n\n" .
+        "Si no esperabas esto, ignora el mensaje: sin abrir el enlace no\n" .
+        "se crea ninguna cuenta.\n"
+    );
+}
+
+/**
+ * Busca la invitación de un enlace. Devuelve la fila, o null si el
+ * testigo no existe, ya caducó o esa invitación ya se usó.
+ */
+function invitation_by_token(string $token): ?array
+{
+    if (!preg_match('/^[0-9a-f]{64}$/', $token)) {
+        return null;
+    }
+
+    $st = db()->prepare(
+        'SELECT * FROM allowed_emails
+          WHERE token_hash = ? AND registered_at IS NULL AND token_expires > NOW()
+          LIMIT 1'
+    );
+    $st->execute([hash('sha256', $token)]);
+
+    return $st->fetch() ?: null;
+}
+
 function mark_invitation_used(string $email): void
 {
     $st = db()->prepare(

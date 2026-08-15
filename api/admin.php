@@ -24,13 +24,26 @@ switch ($action) {
 
     // ── Lectura ────────────────────────────────────────────────────
     case 'estado':
-        $invitados = db()->query(
-            'SELECT a.id, a.email, a.note, a.plan, a.registered_at, a.created_at,
-                    u.id AS user_id
-               FROM allowed_emails a
-               LEFT JOIN users u ON u.email = a.email
-              ORDER BY a.created_at DESC'
-        )->fetchAll();
+        // COALESCE deja la consulta viva antes de la migración 07: si
+        // aún no existen las columnas del enlace, esto revienta entero,
+        // así que se piden aparte y se rellenan a null si no están.
+        try {
+            $invitados = db()->query(
+                'SELECT a.id, a.email, a.note, a.plan, a.registered_at, a.created_at,
+                        a.sent_at, a.token_expires, u.id AS user_id
+                   FROM allowed_emails a
+                   LEFT JOIN users u ON u.email = a.email
+                  ORDER BY a.created_at DESC'
+            )->fetchAll();
+        } catch (Throwable $e) {
+            $invitados = db()->query(
+                'SELECT a.id, a.email, a.note, a.plan, a.registered_at, a.created_at,
+                        NULL AS sent_at, NULL AS token_expires, u.id AS user_id
+                   FROM allowed_emails a
+                   LEFT JOIN users u ON u.email = a.email
+                  ORDER BY a.created_at DESC'
+            )->fetchAll();
+        }
 
         $cuentas = db()->query(
             "SELECT u.id, u.email, u.name, u.account_type, u.role, u.plan, u.plan_until,
@@ -79,9 +92,10 @@ switch ($action) {
         // Admite pegar una lista: separada por comas, espacios o saltos.
         $trozos = preg_split('/[\s,;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
-        $ok = [];
+        $ok  = [];
         $mal = [];
         $ya  = [];
+        $sin_correo = [];
 
         $ins = db()->prepare(
             'INSERT INTO allowed_emails (email, note, plan, invited_by)
@@ -95,12 +109,45 @@ switch ($action) {
             try {
                 $ins->execute([$mail, $note, $plan, $admin['id']]);
                 $ok[] = $mail;
+
+                // Autorizar sin avisar no sirve de nada: el correo con el
+                // enlace es lo que convierte la fila en una invitación.
+                // Si el envío falla, la fila se queda: la persona puede
+                // registrarse igual y desde el panel se puede reenviar.
+                if (!send_invitation($mail)) {
+                    $sin_correo[] = $mail;
+                }
             } catch (Throwable $e) {
                 $mal[] = $mail;
             }
         }
 
-        json_out(['ok' => true, 'invitados' => $ok, 'repetidos' => $ya, 'invalidos' => $mal]);
+        json_out([
+            'ok'         => true,
+            'invitados'  => $ok,
+            'repetidos'  => $ya,
+            'invalidos'  => $mal,
+            'sin_correo' => $sin_correo,
+        ]);
+
+    // ── Volver a mandar el enlace ──────────────────────────────────
+    case 'reenviar_invitacion':
+        $id = (int) (body()['id'] ?? 0);
+
+        $st = db()->prepare(
+            'SELECT email FROM allowed_emails WHERE id = ? AND registered_at IS NULL'
+        );
+        $st->execute([$id]);
+        $fila = $st->fetch();
+
+        if (!$fila) {
+            fail('Esa invitación no existe o ya se ha usado.', 404);
+        }
+        if (!send_invitation((string) $fila['email'])) {
+            fail('No se ha podido enviar el correo. Revisa mail_from en config.php.', 502);
+        }
+
+        json_out(['ok' => true, 'email' => $fila['email']]);
 
     // ── Quitar invitación ──────────────────────────────────────────
     case 'quitar_invitacion':

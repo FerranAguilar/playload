@@ -438,8 +438,16 @@ function render(){
               <td><span class="tag ${PLAN_TAG[i.plan]||'tag-neutral'}">${esc(i.plan)}</span></td>
               <td>${i.registered_at
                     ? `<span class="tag tag-ok">Registrado</span>`
-                    : `<span class="tag tag-warn">Pendiente</span>`}</td>
-              <td><button class="btn btn-secondary btn-sm" data-quitar="${i.id}"
+                    : i.sent_at
+                      ? `<span class="tag tag-warn">Invitado</span>
+                         <div class="sub">Enlace enviado el ${fecha(i.sent_at)}</div>`
+                      : `<span class="tag tag-neutral">Sin enviar</span>
+                         <div class="sub">Puede registrarse a mano</div>`}</td>
+              <td>${i.registered_at ? '' : `
+                    <button class="btn btn-secondary btn-sm" data-reenviar="${i.id}"
+                      title="Volver a mandar el enlace a ${esc(i.email)}"
+                      >${i.sent_at ? 'Reenviar' : 'Enviar enlace'}</button>`}
+                  <button class="btn btn-secondary btn-sm" data-quitar="${i.id}"
                     title="Quitar de la lista">Quitar</button></td>
             </tr>`).join('')}
           </tbody>
@@ -561,13 +569,38 @@ document.addEventListener('click', async e => {
 
     if(!r.ok){ toast(r.error || 'No se ha podido invitar.', 'bad'); return; }
 
+    const fallos = r.sin_correo || [];
     const partes = [];
-    if(r.invitados.length) partes.push(`${r.invitados.length} invitado${r.invitados.length===1?'':'s'}`);
+    if(r.invitados.length){
+      /* Lo que importa no es cuántos se autorizaron, sino a cuántos les
+         ha llegado el enlace: sin correo, la invitación no llega sola. */
+      const conCorreo = r.invitados.length - fallos.length;
+      partes.push(`${conCorreo} invitado${conCorreo===1?'':'s'} por correo`);
+      if(fallos.length) partes.push(`${fallos.length} sin poder enviar`);
+    }
     if(r.repetidos.length) partes.push(`${r.repetidos.length} ya estaba${r.repetidos.length===1?'':'n'}`);
     if(r.invalidos.length) partes.push(`${r.invalidos.length} sin formato válido`);
-    toast(partes.join(' · ') || 'Nada que añadir', r.invitados.length ? 'good' : 'bad');
+    toast(partes.join(' · ') || 'Nada que añadir',
+          r.invitados.length && !fallos.length ? 'good' : 'bad');
+
+    if(fallos.length){
+      alert('Estos correos quedaron autorizados pero no se les pudo enviar el enlace:\n\n' +
+            fallos.join('\n') +
+            '\n\nPueden registrarse a mano igualmente. Revisa mail_from en api/config.php ' +
+            'y usa «Reenviar» cuando esté arreglado.');
+    }
 
     await load();
+    return;
+  }
+
+  const re = e.target.closest('[data-reenviar]');
+  if(re){
+    re.disabled = true;
+    const r = await call({action:'reenviar_invitacion', id:+re.dataset.reenviar});
+    re.disabled = false;
+    if(r.ok){ toast('Enlace enviado a ' + r.email, 'good'); await load(); }
+    else toast(r.error || 'No se ha podido enviar.', 'bad');
     return;
   }
 

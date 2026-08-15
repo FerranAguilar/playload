@@ -84,10 +84,15 @@ el cliente.
 
 ## 7. Correo
 
-`forgot.php` y la verificación en dos pasos usan `mail()` de PHP. En
-Hostinger funciona si `mail_from` es un buzón real de tu dominio
-(hPanel → **Correos**). Con un remitente de Gmail o inventado, los
-mensajes se marcan como spam o se rechazan.
+`forgot.php`, la verificación en dos pasos y **las invitaciones del panel
+de administración** usan `mail()` de PHP. En Hostinger funciona si
+`mail_from` es un buzón real de tu dominio (hPanel → **Correos**). Con un
+remitente de Gmail o inventado, los mensajes se marcan como spam o se
+rechazan.
+
+Comprueba también que `app_url` en `api/config.php` es tu dominio real:
+es lo que se pega delante del enlace de invitación, y si está mal el
+correo sale con un enlace que no lleva a ninguna parte.
 
 ## Qué hace cada endpoint
 
@@ -102,14 +107,17 @@ mensajes se marcan como spam o se rechazan.
 | `api/me.php` | GET | Quién ha iniciado sesión; reanuda «mantener la sesión» |
 | `api/logout.php` | POST | Cierra la sesión |
 | `api/player_login.php` | POST | Acceso del jugador con el código del club |
+| `api/invitacion.php` | GET | Qué correo hay detrás de un enlace de invitación |
 | `api/app.php?action=club` | GET | Equipos del club con su staff y las licencias gastadas |
 | `api/app.php` `invitar_staff` | POST | Da acceso a un correo en un equipo del club |
 | `api/app.php` `quitar_staff` | POST | Retira ese acceso |
 
-Las tablas de estas dos últimas llegan con `db/migracion-05-staff.sql`, y
-el plan de las cuentas invitadas con `db/migracion-06-plan-staff.sql`.
-Impórtalas desde phpMyAdmin igual que las anteriores; sin la 05 la
-pantalla del club lo dice y el resto de la aplicación sigue como antes.
+Las tablas del staff llegan con `db/migracion-05-staff.sql`, el plan de
+las cuentas invitadas con `db/migracion-06-plan-staff.sql` y el enlace de
+invitación con `db/migracion-07-invitaciones.sql`. Impórtalas desde
+phpMyAdmin igual que las anteriores y en ese orden; sin la 05 la pantalla
+del club lo dice, y sin la 07 el panel invita como antes, sin mandar
+nada. El resto de la aplicación sigue funcionando en los dos casos.
 
 ## Clubes, staff y licencias
 
@@ -149,10 +157,18 @@ propios**: lo que le han dado es acceso a los del club, no una licencia.
 Si algún día quiere los suyos, paga un plan normal y los del club siguen
 sin contarle.
 
-Es distinto de la lista de pruebas cerradas: `allowed_emails` la lleva el
-administrador desde `admin.html` y también es solo un permiso, no un
-correo que se envíe — quien lo esté se registra normal y hereda el `plan`
-de su fila.
+Es distinto de la lista de pruebas cerradas. `allowed_emails` la lleva el
+administrador desde `admin.html`, y al añadir un correo **se le manda un
+enlace**: `registro.html?inv=…`. Ese enlace hace tres cosas a la vez —
+avisa a la persona, le trae el correo ya puesto y fijo en el formulario,
+y sirve de verificación, así que la cuenta nace con `email_verified = 1`
+sin ningún paso extra. Caduca a los 14 días y solo vale el último
+enviado; el testigo se guarda en hash, como en `password_resets`.
+
+Si el envío falla, la fila se queda igual: esa persona puede registrarse
+a mano y desde el panel se le puede **reenviar** el enlace. Las
+invitaciones anteriores a la migración 07 salen como «Sin enviar» y
+tienen su botón para mandarles uno.
 
 Quién puede qué en un equipo lo decide `acceso_equipo()`, que devuelve
 tres niveles. El orden importa: **el club se mira antes que la

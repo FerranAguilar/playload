@@ -35,6 +35,21 @@ if ($type === 'pro' && $name === '') {
 
 $pdo = db();
 
+// Quien llega por el enlace del correo ya ha probado que ese buzón es
+// suyo: abrirlo es la verificación. Solo cuenta si el enlace es de este
+// mismo correo, para que no valga el de otra persona.
+$token = param('inv');
+$porEnlace = false;
+
+if ($token !== '') {
+    try {
+        $inv = invitation_by_token($token);
+        $porEnlace = $inv && mb_strtolower((string) $inv['email']) === $email;
+    } catch (Throwable $e) {
+        // Sin la migración 07 no hay enlaces: se sigue por el camino normal.
+    }
+}
+
 // Con el registro cerrado hace falta invitación; con el registro
 // abierto entra cualquiera. Lo decide el panel de administración.
 $invitacion = check_signup_allowed($email);
@@ -49,8 +64,8 @@ try {
     $pdo->beginTransaction();
 
     $ins = $pdo->prepare(
-        'INSERT INTO users (email, password_hash, name, account_type, role, plan)
-         VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO users (email, password_hash, name, account_type, role, plan, email_verified)
+         VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
     $ins->execute([
         $email,
@@ -59,6 +74,7 @@ try {
         $type,
         $role,
         $invitacion['plan'] ?? 'tester',
+        $porEnlace ? 1 : 0,
     ]);
     $userId = (int) $pdo->lastInsertId();
     mark_invitation_used($email);
