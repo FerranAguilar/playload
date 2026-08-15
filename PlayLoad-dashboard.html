@@ -1035,6 +1035,9 @@ async function cargar(){
 
   D.user = r.user; D.club = r.club; D.teams = r.teams || []; D.lic = r.licencia;
 
+  /* el tema y el idioma guardados en la cuenta mandan sobre los del navegador */
+  if(window.plSyncPrefs) window.plSyncPrefs(r.user.theme, r.user.locale);
+
   const jugadores = D.teams.reduce((a,t) => a + t.players, 0);
   const nombre    = (r.user.name || '').split(' ')[0];
 
@@ -1270,6 +1273,15 @@ cargar();
     else document.documentElement.setAttribute('data-theme', t);
     guarda('pl-theme', t);
   }
+
+  /* Sincronización con la cuenta. Manda lo que hay guardado en el
+     servidor: es lo que hace que la preferencia te siga de un
+     dispositivo a otro. Cada pantalla la llama al cargar su estado. */
+  window.plSyncPrefs = function(theme, locale){
+    if(theme && theme !== tema()) aplicarTema(theme);
+    if(locale) guarda('pl-locale', locale);
+    document.dispatchEvent(new CustomEvent('pl-prefs'));
+  };
 
   const me = document.querySelector('.me');
   if(!me) return;

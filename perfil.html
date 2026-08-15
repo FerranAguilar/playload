@@ -272,7 +272,8 @@ const TEMAS = [
 /* ── pintado ────────────────────────────────────────────────── */
 function render(){
   const u = D.user, l = D.licencia, uso = D.uso;
-  const temaActual = lee('pl-theme') || u.theme || 'sistema';
+  const temaActual   = u.theme  || lee('pl-theme')  || 'sistema';
+  const idiomaActual = u.locale || lee('pl-locale') || 'es';
 
   const barra = (usado, max) => max
     ? `<div class="barra"><i style="width:${Math.min(100, Math.round(usado/max*100))}%;
@@ -361,7 +362,7 @@ function render(){
              catalán e inglés están en camino y tu elección queda guardada.</p>
           <div class="ops" data-ops="locale">
             ${IDIOMAS.map(([k,v]) => `<button class="op" data-v="${k}"
-              aria-pressed="${u.locale === k}">${v}${k !== 'es' ? ' <span class="tag tag-warn">pronto</span>' : ''}</button>`).join('')}
+              aria-pressed="${idiomaActual === k}">${v}${k !== 'es' ? ' <span class="tag tag-warn">pronto</span>' : ''}</button>`).join('')}
           </div>
         </div>
 
@@ -469,12 +470,17 @@ document.addEventListener('click', async e => {
     const valor = op.dataset.v;
     [...op.parentNode.children].forEach(b => b.setAttribute('aria-pressed', String(b === op)));
 
-    if(grupo === 'theme') aplicarTema(valor);
+    /* Se guardan las dos copias a la vez: la del navegador, que aplica
+       el tema al instante y sirve sin conexión, y la de la cuenta, que
+       es la que manda y te sigue a otro dispositivo. */
+    if(grupo === 'theme'){ aplicarTema(valor); D.user.theme = valor; }
+    if(grupo === 'locale'){ guarda('pl-locale', valor); D.user.locale = valor; }
+
     if(DEMO) return;
 
     const r = await post({action:'preferencias',
-      locale: grupo === 'locale' ? valor : D.user.locale,
-      theme:  grupo === 'theme'  ? valor : (lee('pl-theme') || 'sistema')});
+      locale: D.user.locale || 'es',
+      theme:  D.user.theme  || 'sistema'});
 
     if(r.ok){ D.user.locale = r.locale; D.user.theme = r.theme;
       toast(grupo === 'theme' ? 'Tema guardado' : 'Idioma guardado'); }
@@ -525,7 +531,8 @@ document.addEventListener('click', async e => {
 /* ── carga ──────────────────────────────────────────────────── */
 (async function(){
   if(DEMO){
-    D = {user:{name:'Tu cuenta', email:'sin@servidor', type:'pro', role:'', locale:'es',
+    D = {user:{name:'Tu cuenta', email:'sin@servidor', type:'pro', role:'',
+               locale:lee('pl-locale')||'es',
                theme:lee('pl-theme')||'sistema', admin:false,
                dos_pasos:false, alta:null},
          licencia:{nombre:'Tester', hasta:null, max_equipos:null, max_jugadores:null, max_staff:null},
@@ -540,8 +547,10 @@ document.addEventListener('click', async e => {
   if(!r.ok){ toast(r.error || 'No se ha podido cargar el perfil.', true); return; }
 
   D = r;
-  /* si el servidor tiene otro tema guardado, manda el del servidor */
-  if(r.user.theme && !lee('pl-theme')) aplicarTema(r.user.theme);
+  /* La cuenta manda: si cambiaste el tema en otro dispositivo, al abrir
+     aquí se aplica el suyo y se guarda también en este navegador. */
+  if(r.user.theme)  aplicarTema(r.user.theme);
+  if(r.user.locale) guarda('pl-locale', r.user.locale);
   render();
 })();
 </script>

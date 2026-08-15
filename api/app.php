@@ -54,6 +54,10 @@ switch ($action) {
                 'type'  => $user['account_type'],
                 'role'  => $user['role'],
                 'admin' => (bool) $user['is_admin'],
+                // Las preferencias viajan con el estado para que
+                // cualquier pantalla pueda sincronizarse con la cuenta.
+                'locale' => $user['locale'] ?? 'es',
+                'theme'  => $user['theme']  ?? 'sistema',
             ],
             'licencia' => [
                 'plan'       => $limits['plan'],

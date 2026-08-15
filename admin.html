@@ -635,6 +635,15 @@ load();
     guarda('pl-theme', t);
   }
 
+  /* Sincronización con la cuenta. Manda lo que hay guardado en el
+     servidor: es lo que hace que la preferencia te siga de un
+     dispositivo a otro. Cada pantalla la llama al cargar su estado. */
+  window.plSyncPrefs = function(theme, locale){
+    if(theme && theme !== tema()) aplicarTema(theme);
+    if(locale) guarda('pl-locale', locale);
+    document.dispatchEvent(new CustomEvent('pl-prefs'));
+  };
+
   const me = document.querySelector('.me');
   if(!me) return;
 
