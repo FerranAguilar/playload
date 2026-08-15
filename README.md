@@ -12,9 +12,10 @@ doble clic en `index.html`.
 | `index.html` | Portada pública. Presenta el producto y da entrada al panel desde *Iniciar sesión* y desde la prueba de 30 días. |
 | `PlayLoad-dashboard.html` | Panel del equipo una vez dentro: carga del microciclo, sesión del día, plantilla, alertas e informe. |
 | `PlayLoad-equipos.html` | Gestor de equipos del club. Rejilla de equipos y, al abrir uno, su ficha con plantilla, cuerpo técnico, calendario y ajustes. |
+| `PlayLoad-calendario.html` | Calendario del equipo. Lo primero es la semana: siete columnas con las sesiones de cada día, su carga al pie y el total del microciclo. Debajo, lo que viene después y el mes en miniatura para saltar de semana. |
 | `img/` | Fotografías de la portada. |
 
-Las tres páginas están enlazadas entre sí; la marca **PlayLoad** de la barra lateral lleva
+Las páginas de aplicación están enlazadas entre sí; la marca **PlayLoad** de la barra lateral lleva
 siempre al panel.
 
 ## Diseño

@@ -240,14 +240,30 @@ switch ($action) {
             fail('Ese equipo no es tuyo.', 403);
         }
 
-        $st = db()->prepare(
-            'SELECT id, date, time, title, kind, md_label, place, duration_min,
-                    planned_rpe, planned_load, actual_rpe, actual_load, status
-               FROM sessions
-              WHERE team_id = ? AND date >= (CURDATE() - INTERVAL 28 DAY)
-              ORDER BY date, time'
-        );
-        $st->execute([$teamId]);
+        $campos = 'id, date, time, title, kind, md_label, place, duration_min,
+                   planned_rpe, planned_load, actual_rpe, actual_load, status';
+
+        // El calendario pide el tramo que tiene en pantalla. Sin tramo se
+        // responde lo de siempre: de hace cuatro semanas en adelante.
+        $desde = (string) ($_GET['desde'] ?? '');
+        $hasta = (string) ($_GET['hasta'] ?? '');
+        $dia   = '/^\d{4}-\d{2}-\d{2}$/';
+
+        if (preg_match($dia, $desde) && preg_match($dia, $hasta)) {
+            $st = db()->prepare(
+                "SELECT $campos FROM sessions
+                  WHERE team_id = ? AND date BETWEEN ? AND ?
+                  ORDER BY date, time"
+            );
+            $st->execute([$teamId, $desde, $hasta]);
+        } else {
+            $st = db()->prepare(
+                "SELECT $campos FROM sessions
+                  WHERE team_id = ? AND date >= (CURDATE() - INTERVAL 28 DAY)
+                  ORDER BY date, time"
+            );
+            $st->execute([$teamId]);
+        }
 
         json_out(['ok' => true, 'sesiones' => $st->fetchAll()]);
 
