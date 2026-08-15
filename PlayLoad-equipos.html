@@ -641,17 +641,28 @@ body{transition:background .18s ease,color .18s ease}
 const API  = 'api/';
 const DEMO = !/^https?:$/.test(location.protocol);
 
+/* El `ok` de fetch dice que la respuesta llegó, no que la diera el API:
+   si PHP no llega a ejecutarse, o el hosting mete su propia página de
+   error, lo que baja es un 200 con algo que no es JSON. Solo vale como
+   buena una respuesta que traiga su propio `ok`; si no, la pantalla
+   acabaría leyendo `r.user` de un undefined y se quedaría en blanco. */
+function respuesta(status, b){
+  return (b && typeof b.ok !== 'undefined')
+    ? {status, ...b}
+    : {status, ok:false, error:'El servidor no ha contestado como se esperaba.'};
+}
+
 async function get(qs){
   const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
-  let b = {}; try { b = await r.json(); } catch(e){}
-  return {status:r.status, ok:r.ok, ...b};
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
 }
 async function post(data){
   const r = await fetch(API + 'app.php', {
     method:'POST', headers:{'Content-Type':'application/json'},
     credentials:'same-origin', body:JSON.stringify(data)});
-  let b = {}; try { b = await r.json(); } catch(e){}
-  return {status:r.status, ok:r.ok, ...b};
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
 }
 
 /* ── estado ─────────────────────────────────────────────────── */
@@ -694,6 +705,10 @@ async function cargar(){
 }
 
 function avisoServidor(){
+  /* El subtítulo trae números de relleno del propio HTML. Si no se
+     borran, la página dice «6 equipos activos» justo encima de un aviso
+     de que no hay servidor del que sacar ese dato. */
+  document.getElementById('listSub').textContent = 'Sin datos que enseñar';
   document.getElementById('teams').innerHTML = `
     <div class="vacio" style="grid-column:1/-1">
       <h3>No se ha podido hablar con el servidor</h3>

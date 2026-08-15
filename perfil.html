@@ -226,17 +226,28 @@ const ini = n => (n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2
 
 let D = null;
 
+/* El `ok` de fetch dice que la respuesta llegó, no que la diera el API:
+   si PHP no llega a ejecutarse, o el hosting mete su propia página de
+   error, lo que baja es un 200 con algo que no es JSON. Solo vale como
+   buena una respuesta que traiga su propio `ok`; si no, la pantalla
+   acabaría leyendo `r.user` de un undefined y se quedaría en blanco. */
+function respuesta(status, b){
+  return (b && typeof b.ok !== 'undefined')
+    ? {status, ...b}
+    : {status, ok:false, error:'El servidor no ha contestado como se esperaba.'};
+}
+
 async function get(qs){
   const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
-  let b = {}; try { b = await r.json(); } catch(e){}
-  return {status:r.status, ok:r.ok, ...b};
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
 }
 async function post(data){
   const r = await fetch(API + 'app.php', {method:'POST',
     headers:{'Content-Type':'application/json'}, credentials:'same-origin',
     body:JSON.stringify(data)});
-  let b = {}; try { b = await r.json(); } catch(e){}
-  return {status:r.status, ok:r.ok, ...b};
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
 }
 
 function toast(msg, mal){
@@ -544,7 +555,18 @@ document.addEventListener('click', async e => {
   const r = await get('action=perfil').catch(() => null);
   if(!r) return;
   if(r.status === 401){ location.href = 'acceso.html'; return; }
-  if(!r.ok){ toast(r.error || 'No se ha podido cargar el perfil.', true); return; }
+  if(!r.ok){
+    /* Sin esto la página se queda en «Cargando tu perfil…» para siempre,
+       diciendo que está trabajando cuando ya no espera nada. */
+    document.getElementById('cont').innerHTML = `
+      <div class="panel"><div class="panel-body">
+        <h2 style="font-size:18px;margin:0 0 8px">No se ha podido cargar tu perfil</h2>
+        <p style="color:var(--muted);margin:0">Recarga la página en un momento. Si sigue igual,
+           mira el registro de errores del hosting.</p>
+      </div></div>`;
+    toast(r.error || 'No se ha podido cargar el perfil.', true);
+    return;
+  }
 
   D = r;
   /* La cuenta manda: si cambiaste el tema en otro dispositivo, al abrir

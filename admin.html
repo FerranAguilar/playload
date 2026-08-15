@@ -243,9 +243,16 @@ async function call(data){
     : {credentials:'same-origin'};
   const url = API + 'admin.php' + (data ? '' : '?action=estado');
   const r = await fetch(url, opt);
-  let body = {};
+  let body = null;
   try { body = await r.json(); } catch(e){}
-  return {status:r.status, ok:r.ok, ...body};
+
+  /* El `ok` de fetch dice que la respuesta llegó, no que la diera el API:
+     si PHP no llega a ejecutarse, o el hosting mete su propia página de
+     error, lo que baja es un 200 con algo que no es JSON. Solo vale como
+     buena una respuesta que traiga su propio `ok`. */
+  return (body && typeof body.ok !== 'undefined')
+    ? {status:r.status, ...body}
+    : {status:r.status, ok:false, error:'El servidor no ha contestado como se esperaba.'};
 }
 
 function toast(msg, kind){

@@ -801,17 +801,28 @@ let D = {teams:[], equipo:null, user:null, club:null, sesiones:[]};
 let ancla = lunesDe(new Date());   // lunes de la semana en pantalla
 let mesVista = new Date();         // mes del calendario en miniatura
 
+/* El `ok` de fetch dice que la respuesta llegó, no que la diera el API:
+   si PHP no llega a ejecutarse, o el hosting mete su propia página de
+   error, lo que baja es un 200 con algo que no es JSON. Solo vale como
+   buena una respuesta que traiga su propio `ok`; si no, la pantalla
+   acabaría leyendo `r.user` de un undefined y se quedaría en blanco. */
+function respuesta(status, b){
+  return (b && typeof b.ok !== 'undefined')
+    ? {status, ...b}
+    : {status, ok:false, error:'El servidor no ha contestado como se esperaba.'};
+}
+
 async function get(qs){
   const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
-  let b = {}; try { b = await r.json(); } catch(e){}
-  return {status:r.status, ok:r.ok, ...b};
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
 }
 async function post(data){
   const r = await fetch(API + 'app.php', {method:'POST',
     headers:{'Content-Type':'application/json'}, credentials:'same-origin',
     body:JSON.stringify(data)});
-  let b = {}; try { b = await r.json(); } catch(e){}
-  return {status:r.status, ok:r.ok, ...b};
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
 }
 
 function toast(msg, kind){
