@@ -260,6 +260,43 @@ function initials(string $text): string
     return mb_substr($out !== '' ? $out : 'PL', 0, 3);
 }
 
+/**
+ * GET a una URL externa. Usa cURL, y si no está, file_get_contents.
+ * En hosting compartido allow_url_fopen suele venir apagado, así que el
+ * orden importa: cURL primero. Devuelve el cuerpo o null.
+ */
+function http_get(string $url, int $timeout = 8): ?string
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_USERAGENT      => 'PlayLoad/1.0',
+        ]);
+        $out = curl_exec($ch);
+        curl_close($ch);
+        // Un 400 también trae cuerpo JSON, y ese cuerpo nos interesa.
+        if ($out !== false) {
+            return (string) $out;
+        }
+    }
+
+    if (ini_get('allow_url_fopen')) {
+        $ctx = stream_context_create(['http' => ['timeout' => $timeout, 'ignore_errors' => true]]);
+        $out = @file_get_contents($url, false, $ctx);
+        if ($out !== false) {
+            return (string) $out;
+        }
+    }
+
+    return null;
+}
+
 /** Correo de texto plano. Hostinger admite mail() si el remitente es del dominio. */
 function send_mail(string $to, string $subject, string $body): bool
 {

@@ -138,9 +138,39 @@ if ($faltan) {
 echo "\n5. Acceso con Google\n";
 $cid = trim((string) ($CONFIG['google_client_id'] ?? ''));
 echo "   ID de cliente: " . ($cid === '' ? '✗ vacío' : '✓ ' . substr($cid, 0, 18) . '…') . "\n";
-echo "   Acceso a Internet desde PHP: " .
-     (@file_get_contents('https://oauth2.googleapis.com/tokeninfo?id_token=x') !== false
-        ? "✓ sí\n" : "⚠ bloqueado — la verificación del token fallará\n");
+
+// La verificación del token necesita salir a Internet. Se prueban las
+// dos vías por separado, porque en hosting compartido es normal que
+// allow_url_fopen esté apagado y solo funcione cURL.
+$probe = 'https://oauth2.googleapis.com/tokeninfo?id_token=x';
+
+echo "   cURL disponible: " . (function_exists('curl_init') ? 'sí' : 'NO') . "\n";
+echo "   allow_url_fopen: " . (ini_get('allow_url_fopen') ? 'sí' : 'no') . "\n";
+
+$viaCurl = false;
+if (function_exists('curl_init')) {
+    $ch = curl_init($probe);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+    ]);
+    $r       = curl_exec($ch);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+    $viaCurl = ($r !== false);
+    echo "   Salida por cURL: " . ($viaCurl ? "✓ funciona" : "✗ falla — {$curlErr}") . "\n";
+}
+
+$viaFopen = ini_get('allow_url_fopen') && @file_get_contents($probe) !== false;
+echo "   Salida por file_get_contents: " . ($viaFopen ? "✓ funciona" : "✗ no disponible") . "\n";
+
+echo "   → Verificación del token: " .
+     ($viaCurl || $viaFopen
+        ? "✓ posible\n"
+        : "✗ imposible; el acceso con Google fallará. Pide a Hostinger que\n" .
+          "     habilite cURL o allow_url_fopen.\n");
 
 echo "\n" . str_repeat('=', 52) . "\n";
 echo "Borra este archivo del servidor cuando termines.\n";

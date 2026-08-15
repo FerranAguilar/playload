@@ -28,12 +28,12 @@ if ($credential === '') {
 // tokeninfo es el camino simple y sin dependencias. Para mucho tráfico,
 // lo correcto es validar la firma contra las claves de
 // https://www.googleapis.com/oauth2/v3/certs y cachearlas.
-$url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($credential);
+$url  = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($credential);
+$body = http_get($url);
 
-$ctx  = stream_context_create(['http' => ['timeout' => 8, 'ignore_errors' => true]]);
-$body = @file_get_contents($url, false, $ctx);
-if ($body === false) {
-    fail('No se ha podido verificar el token con Google.', 502);
+if ($body === null) {
+    fail('No se ha podido verificar el token con Google. El servidor no llega a '
+       . 'oauth2.googleapis.com: revisa que cURL esté disponible.', 502);
 }
 
 $tok = json_decode($body, true);
