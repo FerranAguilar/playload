@@ -589,7 +589,6 @@ body{transition:background .18s ease,color .18s ease}
               <input class="input" type="search" placeholder="Filtrar jugadores…">
             </div>
             <button class="btn btn-secondary btn-sm" data-solo-escritura>Importar CSV</button>
-            <button class="btn btn-secondary btn-sm" data-solo-escritura>Invitar por enlace</button>
             <button class="btn btn-primary btn-sm" style="margin-left:auto" data-add-player data-solo-escritura>+ Añadir jugador</button>
           </div>
 
@@ -709,10 +708,12 @@ const LINEAS = {POR:'Portería', DFC:'Defensa', LD:'Defensa', LI:'Defensa',
 const ORDEN = ['Portería','Defensa','Medio','Ataque'];
 const PIES  = {dcha:'Derecho', izq:'Izquierdo', ambidiestro:'Ambidiestro'};
 
-/* Solo quien es dueño del equipo o del club escribe la plantilla: el
-   staff que un club invita la lee, pero no la toca. Mismo criterio que
-   ya aplica el servidor en `exige_acceso`. */
-const puedeEditarPlantilla = () => S.access === 'propietario' || S.access === 'club';
+/* La ficha del jugador la edita todo el staff del equipo, club incluido:
+   es trabajo del día a día. Los ajustes del equipo —nombre, categoría,
+   sistema— siguen siendo solo de quien lo creó o del club. Mismo
+   criterio que ya aplica el servidor en `exige_acceso`. */
+const puedeEditarPlantilla = () => S.access === 'propietario' || S.access === 'club' || S.access === 'staff';
+const puedeEditarEquipo    = () => S.access === 'propietario' || S.access === 'club';
 
 const esc  = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const ini  = n => (n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || 'EQ';
@@ -992,7 +993,7 @@ function renderTab(name){
       </div>`;
   } else {
     const t = S.team;
-    const puede = puedeEditarPlantilla();
+    const puede = puedeEditarEquipo();
     const dis = puede ? '' : 'disabled';
     const colores = ['#9184d9','#84b6d9','#9fd984','#d9a184','#b5abfc','#84c9d9'];
     extra.innerHTML = `
@@ -1055,7 +1056,7 @@ function renderRoster(){
         <div class="vacio" style="margin:0;border:0">
           <h3>La plantilla está vacía</h3>
           <p>${puede
-              ? 'Añade jugadores a mano, importa un CSV o comparte el enlace de invitación para que se apunten ellos con su código.'
+              ? 'Añade jugadores a mano o importa un CSV. Con su correo en la ficha, cada uno recibe un enlace para entrar.'
               : 'Todavía no hay nadie en esta plantilla.'}</p>
           ${puede ? '<button class="btn btn-primary" data-add-player>Añadir el primer jugador</button>' : ''}
         </div>
@@ -1088,7 +1089,7 @@ function renderRoster(){
         <td class="p-sub">${esc(p.position) || '—'}</td>
         <td><span class="tag tag-ok">Disponible</span></td>
         <td class="p-sub">Sin enviar</td>
-        <td class="p-sub">${esc(p.access_code)}</td>
+        <td class="p-sub">—</td>
         <td><button class="btn btn-ghost btn-sm row-act">${puede ? 'Editar' : 'Ver'}</button></td>
       </tr>`).join('');
   }).join('');
@@ -1214,9 +1215,12 @@ document.addEventListener('click', async e => {
     if(!r.ok){ toast(r.error || 'No se ha podido invitar.', 'bad'); return; }
 
     const p = S.players.find(x => x.id === S.editId);
-    if(p){ p.invite_status = 'invitado'; p.invited_at = new Date().toISOString(); }
+    if(p){
+      if(p.invite_status !== 'registrado') p.invite_status = 'invitado';
+      p.invited_at = new Date().toISOString();
+    }
     pintarInvite(p || {invite_status:'invitado', email:document.getElementById('jEmail').value});
-    toast('Invitación enviada por correo');
+    toast('Enlace enviado por correo');
     return;
   }
 
@@ -1280,7 +1284,10 @@ function leerCamposJugador(){
 /* La invitación necesita al jugador ya guardado, porque manda el correo
    que hay en la fila del servidor: si el campo de aquí no coincide con
    el guardado, invitar ahora avisaría a una dirección que no es la que
-   se está viendo en pantalla. */
+   se está viendo en pantalla. Se puede invitar aunque ya esté
+   registrado: es como se le manda un enlace nuevo a quien perdió el
+   suyo, la única forma de recuperar el acceso ahora que no hay código
+   que volver a dictar. */
 function pintarInvite(p){
   const caja  = document.getElementById('jInvite');
   const email = document.getElementById('jEmail').value.trim();
@@ -1293,7 +1300,7 @@ function pintarInvite(p){
   if(!email){ caja.innerHTML = ''; return; }
 
   if(!puedeEditarPlantilla()){
-    const estado = p?.invite_status === 'registrado' ? 'Ya ha entrado con su código.'
+    const estado = p?.invite_status === 'registrado' ? 'Ya ha entrado alguna vez.'
       : p?.invite_status === 'invitado' ? 'Se le invitó por correo; todavía no ha entrado.'
       : 'Todavía no se le ha invitado.';
     caja.innerHTML = `<div class="jug-invite"><p style="flex:1">${estado}</p></div>`;
@@ -1306,25 +1313,20 @@ function pintarInvite(p){
     return;
   }
 
-  if(p?.invite_status === 'registrado'){
-    caja.innerHTML = `<div class="jug-invite">
-      <span class="tag tag-ok">Registrado</span>
-      <p>Ya ha entrado con su código.</p></div>`;
-    return;
-  }
-
-  const reenvia = p?.invite_status === 'invitado';
+  const registrado = p?.invite_status === 'registrado';
+  const reenvia     = registrado || p?.invite_status === 'invitado';
   caja.innerHTML = `<div class="jug-invite">
-    <p>${reenvia ? 'Se le invitó a este correo. Puedes volver a mandarle el acceso.'
-                 : 'Mándale el código de acceso por correo para que entre desde su móvil.'}</p>
+    <p>${registrado ? 'Ya ha entrado alguna vez. Si perdió el enlace, puedes mandarle uno nuevo.'
+        : reenvia   ? 'Se le invitó a este correo. Puedes volver a mandarle el acceso.'
+                    : 'Mándale un enlace por correo para que entre desde su móvil, sin contraseña.'}</p>
     <button class="btn btn-secondary btn-sm" data-invitar-jugador>
-      ${reenvia ? 'Reenviar invitación' : 'Invitar al equipo'}</button>
+      ${reenvia ? 'Reenviar acceso' : 'Invitar al equipo'}</button>
   </div>`;
 }
 
 function abrirDialogoJugador(){
   if(DEMO){ toast('Sin servidor no se pueden añadir jugadores: esta es la vista de diseño.'); return; }
-  if(!puedeEditarPlantilla()){ toast('Solo el club o quien creó el equipo puede añadir jugadores.', 'bad'); return; }
+  if(!puedeEditarPlantilla()){ toast('No tienes permiso para añadir jugadores a este equipo.', 'bad'); return; }
 
   const max = S.lic ? S.lic.max_jugadores : null;
   const n   = S.players.length;
@@ -1343,7 +1345,6 @@ function abrirDialogoJugador(){
   limpiarCamposJugador();
   document.querySelectorAll('#dlgJug .input').forEach(i => i.disabled = false);
   document.getElementById('jSoloLectura').style.display = 'none';
-  document.getElementById('jCodigo').style.display = 'none';
   document.getElementById('jSeguir').style.display = '';
   document.getElementById('jGuardar').style.display = '';
   document.getElementById('jGuardar').textContent = 'Guardar';
@@ -1374,20 +1375,24 @@ function abrirFichaJugador(id){
   document.getElementById('jGuardar').style.display = puede ? '' : 'none';
   document.getElementById('jGuardar').textContent = 'Guardar cambios';
 
-  const caja = document.getElementById('jCodigo');
-  caja.style.display = 'block';
-  caja.innerHTML = `
-    <div style="padding:12px 14px;border-radius:var(--radius-md);
-                background:color-mix(in srgb,var(--color-text) 5%,transparent);border:1px solid var(--line)">
-      <div style="font-size:13px;color:var(--muted)">Código de acceso</div>
-      <div class="num" style="font-size:20px;letter-spacing:.14em;margin-top:2px">${esc(p.access_code)}</div>
-      <div class="p-sub" style="margin-top:4px">Con esto entra sin contraseña, desde el móvil.</div>
-    </div>`;
-
   pintarInvite(p);
 
   document.getElementById('dlgJug').classList.add('open');
   (puede ? document.getElementById('jNombre') : document.querySelector('#dlgJug [data-cerrar-jug]')).focus();
+}
+
+/* Abre siempre una ficha en blanco lista para el siguiente alta: ni
+   código que enseñar ni resumen a medias, solo el formulario vacío con
+   el foco puesto en el nombre. */
+function reiniciarAltaJugador(){
+  S.editId = null;
+  limpiarCamposJugador();
+  document.getElementById('dlgJugT').textContent = 'Añadir jugador';
+  document.getElementById('dlgJugSub').textContent =
+    `${S.players.length} jugador${S.players.length===1?'':'es'} en la plantilla`;
+  document.getElementById('jGuardar').textContent = 'Guardar';
+  pintarInvite(null);
+  document.getElementById('jNombre').focus();
 }
 
 async function guardarJugador(seguir){
@@ -1411,40 +1416,26 @@ async function guardarJugador(seguir){
   const r = await post({action:'crear_jugador', team_id:S.team.id, ...datos});
   if(!r.ok){ toast(r.error || 'No se ha podido añadir.', 'bad'); return; }
 
-  /* a partir de aquí el diálogo sigue con el recién creado: así el
-     correo que se acaba de escribir ya se puede invitar sin cerrar la
-     ficha y volver a abrirla */
-  S.editId = r.id;
   S.players.push({id:r.id, ...datos, dorsal: datos.dorsal ? +datos.dorsal : null,
-    access_code:r.code, invite_status:'sin_invitar', invited_at:null, registered_at:null});
+    invite_status:'sin_invitar', invited_at:null, registered_at:null});
 
-  const caja = document.getElementById('jCodigo');
-  caja.style.display = 'block';
-  caja.innerHTML = `
-    <div style="padding:12px 14px;border-radius:var(--radius-md);
-                background:color-mix(in srgb,var(--color-ok) 12%,transparent);
-                border:1px solid color-mix(in srgb,var(--color-ok) 45%,transparent)">
-      <div style="font-size:13px;color:var(--muted)">Código de acceso de ${esc(datos.name)}</div>
-      <div class="num" style="font-size:22px;letter-spacing:.14em;margin-top:4px">${esc(r.code)}</div>
-      <div class="p-sub" style="margin-top:4px">Con esto entra en su día desde el móvil, sin contraseña.</div>
-    </div>`;
-  pintarInvite(S.players.find(x => x.id === S.editId));
+  if(seguir){ reiniciarAltaJugador(); toast('Jugador añadido'); return; }
 
-  if(seguir){
-    S.editId = null;      // el siguiente que se escriba vuelve a ser un alta
-    limpiarCamposJugador();
-    document.getElementById('dlgJugT').textContent = 'Añadir jugador';
-    document.getElementById('dlgJugSub').textContent =
-      `${S.players.length} jugador${S.players.length===1?'':'es'} en la plantilla`;
-    pintarInvite(null);
-    nombre.focus();
-  } else {
-    setTimeout(() => {
-      document.getElementById('dlgJug').classList.remove('open');
-      S.editId = null;
-      abrirEquipo(S.team.id);
-    }, 1400);
+  if(datos.email){
+    /* con correo puesto, la ficha se queda abierta en modo edición del
+       recién creado: así se puede invitar sin cerrar y volver a abrir */
+    S.editId = r.id;
+    document.getElementById('dlgJugT').textContent = datos.name;
+    document.getElementById('jSeguir').style.display = 'none';
+    document.getElementById('jGuardar').textContent = 'Guardar cambios';
+    pintarInvite(S.players.find(x => x.id === r.id));
+    toast('Jugador añadido');
+    return;
   }
+
+  document.getElementById('dlgJug').classList.remove('open');
+  abrirEquipo(S.team.id);
+  toast('Jugador añadido');
 }
 
 document.addEventListener('input', e => {
@@ -1471,7 +1462,7 @@ cargar();
 
     <div id="jSoloLectura" class="jug-solo-lectura" style="display:none">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3.2" y="7" width="9.6" height="6.4" rx="1.2"/><path d="M5.2 7V4.8a2.8 2.8 0 0 1 5.6 0V7"/></svg>
-      Solo el club o quien creó el equipo puede editar la plantilla.
+      No tienes permiso para editar esta ficha.
     </div>
 
     <div class="field"><label for="jNombre">Nombre y apellidos</label>
@@ -1530,11 +1521,10 @@ cargar();
     </div>
 
     <div id="jInvite"></div>
-    <div id="jCodigo" style="display:none"></div>
 
     <div class="dialog-actions">
       <button class="btn btn-secondary" data-cerrar-jug>Cerrar</button>
-      <button class="btn btn-secondary" id="jSeguir" data-guardar-jug="seguir">Guardar y añadir otro</button>
+      <button class="btn btn-secondary" id="jSeguir" data-guardar-jug="seguir">Guardar y añadir otro jugador</button>
       <button class="btn btn-primary" id="jGuardar" data-guardar-jug="cerrar">Guardar</button>
     </div>
   </div>

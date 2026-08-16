@@ -1,20 +1,27 @@
 <?php
 /**
- * POST { code } · acceso del jugador, sin contraseña.
+ * POST { token } · acceso del jugador, con el enlace que le mandó el
+ * club por correo. No hay código ni contraseña: el testigo del enlace
+ * ES la credencial.
+ *
  * Abre una sesión distinta de la del cuerpo técnico: guarda player_id,
- * nunca uid, para que un código de jugador no dé acceso al panel.
+ * nunca uid, para que ese testigo no dé acceso al panel del staff.
  */
 declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
 require_method('POST');
 
-$code = mb_strtoupper(preg_replace('/[^A-Za-z0-9\-]/', '', param('code')));
+$token = param('token');
 
-if (mb_strlen($code) < 6 || mb_strlen($code) > 12) {
-    fail('Ese código no es válido.', 400);
+if (!preg_match('/^[0-9a-f]{64}$/', $token)) {
+    fail('Ese enlace no es válido.', 400);
 }
 
-if (($wait = login_throttle('player:' . $code)) > 0) {
+// Se guarda solo el hash, así que también se compara por hash: quien
+// lea la tabla no puede entrar con lo que vea ahí.
+$hash = hash('sha256', $token);
+
+if (($wait = login_throttle('player:' . $hash)) > 0) {
     json_out([
         'ok'          => false,
         'error'       => 'Demasiados intentos. Prueba de nuevo en unos minutos.',
@@ -26,30 +33,26 @@ $st = db()->prepare(
     'SELECT p.id, p.name, p.dorsal, p.position, t.name AS team, t.category
        FROM players p
        JOIN teams t ON t.id = p.team_id
-      WHERE p.access_code = ? AND p.active = 1
+      WHERE p.login_token_hash = ? AND p.active = 1
       LIMIT 1'
 );
-$st->execute([$code]);
+$st->execute([$hash]);
 $player = $st->fetch();
 
 if (!$player) {
-    record_attempt('player:' . $code, false);
-    fail('Ese código no existe o ya no está activo.', 401);
+    record_attempt('player:' . $hash, false);
+    fail('Ese enlace no es válido o ha caducado.', 401);
 }
 
-record_attempt('player:' . $code, true);
+record_attempt('player:' . $hash, true);
 
-// «Registrado» es haber entrado alguna vez con el código, se lo hayan
-// mandado por correo o se lo haya dictado el entrenador: entrar es lo
-// que lo prueba, no un enlace concreto. Solo se toca la primera vez.
-try {
-    db()->prepare(
-        "UPDATE players SET invite_status = 'registrado', registered_at = NOW()
-          WHERE id = ? AND invite_status != 'registrado'"
-    )->execute([(int) $player['id']]);
-} catch (Throwable $e) {
-    // Sin migración 09 no hay `invite_status` que actualizar.
-}
+// «Registrado» es haber entrado alguna vez: entrar es lo que lo
+// prueba, no que el enlace en concreto siga siendo el mismo. Solo se
+// toca la primera vez.
+db()->prepare(
+    "UPDATE players SET invite_status = 'registrado', registered_at = NOW()
+      WHERE id = ? AND invite_status != 'registrado'"
+)->execute([(int) $player['id']]);
 
 session_regenerate_id(true);
 unset($_SESSION['uid'], $_SESSION['pending_uid']);

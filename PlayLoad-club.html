@@ -851,11 +851,11 @@ body{transition:background .18s ease,color .18s ease}
     </div>
 
     <div id="jInvite"></div>
-    <div id="jCodigo" style="display:none"></div>
 
     <div class="dialog-actions">
       <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
-      <button class="btn btn-primary" data-guardar-jugador id="jGuardar">Añadir</button>
+      <button class="btn btn-secondary" id="jSeguir" data-guardar-jugador="seguir">Guardar y añadir otro jugador</button>
+      <button class="btn btn-primary" id="jGuardar" data-guardar-jugador="cerrar">Añadir</button>
     </div>
   </div>
 </div>
@@ -1142,21 +1142,12 @@ function rellenarCamposJugador(p){
 }
 const jugadorActual = () => (plantillas[equipoId] || []).find(p => p.id === jugEditId);
 
-function pintarCodigoJugador(p){
-  const caja = $('jCodigo');
-  caja.style.display = 'block';
-  caja.innerHTML = `
-    <div style="padding:12px 14px;border-radius:var(--radius-md);
-                background:color-mix(in srgb,var(--color-text) 5%,transparent);border:1px solid var(--line)">
-      <div style="font-size:13px;color:var(--muted)">Código de acceso</div>
-      <div class="num" style="font-size:20px;letter-spacing:.14em;margin-top:2px">${esc(p.access_code)}</div>
-      <div class="p-sub" style="margin-top:4px">Con esto entra sin contraseña, desde el móvil.</div>
-    </div>`;
-}
-
 /* La invitación manda el correo que hay guardado en el jugador, no el
    que se esté viendo a medio escribir: si no coinciden, primero hay que
-   guardar, o se avisaría a una dirección que ya no es la de la pantalla. */
+   guardar, o se avisaría a una dirección que ya no es la de la pantalla.
+   Se puede invitar aunque ya esté registrado: es como se le manda un
+   enlace nuevo a quien perdió el suyo, la única forma de recuperar el
+   acceso ahora que no hay código que volver a dictar. */
 function pintarInvite(p){
   const caja  = $('jInvite');
   const email = $('jEmail').value.trim();
@@ -1174,18 +1165,14 @@ function pintarInvite(p){
     return;
   }
 
-  if(p?.invite_status === 'registrado'){
-    caja.innerHTML = `<div class="jug-invite">
-      <span class="tag tag-ok">Registrado</span><p>Ya ha entrado con su código.</p></div>`;
-    return;
-  }
-
-  const reenvia = p?.invite_status === 'invitado';
+  const registrado = p?.invite_status === 'registrado';
+  const reenvia     = registrado || p?.invite_status === 'invitado';
   caja.innerHTML = `<div class="jug-invite">
-    <p>${reenvia ? 'Se le invitó a este correo. Puedes volver a mandarle el acceso.'
-                 : 'Mándale el código de acceso por correo para que entre desde su móvil.'}</p>
+    <p>${registrado ? 'Ya ha entrado alguna vez. Si perdió el enlace, puedes mandarle uno nuevo.'
+        : reenvia   ? 'Se le invitó a este correo. Puedes volver a mandarle el acceso.'
+                    : 'Mándale un enlace por correo para que entre desde su móvil, sin contraseña.'}</p>
     <button class="btn btn-secondary btn-sm" data-invitar-jugador>
-      ${reenvia ? 'Reenviar invitación' : 'Invitar al equipo'}</button>
+      ${reenvia ? 'Reenviar acceso' : 'Invitar al equipo'}</button>
   </div>`;
 }
 
@@ -1195,10 +1182,24 @@ function abrirDialogoJugador(){
   $('dlgJugSub').textContent = equipo() ? equipo().name : '';
   CAMPOS_JUG.forEach(id => { if(id !== 'jPos') $(id).value = ''; });
   $('jPos').value = 'MC';
-  $('jCodigo').style.display = 'none';
+  $('jSeguir').style.display = '';
   $('jGuardar').textContent = 'Añadir';
   pintarInvite(null);
   $('dlgJugador').classList.add('open');
+  $('jNombre').focus();
+}
+
+/* Ficha en blanco lista para el siguiente alta: ni resumen a medias ni
+   nada del jugador anterior, solo el formulario vacío con el foco en
+   el nombre. */
+function reiniciarAltaJugador(){
+  jugEditId = null;
+  CAMPOS_JUG.forEach(id => { if(id !== 'jPos') $(id).value = ''; });
+  $('jPos').value = 'MC';
+  $('dlgJugT').textContent = 'Añadir jugador';
+  $('dlgJugSub').textContent = equipo() ? equipo().name : '';
+  $('jGuardar').textContent = 'Añadir';
+  pintarInvite(null);
   $('jNombre').focus();
 }
 
@@ -1210,8 +1211,8 @@ function abrirFichaJugador(id){
   $('dlgJugT').textContent = p.name;
   $('dlgJugSub').textContent = [equipo()?.name, esc(p.position) || null].filter(Boolean).join(' · ');
   rellenarCamposJugador(p);
+  $('jSeguir').style.display = 'none';
   $('jGuardar').textContent = 'Guardar cambios';
-  pintarCodigoJugador(p);
   pintarInvite(p);
   $('dlgJugador').classList.add('open');
   $('jNombre').focus();
@@ -1270,7 +1271,7 @@ function pintarPlantillas(){
     </div>
     <table class="table">
       <thead><tr><th style="width:56px">Dorsal</th><th>Jugador</th><th>Posición</th>
-                 <th>Código de acceso</th></tr></thead>
+                 <th>Correo</th></tr></thead>
       <tbody>
         ${ORDEN.concat(['Sin posición']).filter(l => grupos[l]).map(linea => `
           <tr class="grp"><td colspan="4"><span class="linea">
@@ -1282,7 +1283,7 @@ function pintarPlantillas(){
               <td><div class="jugador"><span class="avatar">${esc(ini(p.name))}</span>
                     <span>${esc(p.name)}${badgeInv(p)}</span></div></td>
               <td class="p-sub">${esc(p.position) || '—'}</td>
-              <td><span class="codigo">${esc(p.access_code)}</span></td>
+              <td class="p-sub">${esc(p.email) || '—'}</td>
             </tr>`).join('')}
         `).join('')}
       </tbody>
@@ -1662,16 +1663,17 @@ document.addEventListener('click', async e => {
   const filaJug = e.target.closest('[data-jugador]');
   if(filaJug){ abrirFichaJugador(+filaJug.dataset.jugador); return; }
 
-  if(e.target.closest('[data-guardar-jugador]')){
-    const btn = e.target.closest('[data-guardar-jugador]');
+  const guardaJug = e.target.closest('[data-guardar-jugador]');
+  if(guardaJug){
     if(!$('jNombre').value.trim()){ $('jNombre').focus(); return; }
 
-    const datos = leerCamposJugador();
-    btn.disabled = true;
+    const datos  = leerCamposJugador();
+    const seguir = guardaJug.dataset.guardarJugador === 'seguir';
+    guardaJug.disabled = true;
 
     if(jugEditId){
       const r = await post({action:'editar_jugador', player_id:jugEditId, ...datos});
-      btn.disabled = false;
+      guardaJug.disabled = false;
       if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
 
       const p = jugadorActual();
@@ -1686,21 +1688,30 @@ document.addEventListener('click', async e => {
     }
 
     const r = await post({action:'crear_jugador', team_id:equipoId, ...datos});
-    btn.disabled = false;
+    guardaJug.disabled = false;
     if(!r.ok){ toast(r.error || 'No se ha podido añadir.', 'bad'); return; }
 
-    /* el diálogo sigue con el recién creado: así el correo que se acaba
-       de escribir ya se puede invitar sin cerrar y volver a abrir */
-    jugEditId = r.id;
     const nuevo = {id:r.id, ...datos, dorsal: datos.dorsal ? +datos.dorsal : null,
-      access_code:r.code, invite_status:'sin_invitar', invited_at:null, registered_at:null};
+      invite_status:'sin_invitar', invited_at:null, registered_at:null};
     (plantillas[equipoId] = plantillas[equipoId] || []).push(nuevo);
     if(sec === 'plantillas') pintarPlantillas();
 
-    $('dlgJugT').textContent = nuevo.name;
-    $('jGuardar').textContent = 'Guardar cambios';
-    pintarCodigoJugador(nuevo);
-    pintarInvite(nuevo);
+    if(seguir){ reiniciarAltaJugador(); toast('Jugador añadido'); return; }
+
+    if(datos.email){
+      /* con correo puesto, la ficha se queda abierta en modo edición del
+         recién creado: así se puede invitar sin cerrar y volver a abrir */
+      jugEditId = r.id;
+      $('dlgJugT').textContent = nuevo.name;
+      $('jSeguir').style.display = 'none';
+      $('jGuardar').textContent = 'Guardar cambios';
+      pintarInvite(nuevo);
+      toast('Jugador añadido');
+      return;
+    }
+
+    $('dlgJugador').classList.remove('open');
+    jugEditId = null;
     toast('Jugador añadido');
     return;
   }
@@ -1715,10 +1726,13 @@ document.addEventListener('click', async e => {
     if(!r.ok){ toast(r.error || 'No se ha podido invitar.', 'bad'); return; }
 
     const p = jugadorActual();
-    if(p){ p.invite_status = 'invitado'; p.invited_at = new Date().toISOString(); }
+    if(p){
+      if(p.invite_status !== 'registrado') p.invite_status = 'invitado';
+      p.invited_at = new Date().toISOString();
+    }
     pintarInvite(p);
     if(sec === 'plantillas') pintarPlantillas();
-    toast('Invitación enviada por correo');
+    toast('Enlace enviado por correo');
     return;
   }
 

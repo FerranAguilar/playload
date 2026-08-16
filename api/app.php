@@ -136,7 +136,7 @@ switch ($action) {
         try {
             $p = db()->prepare(
                 'SELECT id, name, dorsal, position, position_alt, foot,
-                        birth_date, email, notes, access_code,
+                        birth_date, email, notes,
                         invite_status, invited_at, registered_at
                    FROM players WHERE team_id = ? AND active = 1
                   ORDER BY (dorsal IS NULL), dorsal, name'
@@ -500,8 +500,11 @@ switch ($action) {
             fail('El jugador necesita un nombre.');
         }
 
-        // La plantilla la lleva el club; el staff del equipo planifica.
-        exige_acceso($teamId, $userId, ['propietario', 'club']);
+        // La plantilla la lleva el club y quien creó el equipo; el resto
+        // del staff del equipo también, desde esta versión: solo queda
+        // fuera de la ficha del jugador lo que no le corresponde, como
+        // los ajustes del equipo.
+        exige_acceso($teamId, $userId, ['propietario', 'club', 'staff']);
 
         $c = db()->prepare('SELECT COUNT(*) AS n FROM players WHERE team_id = ? AND active = 1');
         $c->execute([$teamId]);
@@ -518,50 +521,64 @@ switch ($action) {
             ], 409);
         }
 
-        // Código de acceso del jugador: único y fácil de dictar.
-        $alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // sin I, O, 0, 1
-        do {
-            $code = '';
-            for ($i = 0; $i < 7; $i++) {
-                $code .= $alfabeto[random_int(0, strlen($alfabeto) - 1)];
-                if ($i === 2) { $code .= '-'; }
-            }
-            $q = db()->prepare('SELECT id FROM players WHERE access_code = ?');
-            $q->execute([$code]);
-        } while ($q->fetch());
-
         $dorsal = body()['dorsal'] ?? null;
         $dorsal = ($dorsal === '' || $dorsal === null) ? null : (int) $dorsal;
         [$fecha, $email] = datos_jugador_opcionales();
 
         try {
+            // Esquema al día: el jugador entra por correo, no hace falta
+            // ningún código que generar.
             $ins = db()->prepare(
                 'INSERT INTO players
                     (team_id, name, dorsal, position, position_alt, foot,
-                     birth_date, email, notes, access_code)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                     birth_date, email, notes)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $ins->execute([
                 $teamId, $name, $dorsal, param('position'), param('position_alt'),
-                param('foot'), $fecha, $email, mb_substr(param('notes'), 0, 500), $code,
+                param('foot'), $fecha, $email, mb_substr(param('notes'), 0, 500),
             ]);
         } catch (Throwable $e) {
-            // Sin la migración 09 esas columnas no existen: el alta
-            // sencilla de siempre, sin cortar por una ficha que todavía
-            // no cabe en la base.
-            $ins = db()->prepare(
-                'INSERT INTO players (team_id, name, dorsal, position, access_code)
-                 VALUES (?, ?, ?, ?, ?)'
-            );
-            $ins->execute([$teamId, $name, $dorsal, param('position'), $code]);
+            // Sin la migración 10, `access_code` todavía es obligatoria
+            // en la base: se genera uno como siempre para que el alta no
+            // se rompa. Si además falta la 09, esas columnas tampoco
+            // existen y se pierden por esta vez; se recuperan en cuanto
+            // se edite el jugador con las migraciones ya puestas.
+            $alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // sin I, O, 0, 1
+            do {
+                $code = '';
+                for ($i = 0; $i < 7; $i++) {
+                    $code .= $alfabeto[random_int(0, strlen($alfabeto) - 1)];
+                    if ($i === 2) { $code .= '-'; }
+                }
+                $q = db()->prepare('SELECT id FROM players WHERE access_code = ?');
+                $q->execute([$code]);
+            } while ($q->fetch());
+
+            try {
+                $ins = db()->prepare(
+                    'INSERT INTO players
+                        (team_id, name, dorsal, position, position_alt, foot,
+                         birth_date, email, notes, access_code)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                );
+                $ins->execute([
+                    $teamId, $name, $dorsal, param('position'), param('position_alt'),
+                    param('foot'), $fecha, $email, mb_substr(param('notes'), 0, 500), $code,
+                ]);
+            } catch (Throwable $e2) {
+                $ins = db()->prepare(
+                    'INSERT INTO players (team_id, name, dorsal, position, access_code)
+                     VALUES (?, ?, ?, ?, ?)'
+                );
+                $ins->execute([$teamId, $name, $dorsal, param('position'), $code]);
+            }
         }
 
-        json_out(['ok' => true, 'id' => (int) db()->lastInsertId(), 'code' => $code], 201);
+        json_out(['ok' => true, 'id' => (int) db()->lastInsertId()], 201);
 
     // ── Editar la ficha de un jugador ────────────────────────────────
-    // El nombre es lo único obligatorio, igual que al crearlo. El
-    // código de acceso no se toca aquí: es su credencial y cambiarla
-    // sin más lo desconectaría del móvil donde ya la tiene guardada.
+    // El nombre es lo único obligatorio, igual que al crearlo.
     case 'editar_jugador':
         $id = (int) (body()['player_id'] ?? 0);
         $name = param('name');
@@ -584,18 +601,22 @@ switch ($action) {
         if (!$j) {
             fail('Ese jugador no existe.', 404);
         }
-        exige_acceso((int) $j['team_id'], $userId, ['propietario', 'club']);
+        // La ficha del jugador la edita también el staff del equipo, no
+        // solo quien lo creó o el club: es trabajo del día a día, a
+        // diferencia de los ajustes del equipo.
+        exige_acceso((int) $j['team_id'], $userId, ['propietario', 'club', 'staff']);
 
         $dorsal = body()['dorsal'] ?? null;
         $dorsal = ($dorsal === '' || $dorsal === null) ? null : (int) $dorsal;
         [$fecha, $email] = datos_jugador_opcionales();
 
         // Si el correo cambia mientras había una invitación esperando,
-        // esa invitación se fue a una dirección que ya no vale: vuelve a
-        // «sin invitar» para que no quede colgada una que nadie va a
-        // abrir. Un jugador que ya entró con su código no se toca: entrar
-        // no depende del correo, y corregirlo después no debería
-        // desregistrar a nadie.
+        // ese enlace se mandó a una dirección que ya no vale: el estado
+        // vuelve a «sin invitar» para que no quede uno colgado que nadie
+        // va a abrir. Un jugador que ya entró no se toca: entrar no
+        // depende del correo que haya en la ficha hoy, y corregirlo
+        // después no debería desregistrar a nadie ni cerrarle el acceso
+        // que ya tiene.
         $reabre = isset($j['invite_status'])
             && $j['invite_status'] === 'invitado'
             && $email !== ($j['email'] ?? null);
@@ -619,20 +640,36 @@ switch ($action) {
             $up->execute([$name, $dorsal, param('position'), $id]);
         }
 
+        // El enlace viejo queda inválido aparte: en un `UPDATE` separado,
+        // para que si `login_token_hash` todavía no existe (falta la
+        // migración 10) no se lleve por delante el resto de la ficha,
+        // que si acababa de guardarse bien.
+        if ($reabre) {
+            try {
+                db()->prepare('UPDATE players SET login_token_hash = NULL WHERE id = ?')
+                    ->execute([$id]);
+            } catch (Throwable $e) {
+                // Sin migración 10 no hay testigo que invalidar.
+            }
+        }
+
         json_out(['ok' => true, 'reabierta' => $reabre]);
 
     // ── Invitar a un jugador por correo ──────────────────────────────
-    // No manda una contraseña ni un enlace de un solo uso: el jugador ya
-    // entra sin contraseña con su código, y ese código no caduca. El
-    // correo solo se lo acerca, para no depender de que el entrenador se
-    // lo dicte de viva voz. «Registrado» llega solo, la primera vez que
-    // ese código abra sesión — con o sin este correo de por medio.
+    // El enlace ES la credencial: no hay contraseña ni código que
+    // dictar. No caduca —para poder guardarlo en la pantalla de inicio
+    // del móvil y que siga sirviendo—, pero cambia cada vez que se
+    // manda un correo nuevo, así que solo el último enlace enviado vale;
+    // los anteriores, si se reenvía, dejan de servir.
+    //
+    // Se puede invitar aunque ya esté «registrado»: es como se le manda
+    // un enlace nuevo a quien perdió el suyo, y es la única forma de
+    // recuperar el acceso ahora que no hay código que volver a dictar.
     case 'invitar_jugador':
         $id = (int) (body()['player_id'] ?? 0);
 
         $st = db()->prepare(
-            'SELECT p.id, p.team_id, p.name, p.email, p.access_code,
-                    p.invite_status, t.name AS team_name
+            'SELECT p.id, p.team_id, p.name, p.email, p.invite_status, t.name AS team_name
                FROM players p JOIN teams t ON t.id = p.team_id
               WHERE p.id = ?'
         );
@@ -642,35 +679,38 @@ switch ($action) {
         if (!$j) {
             fail('Ese jugador no existe.', 404);
         }
-        exige_acceso((int) $j['team_id'], $userId, ['propietario', 'club']);
+        exige_acceso((int) $j['team_id'], $userId, ['propietario', 'club', 'staff']);
 
         if (!$j['email']) {
             fail('Este jugador todavía no tiene un correo en su ficha.');
         }
-        if ($j['invite_status'] === 'registrado') {
-            fail('Ya ha entrado con su código: no hace falta invitarlo.');
-        }
 
-        $link = rtrim($CONFIG['app_url'], '/') . '/acceso.html?v=player';
+        $token = bin2hex(random_bytes(32));
+
+        $link = rtrim($CONFIG['app_url'], '/') . '/acceso.html?v=player&ptoken=' . $token;
         $enviado = send_mail(
             $j['email'],
             'Tu acceso a ' . $j['team_name'] . ' en PlayLoad',
             "Hola {$j['name']},\n\n" .
             "{$user['name']} te ha dado acceso a {$j['team_name']} en PlayLoad.\n\n" .
-            "Entra aquí con tu código:\n{$link}\n\n" .
-            "Tu código de acceso es: {$j['access_code']}\n\n" .
-            "Con él entras sin contraseña, entrenamiento a entrenamiento, para mandar\n" .
-            "cómo te encuentras y el esfuerzo de cada sesión.\n\n" .
-            "Si no esperabas este correo, puedes ignorarlo: sin el código nadie entra.\n"
+            "Abre este enlace desde tu móvil para entrar, sin contraseña:\n{$link}\n\n" .
+            "Es tuyo: guárdalo o añade la página a la pantalla de inicio, y te servirá\n" .
+            "cada vez que quieras mandar cómo te encuentras o el esfuerzo de la sesión.\n\n" .
+            "Si no esperabas este correo, puedes ignorarlo: sin abrir el enlace nadie entra.\n"
         );
 
         if (!$enviado) {
             fail('No se ha podido enviar el correo. Revisa mail_from en config.php.', 502);
         }
 
+        // Un jugador que ya entró sigue «registrado» aunque se le mande
+        // un enlace nuevo: eso no deshace que ya haya entrado.
         db()->prepare(
-            "UPDATE players SET invite_status = 'invitado', invited_at = NOW() WHERE id = ?"
-        )->execute([$id]);
+            "UPDATE players SET
+                login_token_hash = ?, invited_at = NOW(),
+                invite_status = IF(invite_status = 'registrado', 'registrado', 'invitado')
+              WHERE id = ?"
+        )->execute([hash('sha256', $token), $id]);
 
         json_out(['ok' => true]);
 
@@ -1512,7 +1552,7 @@ switch ($action) {
     case 'exportar':
         $st = db()->prepare(
             'SELECT t.name AS equipo, t.category AS categoria, t.modality AS modalidad,
-                    p.dorsal, p.name AS jugador, p.position AS posicion, p.access_code AS codigo
+                    p.dorsal, p.name AS jugador, p.position AS posicion
                FROM teams t
                LEFT JOIN players p ON p.team_id = t.id AND p.active = 1
               WHERE t.owner_user_id = ?
@@ -1526,7 +1566,7 @@ switch ($action) {
 
         $out = fopen('php://output', 'w');
         fprintf($out, "\xEF\xBB\xBF");   // BOM, para que Excel respete las tildes
-        fputcsv($out, ['Equipo', 'Categoría', 'Modalidad', 'Dorsal', 'Jugador', 'Posición', 'Código'], ';');
+        fputcsv($out, ['Equipo', 'Categoría', 'Modalidad', 'Dorsal', 'Jugador', 'Posición'], ';');
         foreach ($st->fetchAll() as $r) {
             fputcsv($out, array_values($r), ';');
         }

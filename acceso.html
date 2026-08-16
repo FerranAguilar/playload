@@ -261,7 +261,10 @@ const S = {
   email:'', pass:'', show:false, keep:true, error:null, busy:false,
   code:['','','','','',''], codeErr:false,
   resend:0, timer:null,
-  playerCode:'', player:null,
+  // El jugador no escribe nada: entra con el enlace que le manda el
+  // club por correo, así que solo hace falta guardar ese testigo y
+  // cómo va la comprobación mientras se hace sola.
+  ptoken:'', playerStatus:null, playerError:'', player:null,
   spaces:null,            // se rellena con lo que devuelva el servidor
   token:'', pass2:''      // pantalla de contraseña nueva
 };
@@ -298,7 +301,7 @@ const ASIDE = {
     p:['El enlace caduca a los 30 minutos','Se puede usar una sola vez',
        'Si no llega, revisa el correo no deseado'] },
   player:{ t:'Acceso de jugador',
-    x:'Sin contraseña y sin instalar nada: el código que te dio el club te abre tu día.',
+    x:'Sin contraseña y sin instalar nada: el enlace que te manda el club por correo te abre tu día.',
     p:['Wellness al despertar, RPE al terminar',
        'Convocatoria, horario y sesión del día',
        'Aviso de molestias directo al fisio'] }
@@ -376,9 +379,6 @@ function vLogin(){
       </div>
       <button class="btn btn-primary btn-block" type="submit" ${ok?'':'disabled'}>Entrar</button>
     </form>
-
-    <div class="sep" style="margin:24px 0 16px">o si eres jugador</div>
-    <button class="btn btn-secondary btn-block" data-go="player">Entrar con mi código de jugador</button>
   </div>`;
 }
 
@@ -495,22 +495,33 @@ function vReset(){
   </div>`;
 }
 
+/* No hay formulario que rellenar: el jugador entra con el enlace que
+   le manda el club por correo, y ese enlace ya trae el testigo en la
+   URL. Esta vista solo enseña cómo va la comprobación —o qué hacer si
+   no hay enlace, o si el que hay ya no vale—. */
 function vPlayer(){
-  const ok = S.playerCode.replace(/\s/g,'').length>=6;
+  if(S.playerStatus === 'error'){
+    return `<div class="card">
+      <a class="back" href="#" data-go="login">← Acceso del cuerpo técnico</a>
+      <div class="alert">${WARN}<div>${S.playerError}</div></div>
+      <p class="lead" style="margin-top:16px">Pide a tu entrenador o preparador que te invite otra
+        vez desde la ficha de la plantilla: te llegará un enlace nuevo.</p>
+    </div>`;
+  }
+
+  if(!S.ptoken){
+    return `<div class="card">
+      <a class="back" href="#" data-go="login">← Acceso del cuerpo técnico</a>
+      <h1>Este enlace no es válido</h1>
+      <p class="lead">El acceso de jugador solo funciona con el enlace que manda tu club por correo.
+        Pide que te inviten otra vez desde la plantilla.</p>
+    </div>`;
+  }
+
   return `<div class="card">
     <a class="back" href="#" data-go="login">← Acceso del cuerpo técnico</a>
-    <h1>Entra con tu código</h1>
-    <p class="lead">El que te dio tu club, de seis caracteres. No necesitas contraseña ni instalar nada.</p>
-    <form class="form" data-submit="player">
-      <div class="field">
-        <label for="pcode">Código de jugador</label>
-        <input class="input" id="pcode" placeholder="BLV-8K2" autocapitalize="characters"
-               style="font-family:var(--font-heading);font-size:19px;letter-spacing:.14em;text-align:center;min-height:54px"
-               value="${S.playerCode}" autofocus>
-      </div>
-      <button class="btn btn-primary btn-block" type="submit" ${ok?'':'disabled'}>Entrar</button>
-    </form>
-    <div class="foot-note">¿No lo tienes? Pídeselo a tu preparador físico o al delegado.</div>
+    <h1>Entrando…</h1>
+    <p class="lead">Comprobando tu enlace.</p>
   </div>`;
 }
 
@@ -613,7 +624,6 @@ document.addEventListener('submit', async e => {
     }
     if(kind==='recover'){ S.view='sent'; countdown(30); render(); return; }
     if(kind==='reset'){ S.error=null; go('space'); return; }
-    if(kind==='player'){ S.view='playerOk'; render(); return; }
     return;
   }
 
@@ -643,12 +653,6 @@ document.addEventListener('submit', async e => {
       render(); return;
     }
 
-    if(kind==='player'){
-      const r = await post('player_login.php', {code:S.playerCode});
-      if(r.ok){ S.player = r.player; S.error=null; S.view='playerOk'; render(); return; }
-      S.error = r.error || 'Ese código no existe o ya no está activo.';
-      render(); return;
-    }
   } catch(err){
     S.error = 'No hay conexión con el servidor. Inténtalo de nuevo.';
     render();
@@ -671,7 +675,6 @@ document.addEventListener('input', e => {
   if(el.id==='email' || el.id==='rmail'){ S.email = el.value; toggleSubmit(); return; }
   if(el.id==='pass' || el.id==='np1'){ S.pass = el.value; toggleSubmit(); return; }
   if(el.id==='np2'){ S.pass2 = el.value; toggleSubmit(); return; }
-  if(el.id==='pcode'){ S.playerCode = el.value.toUpperCase(); el.value = S.playerCode; toggleSubmit(); return; }
 
   const box = el.closest('[data-code] input');
   if(box){
@@ -711,7 +714,6 @@ function toggleSubmit(){
   btn.disabled = S.view==='login'   ? !(S.email.includes('@') && S.pass.length>0)
                : S.view==='recover' ? !S.email.includes('@')
                : S.view==='reset'   ? !(S.pass.length>=8 && S.pass===S.pass2)
-               : S.view==='player'  ? S.playerCode.replace(/\s/g,'').length<6
                : false;
 }
 
@@ -738,14 +740,44 @@ async function verify(){
   }
 }
 
-/* parámetros de entrada: correo prerrellenado, vista directa y el
-   testigo del enlace de recuperación (acceso.html?v=reset&token=…) */
+/* Sin formulario, sin código: el enlace del correo trae el testigo en
+   la URL y entra solo, al cargar. */
+async function entrarJugador(token){
+  try{
+    const r = await post('player_login.php', {token});
+    if(r.ok){ S.player = r.player; S.playerStatus = null; S.view = 'playerOk'; render(); return; }
+    S.playerStatus = 'error';
+    S.playerError  = r.error || 'Ese enlace no es válido o ha caducado.';
+    render();
+  } catch(err){
+    S.playerStatus = 'error';
+    S.playerError  = 'No hay conexión con el servidor. Inténtalo de nuevo.';
+    render();
+  }
+}
+
+/* parámetros de entrada: correo prerrellenado, vista directa, el
+   testigo del enlace de recuperación (acceso.html?v=reset&token=…) y
+   el del acceso de jugador (acceso.html?v=player&ptoken=…) */
 const qs = new URLSearchParams(location.search);
 if(qs.get('email')) S.email = qs.get('email');
 if(qs.get('token')){ S.token = qs.get('token'); S.view = 'reset'; }
 if(qs.get('v') && VIEWS[qs.get('v')]) S.view = qs.get('v');
 
+if(S.view === 'player'){
+  if(DEMO){
+    /* Sin servidor no hay nada que comprobar: se enseña directamente
+       el diseño de la vista de llegada. */
+    S.view = 'playerOk';
+  } else {
+    S.ptoken = qs.get('ptoken') || '';
+    S.playerStatus = S.ptoken ? 'cargando' : 'sin-enlace';
+  }
+}
+
 render();
+
+if(!DEMO && S.view === 'player' && S.ptoken) entrarJugador(S.ptoken);
 
 /* La biblioteca de Google solo se carga si hay ID de cliente. */
 if(GOOGLE_CLIENT_ID && !DEMO){

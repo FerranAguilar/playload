@@ -109,11 +109,11 @@ correo sale con un enlace que no lleva a ninguna parte.
 | `api/reset.php` | POST | Guarda la contraseña nueva |
 | `api/me.php` | GET | Quién ha iniciado sesión; reanuda «mantener la sesión» |
 | `api/logout.php` | POST | Cierra la sesión |
-| `api/player_login.php` | POST | Acceso del jugador con el código del club |
+| `api/player_login.php` | POST | Acceso del jugador con el enlace que le mandó el club |
 | `api/invitacion.php` | GET | Qué correo hay detrás de un enlace de invitación |
 | `api/app.php?action=equipo` | GET | Un equipo con su plantilla completa; el nivel de acceso viene en `acceso` |
-| `api/app.php` `editar_jugador` | POST | Cambia la ficha de un jugador; el código de acceso no se toca |
-| `api/app.php` `invitar_jugador` | POST | Manda el código de acceso por correo |
+| `api/app.php` `editar_jugador` | POST | Cambia la ficha de un jugador |
+| `api/app.php` `invitar_jugador` | POST | Manda (o reenvía) el enlace de acceso por correo |
 | `api/app.php?action=sesion` | GET | Una sesión con sus bloques |
 | `api/app.php` `editar_sesion` | POST | Cambia fecha, hora, título, tipo, MD y lugar |
 | `api/app.php` `guardar_bloques` | POST | Sustituye los bloques y recalcula duración y carga |
@@ -150,6 +150,14 @@ siguen abriendo —nombre, dorsal y posición se guardan igual, en vez de
 romper la pantalla por columnas que no existen todavía— pero lo que se
 escriba en los campos nuevos no llega a ninguna parte, y `invitar_jugador`
 falla, porque necesita el correo y el estado que trae esa migración.
+
+El acceso por correo trae otra más: `db/migracion-10-acceso-por-correo.sql`
+quita `access_code` —ya no hace falta, y era `NOT NULL`— y añade
+`login_token_hash`. Hasta que se importe, dar de alta a un jugador sigue
+generando un código como antes (`crear_jugador` cae a ese camino en
+cuanto el de siempre falla), porque la base todavía lo exige; y
+`invitar_jugador` y `player_login.php`, que dependen enteros de
+`login_token_hash`, no funcionan.
 
 ## La sesión por dentro
 
@@ -279,11 +287,17 @@ tres niveles. El orden importa: **el club se mira antes que la
 propiedad**, porque los equipos que crea una cuenta de club quedan a su
 nombre y si no se haría pasar por propietaria.
 
-| Nivel | Quién es | Equipo y plantilla | Calendario y carga |
-|---|---|---|---|
-| `club` | dueño del club al que pertenece el equipo | escribe | **solo lee** |
-| `propietario` | creó el equipo por su cuenta | escribe | escribe |
-| `staff` | el club le dio el acceso | solo lee | escribe |
+| Nivel | Quién es | Equipo | Plantilla | Calendario y carga |
+|---|---|---|---|---|
+| `club` | dueño del club al que pertenece el equipo | escribe | escribe | **solo lee** |
+| `propietario` | creó el equipo por su cuenta | escribe | escribe | escribe |
+| `staff` | el club le dio el acceso | **solo lee** | escribe | escribe |
+
+«Equipo» es nombre, categoría, sistema, color: los ajustes que casi
+nunca cambian. «Plantilla» es la ficha de cada jugador —posición,
+contacto, comentarios, invitación—, que se toca cada semana; por eso el
+staff la escribe aunque no haya creado el equipo, mientras que los
+ajustes le siguen quedando fuera.
 
 `action=equipo` —la que abre la ficha de un equipo con su plantilla—
 comprobaba la propiedad a mano en vez de llamar a `acceso_equipo()`, así
@@ -304,38 +318,64 @@ nombre sigue siendo el único obligatorio.
 Se edita clicando la fila en la plantilla, tanto desde
 `PlayLoad-equipos.html` (el entrenador) como desde la sección
 Plantillas de `PlayLoad-club.html` (el club, que por la tabla de arriba
-también escribe). El staff con acceso de solo lectura ve la misma
-ficha, pero con los campos deshabilitados y sin los botones de guardar
-o invitar.
+también escribe). La edita **todo el staff del equipo**, club incluido:
+es trabajo del día a día, a diferencia de los ajustes del equipo
+—nombre, categoría, sistema—, que siguen siendo solo de quien lo creó o
+del club.
 
-### Invitar a un jugador
+Añadir jugadores tiene un segundo botón, **Guardar y añadir otro
+jugador**, que guarda el que hay y deja la ficha en blanco lista para
+el siguiente: para dar de alta una plantilla entera de una sentada.
 
-Con un correo en la ficha aparece **Invitar al equipo**. No manda una
-contraseña ni un enlace de un solo uso —el jugador ya entra sin
-contraseña con su código, y ese código no caduca—: el correo solo se lo
-acerca, con el código de acceso escrito dentro, para no depender de que
-el entrenador se lo dicte de viva voz.
+### El jugador entra por correo, no por código
+
+Hasta la migración 10, el jugador entraba con un código de siete
+caracteres que el club le dictaba. Ya no: `access_code` desaparece y el
+acceso pasa a ser **exclusivamente por correo**. Con uno puesto en la
+ficha aparece **Invitar al equipo**, que manda un enlace —no una
+contraseña, no un código que copiar— a `acceso.html?v=player&ptoken=…`.
+Ese enlace ES la credencial: `login_token_hash` guarda su hash, igual
+que `password_resets` o `allowed_emails.token_hash`, así que quien lea
+la tabla no puede entrar con lo que vea ahí.
+
+El enlace **no caduca** —para poder guardarlo o añadirlo a la pantalla
+de inicio del móvil y que siga sirviendo, como hacía el código— pero
+**cambia cada vez que se manda un correo nuevo**: solo el último enlace
+enviado vale, como el testigo de recuperación de contraseña. Por eso se
+puede invitar aunque el jugador ya esté `registrado`: es como se le
+manda un enlace nuevo a quien perdió el suyo, la única forma de
+recuperar el acceso ahora que no hay nada que volver a dictar por
+teléfono.
 
 `invite_status` tiene tres valores. `sin_invitar` es el de siempre.
-`invitado` es que se le mandó el correo. `registrado` llega solo, la
-primera vez que ese código abre sesión en `player_login.php` —con
-correo de por medio o sin él, porque **registrarse es entrar, no abrir
-un enlace concreto**—. Por eso invitar a alguien que ya está registrado
-no hace nada: no hay nada que reforzar.
+`invitado` es que se le mandó un correo y todavía no lo ha abierto.
+`registrado` llega solo, la primera vez que ese enlace entra de verdad
+en `player_login.php` —**registrarse es entrar, no que el enlace en
+concreto siga siendo el mismo**—, y no se deshace si después se le manda
+uno nuevo.
 
 Si se corrige el correo mientras había una invitación esperando
-(`invitado`), esa invitación volvía a `sin_invitar`: se mandó a una
-dirección que ya no vale. Si el jugador ya está `registrado`, cambiar el
-correo no lo toca — entrar no depende del correo, y arreglarlo después
-no debería desregistrar a nadie.
+(`invitado`), ese enlace se mandó a una dirección que ya no vale: el
+estado vuelve a `sin_invitar` y `login_token_hash` se pone a NULL en una
+consulta aparte, para que si esa columna todavía no existe —falta la
+migración 10— no se lleve por delante el resto de la ficha, que sí
+acababa de guardarse bien. Si el jugador ya está `registrado`, cambiar
+el correo no le toca el acceso: entrar no depende del correo que haya
+hoy en la ficha, y corregirlo después no debería cerrarle lo que ya
+tiene.
 
-Todavía no hay pantalla de jugador de verdad: la vista «Acceso de
-jugador» de `acceso.html` es un diseño con datos de ejemplo, y el enlace
-de la invitación (`acceso.html?v=player`) lleva ahí. Mandar los
-formularios de RPE y wellness, y enseñar las convocatorias y el
-calendario a quien haya entrado con su código, es el siguiente paso: la
-tabla `rpe_entries`/`wellness_entries` ya guarda por `player_id`, así
-que cuando exista esa pantalla no hace falta tocar la base.
+`acceso.html` ya no tiene ningún formulario de código: la vista de
+jugador solo sabe leer el `ptoken` de la URL y llamar sola a
+`player_login.php` al cargar, mostrando «Entrando…» mientras comprueba
+y el error si el enlace no vale. No hay manera de escribir nada a mano.
+
+Todavía no hay pantalla de jugador de verdad más allá de eso: la
+vista «Hola, Marc» a la que se llega tras entrar es un diseño con datos
+de ejemplo. Mandar los formularios de RPE y wellness, y enseñar las
+convocatorias y el calendario a quien haya entrado, es el siguiente
+paso: la tabla `rpe_entries`/`wellness_entries` ya guarda por
+`player_id`, así que cuando exista esa pantalla no hace falta tocar la
+base.
 
 ## Decisiones de seguridad
 
@@ -355,17 +395,20 @@ que cuando exista esa pantalla no hace falta tocar la base.
 - **Consultas preparadas** en todo (PDO, sin emulación), así que no hay
   hueco para inyección SQL.
 - **El jugador entra en una sesión distinta**: guarda `player_id`, nunca
-  `uid`, de modo que un código de jugador no abre el panel del staff.
+  `uid`, de modo que su enlace de acceso no abre el panel del staff.
+- **El testigo del enlace de jugador se guarda en hash** (SHA-256), como
+  los de recuperación y los de invitación: no se guarda en claro en
+  ningún sitio, ni siquiera para poder reenviarlo.
 
 ## Lo que falta
 
 - **El jugador no tiene pantalla de verdad.** Ya se le puede invitar por
-  correo con su código, y `player_login.php` marca cuándo entra por
-  primera vez, pero al otro lado solo hay el diseño de ejemplo de
-  `acceso.html`. El wellness y el RPE los pasa hoy el entrenador uno a
-  uno, que funciona pero no escala: lo natural es que cada jugador
-  conteste él, entrando con el mismo código. Las tablas no cambiarían:
-  `rpe_entries` y `wellness_entries` ya guardan por `player_id`.
+  correo, y `player_login.php` marca cuándo entra por primera vez, pero
+  al otro lado solo hay el diseño de ejemplo de `acceso.html`. El
+  wellness y el RPE los pasa hoy el entrenador uno a uno, que funciona
+  pero no escala: lo natural es que cada jugador conteste él, entrando
+  con su enlace. Las tablas no cambiarían: `rpe_entries` y
+  `wellness_entries` ya guardan por `player_id`.
 - **El calendario cierra las sesiones con el RPE del grupo**, sin la
   lista jugador a jugador que sí tiene el panel. Mientras tanto, desde el
   panel se puede abrir cualquier sesión de la semana.
