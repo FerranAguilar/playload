@@ -551,8 +551,13 @@ switch ($action) {
             fail('Ese equipo no es tuyo.', 403);
         }
 
+        // El número de bloques viaja con cada fila: la lista de sesiones
+        // distingue así la que está montada de la que es solo un hueco
+        // en el calendario, sin pedir el detalle de todas.
         $campos = 'id, date, time, title, kind, md_label, place, duration_min,
-                   planned_rpe, planned_load, actual_rpe, actual_load, status';
+                   planned_rpe, planned_load, actual_rpe, actual_load, status,
+                   (SELECT COUNT(*) FROM session_blocks b WHERE b.session_id = sessions.id)
+                     AS bloques';
 
         // El calendario pide el tramo que tiene en pantalla. Sin tramo se
         // responde lo de siempre: de hace cuatro semanas en adelante.
@@ -613,6 +618,248 @@ switch ($action) {
         ]);
 
         json_out(['ok' => true, 'id' => (int) db()->lastInsertId()], 201);
+
+    // ── Una sesión con sus bloques ─────────────────────────────────
+    case 'sesion':
+        $id = (int) ($_GET['session_id'] ?? 0);
+
+        $st = db()->prepare(
+            'SELECT id, team_id, date, time, title, kind, md_label, place,
+                    duration_min, planned_rpe, planned_load,
+                    actual_rpe, actual_load, status
+               FROM sessions WHERE id = ?'
+        );
+        $st->execute([$id]);
+        $ses = $st->fetch();
+
+        if (!$ses || !es_mi_equipo((int) $ses['team_id'], $userId)) {
+            fail('Esa sesión no es tuya.', 403);
+        }
+
+        $st = db()->prepare(
+            'SELECT id, name, minutes, intensity, sort
+               FROM session_blocks WHERE session_id = ?
+              ORDER BY sort, id'
+        );
+        $st->execute([$id]);
+
+        // Cuántos han contestado ya: el botón de pasar lista dice una
+        // cosa u otra según lo haya hecho alguien o nadie.
+        $q = db()->prepare('SELECT COUNT(*) AS n FROM rpe_entries WHERE session_id = ?');
+        $q->execute([$id]);
+
+        json_out([
+            'ok'         => true,
+            'sesion'     => $ses,
+            'bloques'    => $st->fetchAll(),
+            'respuestas' => (int) ($q->fetch()['n'] ?? 0),
+        ]);
+
+    // ── Editar la cabecera de una sesión ───────────────────────────
+    // Los minutos y el RPE no se tocan aquí cuando la sesión tiene
+    // bloques: los manda el contenido, y dejar cambiarlos por detrás
+    // sería poder decir que dura 60 mientras los bloques suman 90.
+    case 'editar_sesion':
+        $id = (int) (body()['session_id'] ?? 0);
+
+        $st = db()->prepare('SELECT id, team_id FROM sessions WHERE id = ?');
+        $st->execute([$id]);
+        $ses = $st->fetch();
+
+        if (!$ses) {
+            fail('Esa sesión no es tuya.', 403);
+        }
+        exige_acceso((int) $ses['team_id'], $userId, ['propietario', 'staff']);
+
+        $date = param('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            fail('La fecha debe ser AAAA-MM-DD.');
+        }
+
+        $kind = param('kind', 'entrenamiento');
+        if (!in_array($kind, ['entrenamiento', 'partido', 'recuperacion', 'descanso'], true)) {
+            $kind = 'entrenamiento';
+        }
+
+        $q = db()->prepare('SELECT COUNT(*) AS n FROM session_blocks WHERE session_id = ?');
+        $q->execute([$id]);
+        $conBloques = ((int) ($q->fetch()['n'] ?? 0)) > 0;
+
+        $up = db()->prepare(
+            'UPDATE sessions SET date = ?, time = ?, title = ?, kind = ?,
+                    md_label = ?, place = ? WHERE id = ?'
+        );
+        $up->execute([
+            $date,
+            param('time') !== '' ? param('time') : null,
+            param('title'), $kind, param('md_label'), param('place'),
+            $id,
+        ]);
+
+        if (!$conBloques) {
+            $dur = max(0, min(240, (int) (body()['duration_min'] ?? 90)));
+            $rpe = body()['planned_rpe'] ?? null;
+            $rpe = ($rpe === '' || $rpe === null) ? null : max(1, min(10, (int) $rpe));
+
+            $up = db()->prepare(
+                'UPDATE sessions SET duration_min = ?, planned_rpe = ?, planned_load = ?
+                  WHERE id = ?'
+            );
+            $up->execute([$dur, $rpe, $rpe !== null ? $rpe * $dur : null, $id]);
+        }
+
+        json_out(['ok' => true, 'bloques' => $conBloques]);
+
+    // ── Los bloques de una sesión ──────────────────────────────────
+    // Llega la lista entera y sustituye a la anterior. Reordenar,
+    // borrar y añadir en la misma pasada sale más simple así que
+    // llevando la cuenta de qué cambió respecto a lo que había.
+    case 'guardar_bloques':
+        $id = (int) (body()['session_id'] ?? 0);
+
+        $st = db()->prepare('SELECT id, team_id FROM sessions WHERE id = ?');
+        $st->execute([$id]);
+        $ses = $st->fetch();
+
+        if (!$ses) {
+            fail('Esa sesión no es tuya.', 403);
+        }
+        exige_acceso((int) $ses['team_id'], $userId, ['propietario', 'staff']);
+
+        $bloques = body()['bloques'] ?? [];
+        if (!is_array($bloques)) {
+            fail('Faltan los bloques.');
+        }
+
+        db()->prepare('DELETE FROM session_blocks WHERE session_id = ?')->execute([$id]);
+
+        $ins = db()->prepare(
+            'INSERT INTO session_blocks (session_id, name, minutes, intensity, sort)
+             VALUES (?, ?, ?, ?, ?)'
+        );
+
+        $orden = 0;
+        $min   = 0;
+        $carga = 0;
+
+        foreach ($bloques as $b) {
+            $nombre = trim(mb_substr((string) ($b['name'] ?? ''), 0, 120));
+            if ($nombre === '') {
+                continue;                       // un bloque sin nombre no es un bloque
+            }
+
+            $m = max(0, min(240, (int) ($b['minutes'] ?? 0)));
+            $i = (int) ($b['intensity'] ?? 0);
+            $i = ($i < 1 || $i > 10) ? null : $i;
+
+            $ins->execute([$id, $nombre, $m, $i, $orden++]);
+
+            $min += $m;
+            // Un bloque sin intensidad suma tiempo pero no carga: es lo
+            // que pasa con una charla o un rondo de vuelta a la calma.
+            $carga += $i !== null ? $m * $i : 0;
+        }
+
+        // Con bloques, la sesión ya no se describe a ojo: dura lo que
+        // suman y cuesta lo que suman. El RPE previsto pasa a ser la
+        // media pesada por minutos, que es lo que significaba.
+        //
+        // Y si se quedó sin ninguno, se le quita también el plan: la
+        // carga que tenía la habían puesto esos bloques, y dejarla
+        // sería enseñar la suma de algo que ya no existe.
+        if ($orden > 0) {
+            $up = db()->prepare(
+                'UPDATE sessions SET duration_min = ?, planned_rpe = ?, planned_load = ?
+                  WHERE id = ?'
+            );
+            $up->execute([
+                $min,
+                $min > 0 && $carga > 0 ? (int) round($carga / $min) : null,
+                $carga > 0 ? $carga : null,
+                $id,
+            ]);
+        } else {
+            // La duración se queda: es el hueco reservado en el
+            // calendario y no la puso ningún bloque.
+            db()->prepare(
+                'UPDATE sessions SET planned_rpe = NULL, planned_load = NULL WHERE id = ?'
+            )->execute([$id]);
+        }
+
+        json_out(['ok' => true, 'bloques' => $orden, 'minutos' => $min, 'carga' => $carga]);
+
+    // ── Duplicar una sesión ────────────────────────────────────────
+    // Una semana de trabajo se parece a la anterior: copiar y mover la
+    // fecha es el gesto que de verdad se hace, no montarla otra vez.
+    case 'duplicar_sesion':
+        $id = (int) (body()['session_id'] ?? 0);
+
+        $st = db()->prepare(
+            'SELECT id, team_id, time, title, kind, md_label, place,
+                    duration_min, planned_rpe, planned_load
+               FROM sessions WHERE id = ?'
+        );
+        $st->execute([$id]);
+        $ses = $st->fetch();
+
+        if (!$ses) {
+            fail('Esa sesión no es tuya.', 403);
+        }
+        exige_acceso((int) $ses['team_id'], $userId, ['propietario', 'staff']);
+
+        $date = param('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            fail('La fecha debe ser AAAA-MM-DD.');
+        }
+
+        // La copia nace planificada y sin carga real: lo que se copia es
+        // el plan, no lo que costó aquel día.
+        $ins = db()->prepare(
+            'INSERT INTO sessions
+                (team_id, date, time, title, kind, md_label, place,
+                 duration_min, planned_rpe, planned_load)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $ins->execute([
+            (int) $ses['team_id'], $date, $ses['time'], $ses['title'], $ses['kind'],
+            $ses['md_label'], $ses['place'], $ses['duration_min'],
+            $ses['planned_rpe'], $ses['planned_load'],
+        ]);
+        $nuevo = (int) db()->lastInsertId();
+
+        $st = db()->prepare(
+            'SELECT name, minutes, intensity, sort FROM session_blocks
+              WHERE session_id = ? ORDER BY sort, id'
+        );
+        $st->execute([$id]);
+
+        $ins = db()->prepare(
+            'INSERT INTO session_blocks (session_id, name, minutes, intensity, sort)
+             VALUES (?, ?, ?, ?, ?)'
+        );
+        foreach ($st->fetchAll() as $b) {
+            $ins->execute([$nuevo, $b['name'], $b['minutes'], $b['intensity'], $b['sort']]);
+        }
+
+        json_out(['ok' => true, 'id' => $nuevo], 201);
+
+    // ── Borrar una sesión ──────────────────────────────────────────
+    case 'borrar_sesion':
+        $id = (int) (body()['session_id'] ?? 0);
+
+        $st = db()->prepare('SELECT id, team_id FROM sessions WHERE id = ?');
+        $st->execute([$id]);
+        $ses = $st->fetch();
+
+        if (!$ses) {
+            fail('Esa sesión no es tuya.', 403);
+        }
+        exige_acceso((int) $ses['team_id'], $userId, ['propietario', 'staff']);
+
+        // Los bloques y los RPE se van con ella por la clave foránea.
+        db()->prepare('DELETE FROM sessions WHERE id = ?')->execute([$id]);
+
+        json_out(['ok' => true]);
 
     // ── Cerrar sesión: cuánto costó de verdad ──────────────────────
     case 'cerrar_sesion':

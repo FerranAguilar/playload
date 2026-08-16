@@ -111,6 +111,11 @@ correo sale con un enlace que no lleva a ninguna parte.
 | `api/logout.php` | POST | Cierra la sesión |
 | `api/player_login.php` | POST | Acceso del jugador con el código del club |
 | `api/invitacion.php` | GET | Qué correo hay detrás de un enlace de invitación |
+| `api/app.php?action=sesion` | GET | Una sesión con sus bloques |
+| `api/app.php` `editar_sesion` | POST | Cambia fecha, hora, título, tipo, MD y lugar |
+| `api/app.php` `guardar_bloques` | POST | Sustituye los bloques y recalcula duración y carga |
+| `api/app.php` `duplicar_sesion` | POST | Copia la sesión y sus bloques a otra fecha |
+| `api/app.php` `borrar_sesion` | POST | Borra la sesión, sus bloques y sus RPE |
 | `api/app.php?action=rpe_sesion` | GET | La plantilla de una sesión con el RPE que ya tenga cada uno |
 | `api/app.php` `guardar_rpe` | POST | Guarda el RPE jugador a jugador y rehace la carga de la sesión |
 | `api/app.php?action=wellness_dia` | GET | La plantilla con el wellness de un día |
@@ -131,9 +136,39 @@ anteriores y en ese orden; sin la 05 la pantalla del club lo dice, sin la
 07 el panel invita como antes sin mandar nada, y sin la 08 el panel del
 club enseña el día pero no los avisos. El resto sigue funcionando.
 
-El control de carga **no trae migración nueva**: `rpe_entries` y
-`wellness_entries` ya venían con la 03, esperando pantalla. Si en su día
-importaste esa, no hay nada que hacer.
+Ni el control de carga ni las sesiones por bloques traen **migración
+nueva**: `rpe_entries`, `wellness_entries` y `session_blocks` ya venían
+con la 03, esperando pantalla. Si en su día importaste esa, no hay nada
+que hacer.
+
+## La sesión por dentro
+
+Una sesión se monta por **bloques** (`session_blocks`): calentamiento,
+tareas, competición reducida, vuelta a la calma. Cada uno lleva sus
+minutos y una intensidad de 1 a 10.
+
+De ahí salen los dos números de la sesión, y no se escriben a mano:
+
+- `duration_min` es la **suma de los minutos**.
+- `planned_load` es la **suma de minutos × intensidad** de cada bloque.
+- `planned_rpe` es la media pesada por minutos, que es lo que ese
+  número significaba desde el principio.
+
+Mientras la sesión tenga bloques, `editar_sesion` **no toca** ni los
+minutos ni la carga: si los tocara, se podría decir que dura 60 minutos
+mientras los bloques suman 90, y entonces ninguno de los dos
+significaría nada. Sin bloques sí, porque entonces no hay nada que los
+contradiga.
+
+Un bloque **sin intensidad** suma tiempo pero no carga: es lo que pasa
+con una charla táctica o con la vuelta a la calma. Y un bloque sin
+nombre no es un bloque: se descarta al guardar.
+
+`guardar_bloques` recibe la lista entera y sustituye a la anterior.
+Reordenar, borrar y añadir en la misma pasada sale más simple así que
+llevando la cuenta de qué cambió. Si se queda sin ninguno, la sesión
+pierde el plan pero conserva la duración: el hueco del calendario no lo
+puso ningún bloque.
 
 ## Control de carga
 
@@ -269,6 +304,9 @@ nombre y si no se haría pasar por propietaria.
 - **El calendario cierra las sesiones con el RPE del grupo**, sin la
   lista jugador a jugador que sí tiene el panel. Mientras tanto, desde el
   panel se puede abrir cualquier sesión de la semana.
+- **No hay biblioteca de tareas.** Los bloques se escriben cada vez; lo
+  natural es poder guardarlos y arrastrarlos a la sesión. Es el enlace
+  que sigue muerto en la barra lateral, y la tabla que falta.
 - La verificación en dos pasos viene apagada (`two_factor = 0`). Para
   probarla, pon a 1 esa columna en tu usuario.
 - No hay confirmación del correo en el alta: la cuenta entra directa.
