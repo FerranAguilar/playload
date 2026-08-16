@@ -539,21 +539,129 @@ function http_get(string $url, int $timeout = 8): ?string
     return null;
 }
 
-/** Correo de texto plano. Hostinger admite mail() si el remitente es del dominio. */
-function send_mail(string $to, string $subject, string $body): bool
+/**
+ * Correo de texto plano, o de texto plano + HTML si se pasa `$html`.
+ * Hostinger admite mail() si el remitente es del dominio.
+ *
+ * Va en las dos versiones a la vez (multipart/alternative) y no solo en
+ * HTML: el texto plano es lo que enseña un lector de pantalla, un correo
+ * de aviso de esos que resumen el mensaje, o un cliente viejo que no
+ * pinta HTML. El texto manda igual de forma cuando el HTML no llega.
+ */
+function send_mail(string $to, string $subject, string $text, ?string $html = null): bool
 {
     global $CONFIG;
     $from = $CONFIG['mail_from'];
     $name = $CONFIG['mail_from_name'] ?? 'PlayLoad';
+    $subject = sprintf('=?UTF-8?B?%s?=', base64_encode($subject));
 
+    if ($html === null) {
+        $headers = implode("\r\n", [
+            'From: ' . sprintf('=?UTF-8?B?%s?= <%s>', base64_encode($name), $from),
+            'Reply-To: ' . $from,
+            'Content-Type: text/plain; charset=UTF-8',
+            'MIME-Version: 1.0',
+            'X-Mailer: PHP/' . phpversion(),
+        ]);
+
+        return @mail($to, $subject, $text, $headers, '-f' . $from);
+    }
+
+    $boundary = 'plyld-' . bin2hex(random_bytes(12));
     $headers = implode("\r\n", [
         'From: ' . sprintf('=?UTF-8?B?%s?= <%s>', base64_encode($name), $from),
         'Reply-To: ' . $from,
-        'Content-Type: text/plain; charset=UTF-8',
         'MIME-Version: 1.0',
+        'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
         'X-Mailer: PHP/' . phpversion(),
     ]);
-    $subject = sprintf('=?UTF-8?B?%s?=', base64_encode($subject));
+
+    $body =
+        "--{$boundary}\r\n" .
+        "Content-Type: text/plain; charset=UTF-8\r\n" .
+        "Content-Transfer-Encoding: 8bit\r\n\r\n" .
+        $text . "\r\n\r\n" .
+        "--{$boundary}\r\n" .
+        "Content-Type: text/html; charset=UTF-8\r\n" .
+        "Content-Transfer-Encoding: 8bit\r\n\r\n" .
+        $html . "\r\n\r\n" .
+        "--{$boundary}--";
 
     return @mail($to, $subject, $body, $headers, '-f' . $from);
+}
+
+/**
+ * La plantilla visual de los correos de invitación: la tarjeta blanca
+ * centrada, la marca arriba, un botón y una nota pequeña al pie. Con
+ * inline styles y sin nada de CSS moderno —ni flexbox, ni grid, ni
+ * variables— porque el cliente de correo que lo abra puede ser
+ * cualquier cosa, Outlook de escritorio incluido, y ahí solo llega
+ * limpio lo más simple.
+ *
+ * $parrafos es una lista de textos, uno por párrafo, sin HTML: aquí se
+ * escapan y se pintan. $boton es ['texto' => …, 'href' => …] o null si
+ * el correo no lleva ninguno.
+ */
+function correo_html(string $titulo, array $parrafos, ?array $boton, string $nota): string
+{
+    $esc    = fn(string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+    $fuente = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+    $cuerpo = '';
+    foreach ($parrafos as $p) {
+        $cuerpo .= '<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#4b4d5a">'
+                 . nl2br($esc($p)) . '</p>';
+    }
+
+    $btn = '';
+    if ($boton !== null) {
+        $btn = '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 22px">'
+             . '<tr><td style="border-radius:9px;background:#9184d9">'
+             . '<a href="' . $esc($boton['href']) . '" target="_blank" '
+             . 'style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:600;'
+             . 'color:#ffffff;text-decoration:none;border-radius:9px;font-family:' . $fuente . '">'
+             . $esc($boton['texto']) . '</a></td></tr></table>';
+    }
+
+    $titulo_esc = $esc($titulo);
+    $nota_esc   = nl2br($esc($nota));
+
+    return <<<HTML
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{$titulo_esc}</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f2f7;font-family:{$fuente}">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f2f7;padding:32px 16px">
+    <tr><td align="center">
+      <table role="presentation" width="480" cellpadding="0" cellspacing="0"
+             style="max-width:480px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;
+                    box-shadow:0 1px 3px rgba(22,24,34,.08)">
+        <tr><td style="padding:26px 32px 0">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="width:26px;height:26px;border-radius:7px;background:#9184d9;text-align:center;
+                       vertical-align:middle;font-size:11px;font-weight:700;color:#ffffff;line-height:26px;
+                       font-family:{$fuente}">PL</td>
+            <td style="padding-left:9px;font-size:14px;font-weight:600;color:#161822;font-family:{$fuente}">PlayLoad</td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:22px 32px 6px">
+          <h1 style="margin:0 0 16px;font-size:21px;line-height:1.3;color:#161822;font-weight:700;
+                     font-family:{$fuente}">{$titulo_esc}</h1>
+          {$cuerpo}
+          {$btn}
+        </td></tr>
+        <tr><td style="padding:0 32px 28px">
+          <p style="margin:0;font-size:12.5px;line-height:1.6;color:#8a8c99;border-top:1px solid #eceef3;
+                    padding-top:16px;font-family:{$fuente}">{$nota_esc}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+HTML;
 }

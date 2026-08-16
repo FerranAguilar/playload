@@ -125,7 +125,7 @@ correo sale con un enlace que no lleva a ninguna parte.
 | `api/app.php` `guardar_wellness` | POST | Guarda el wellness del día |
 | `api/app.php?action=carga_plantilla` | GET | Carga de la semana, ACWR y wellness de cada jugador |
 | `api/app.php?action=club` | GET | Equipos del club con su staff y las licencias gastadas |
-| `api/app.php` `invitar_staff` | POST | Da acceso a un correo en un equipo del club |
+| `api/app.php` `invitar_staff` | POST | Da acceso a un correo en un equipo del club, y le avisa por correo |
 | `api/app.php` `quitar_staff` | POST | Retira ese acceso |
 | `api/app.php` `editar_club` | POST | Nombre y ciudad del club |
 | `api/app.php` `crear_mensaje` | POST | El staff deja un aviso al club |
@@ -251,10 +251,25 @@ Las dos reglas que sostienen el negocio:
 
 ### Cómo entra alguien a quien un club ha dado una plaza
 
-No se le manda ningún enlace. Va a `registro.html` y crea la cuenta con
-**ese mismo correo**; la plaza que le espera en `team_staff` le sirve de
-permiso de alta aunque el registro esté cerrado y aunque no esté en
-`allowed_emails` (lo resuelve `check_signup_allowed()`).
+`invitar_staff` avisa por correo, en dos versiones según si ese correo
+ya tiene cuenta en PlayLoad o no —lo mira antes de insertar la fila—.
+Quien ya tiene cuenta recibe un enlace a `acceso.html`: entra con la de
+siempre y el equipo nuevo ya está ahí. Quien no tiene cuenta recibe uno
+a `registro.html?email=…`, con el correo puesto de antemano en el
+formulario.
+
+Ese enlace de alta **no verifica nada**: es solo un atajo que ahorra
+escribir el correo. Quien reciba el aviso puede ignorarlo tranquilamente
+y entrar por su cuenta más tarde —a `registro.html`, a mano, con **ese
+mismo correo**—, porque lo que de verdad abre la puerta es la plaza que
+espera en `team_staff`, que sirve de permiso de alta aunque el registro
+esté cerrado y aunque ese correo no esté en `allowed_emails` (lo resuelve
+`check_signup_allowed()`). El correo es la comodidad; la plaza es el
+permiso.
+
+Si el envío falla, la plaza se guarda igual: el `ok` de `invitar_staff`
+trae aparte un `correo_enviado`, y si es `false` el panel del club lo
+dice para que se avise a mano por otro lado.
 
 Esa cuenta nace con el plan **`staff`**, que permite **cero equipos
 propios**: lo que le han dado es acceso a los del club, no una licencia.
@@ -377,7 +392,29 @@ paso: la tabla `rpe_entries`/`wellness_entries` ya guarda por
 `player_id`, así que cuando exista esa pantalla no hace falta tocar la
 base.
 
-## Decisiones de seguridad
+## El diseño de los correos
+
+`send_mail()` mandaba solo texto plano. Ahora admite un cuarto
+argumento —`send_mail($para, $asunto, $texto, $html)`— y, si se le pasa,
+manda las dos versiones a la vez (`multipart/alternative`): el texto
+sigue yendo siempre, porque es lo que enseña un lector de pantalla o un
+resumen de avisos cuando el HTML no llega. Los tres correos que ya
+existían (el código en dos pasos, la recuperación de contraseña, las
+invitaciones de `admin.html`) no tocan ese cuarto argumento y siguen
+tal cual, en texto plano; el diseño nuevo es solo para las dos
+invitaciones que se abren desde la plantilla —`invitar_jugador` e
+`invitar_staff`—.
+
+`correo_html($titulo, $párrafos, $botón, $nota)` construye la tarjeta:
+la marca **PL** arriba, el título, los párrafos, un botón *blurple*
+(`#9184d9`, el acento de toda la app) si hace falta uno, y una nota
+pequeña al pie con la letra pequeña de siempre —qué hacer si el correo
+no se esperaba—. Todo con estilos en línea y tablas, sin flexbox, sin
+grid, sin `<style>`: un cliente de correo puede ser cualquier cosa,
+Outlook de escritorio incluido, y ahí solo llega limpio lo más simple.
+Vive en `api/bootstrap.php`, junto a `send_mail()`, para que cualquier
+otro correo que se diseñe más adelante la reutilice sin escribir HTML
+desde cero.
 
 - **Contraseñas** con `password_hash()` (bcrypt por defecto) y rehash
   automático si PHP sube el coste. Nunca se guardan en claro ni se

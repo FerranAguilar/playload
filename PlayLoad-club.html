@@ -1774,9 +1774,16 @@ document.addEventListener('click', async e => {
     if(r.ok){
       $('dlgStaff').classList.remove('open');
       await cargar();
-      toast(r.estado === 'invitado'
-        ? 'Invitación guardada. Entrará en cuanto se dé de alta con ese correo.'
-        : 'Acceso dado. Ya ve el equipo en su panel.');
+
+      /* el aviso es aparte de la plaza: si el correo no ha salido, la
+         plaza sigue en pie —entrará igual en cuanto se registre con ese
+         correo— pero conviene decírselo por otro lado */
+      const invitado = r.estado === 'invitado';
+      toast(r.correo_enviado
+        ? (invitado ? 'Invitación enviada por correo.' : 'Acceso dado y avisado por correo.')
+        : (invitado
+            ? 'Invitación guardada, pero no se ha podido avisar por correo: díselo tú.'
+            : 'Acceso dado, pero no se ha podido avisar por correo: díselo tú.'));
     } else toast(r.error || 'No se ha podido dar el acceso.', 'bad');
     return;
   }

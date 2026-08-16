@@ -367,9 +367,10 @@ switch ($action) {
         $clubId = (int) $club['id'];
         $teamId = (int) (body()['team_id'] ?? 0);
 
-        $t = db()->prepare('SELECT id FROM teams WHERE id = ? AND club_id = ?');
+        $t = db()->prepare('SELECT id, name FROM teams WHERE id = ? AND club_id = ?');
         $t->execute([$teamId, $clubId]);
-        if (!$t->fetch()) {
+        $team = $t->fetch();
+        if (!$team) {
             fail('Ese equipo no es de tu club.', 403);
         }
 
@@ -419,12 +420,59 @@ switch ($action) {
             throw $e;
         }
 
+        // El aviso es aparte de la plaza: si el correo no sale, la plaza
+        // se queda igual —esa persona entra en cuanto se registre con
+        // este correo, como siempre— y el navegador puede avisar de que
+        // convendría decírselo de otra forma.
+        if ($existente) {
+            $link = rtrim($CONFIG['app_url'], '/') . '/acceso.html';
+            $enviado = send_mail(
+                $email,
+                'Ya tienes acceso a ' . $team['name'] . ' en PlayLoad',
+                "{$user['name']} te ha dado acceso a {$team['name']}, de {$club['name']}, en PlayLoad.\n\n" .
+                "Entra con tu cuenta de siempre y lo verás en tu panel:\n{$link}\n\n" .
+                "Si no esperabas este correo, puedes ignorarlo tranquilamente.\n",
+                correo_html(
+                    'Un equipo nuevo en tu cuenta',
+                    [
+                        "{$user['name']} te ha dado acceso a {$team['name']}, de {$club['name']}, en PlayLoad.",
+                        'Entra con tu cuenta de siempre y lo verás en tu panel, junto a los que ya tenías.',
+                    ],
+                    ['texto' => 'Entrar en PlayLoad', 'href' => $link],
+                    'Si no esperabas este correo, puedes ignorarlo tranquilamente.'
+                )
+            );
+        } else {
+            $link = rtrim($CONFIG['app_url'], '/') . '/registro.html?email=' . rawurlencode($email);
+            $enviado = send_mail(
+                $email,
+                'Te han invitado a ' . $team['name'] . ' en PlayLoad',
+                "{$user['name']} te ha dado acceso a {$team['name']}, de {$club['name']}, en PlayLoad.\n\n" .
+                "Crea tu cuenta con este correo y el equipo ya te estará esperando, sin nada más\n" .
+                "que hacer:\n{$link}\n\n" .
+                "Si no esperabas este correo, puedes ignorarlo: sin crear una cuenta con este\n" .
+                "correo, nadie entra.\n",
+                correo_html(
+                    $club['name'] . ' te espera en PlayLoad',
+                    [
+                        "{$user['name']} te ha dado acceso a {$team['name']}, de {$club['name']}, en PlayLoad.",
+                        "Crea tu cuenta con este correo —{$email}— y el equipo aparecerá directamente "
+                            . 'en tu panel, sin nada más que hacer.',
+                    ],
+                    ['texto' => 'Crear mi cuenta', 'href' => $link],
+                    'Si no esperabas este correo, puedes ignorarlo: sin crear una cuenta con este '
+                        . 'correo, nadie entra.'
+                )
+            );
+        }
+
         json_out([
             'ok' => true,
             'id' => (int) db()->lastInsertId(),
             // No se llama `status` a propósito: el navegador mete ahí el
             // código HTTP y una clave repetida se pisaría sola.
-            'estado' => $existente ? 'activo' : 'invitado',
+            'estado'         => $existente ? 'activo' : 'invitado',
+            'correo_enviado' => $enviado,
         ], 201);
 
     // ── Quitar a alguien de un equipo ──────────────────────────────
@@ -686,8 +734,8 @@ switch ($action) {
         }
 
         $token = bin2hex(random_bytes(32));
+        $link  = rtrim($CONFIG['app_url'], '/') . '/acceso.html?v=player&ptoken=' . $token;
 
-        $link = rtrim($CONFIG['app_url'], '/') . '/acceso.html?v=player&ptoken=' . $token;
         $enviado = send_mail(
             $j['email'],
             'Tu acceso a ' . $j['team_name'] . ' en PlayLoad',
@@ -696,7 +744,19 @@ switch ($action) {
             "Abre este enlace desde tu móvil para entrar, sin contraseña:\n{$link}\n\n" .
             "Es tuyo: guárdalo o añade la página a la pantalla de inicio, y te servirá\n" .
             "cada vez que quieras mandar cómo te encuentras o el esfuerzo de la sesión.\n\n" .
-            "Si no esperabas este correo, puedes ignorarlo: sin abrir el enlace nadie entra.\n"
+            "Si no esperabas este correo, puedes ignorarlo: sin abrir el enlace nadie entra.\n",
+            correo_html(
+                'Ya puedes entrar a ' . $j['team_name'],
+                [
+                    "Hola {$j['name']},",
+                    "{$user['name']} te ha dado acceso a {$j['team_name']} en PlayLoad.",
+                    'Abre el enlace de abajo desde tu móvil para entrar, sin contraseña. Es tuyo: '
+                        . 'guárdalo o añade la página a la pantalla de inicio, y te servirá cada vez '
+                        . 'que quieras mandar cómo te encuentras o el esfuerzo de la sesión.',
+                ],
+                ['texto' => 'Entrar en PlayLoad', 'href' => $link],
+                'Si no esperabas este correo, puedes ignorarlo: sin abrir el enlace nadie entra.'
+            )
         );
 
         if (!$enviado) {
