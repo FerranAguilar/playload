@@ -39,6 +39,18 @@ if (!$player) {
 
 record_attempt('player:' . $code, true);
 
+// «Registrado» es haber entrado alguna vez con el código, se lo hayan
+// mandado por correo o se lo haya dictado el entrenador: entrar es lo
+// que lo prueba, no un enlace concreto. Solo se toca la primera vez.
+try {
+    db()->prepare(
+        "UPDATE players SET invite_status = 'registrado', registered_at = NOW()
+          WHERE id = ? AND invite_status != 'registrado'"
+    )->execute([(int) $player['id']]);
+} catch (Throwable $e) {
+    // Sin migración 09 no hay `invite_status` que actualizar.
+}
+
 session_regenerate_id(true);
 unset($_SESSION['uid'], $_SESSION['pending_uid']);
 $_SESSION['player_id'] = (int) $player['id'];

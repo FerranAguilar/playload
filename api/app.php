@@ -110,31 +110,58 @@ switch ($action) {
     case 'equipo':
         $teamId = (int) ($_GET['id'] ?? 0);
 
+        // acceso_equipo() y no una consulta propia: antes esto solo miraba
+        // propiedad y club, así que el staff que un club invita a un
+        // equipo —correo por medio, sin ser su dueño— no podía abrirlo
+        // nunca. Cualquier nivel vale para leer; lo que se pueda escribir
+        // lo decide `acceso` en el navegador y lo vuelve a mirar el
+        // servidor en cada acción de escritura.
+        $acceso = acceso_equipo($teamId, $userId);
+        if ($acceso === null) {
+            fail('Ese equipo no existe o no es tuyo.', 404);
+        }
+
         $st = db()->prepare(
             'SELECT t.*, c.name AS club_name
                FROM teams t
                LEFT JOIN clubs c ON c.id = t.club_id
-              WHERE t.id = ? AND (t.owner_user_id = ?
-                    OR t.club_id IN (SELECT id FROM clubs WHERE owner_user_id = ?))'
+              WHERE t.id = ?'
         );
-        $st->execute([$teamId, $userId, $userId]);
+        $st->execute([$teamId]);
         $team = $st->fetch();
 
-        if (!$team) {
-            fail('Ese equipo no existe o no es tuyo.', 404);
+        // La ficha completa del jugador es de la migración 09. Sin ella,
+        // se cae a las cinco columnas de siempre en vez de romper la
+        // página entera por una columna que no existe todavía.
+        try {
+            $p = db()->prepare(
+                'SELECT id, name, dorsal, position, position_alt, foot,
+                        birth_date, email, notes, access_code,
+                        invite_status, invited_at, registered_at
+                   FROM players WHERE team_id = ? AND active = 1
+                  ORDER BY (dorsal IS NULL), dorsal, name'
+            );
+            $p->execute([$teamId]);
+            $jugadores = $p->fetchAll();
+        } catch (Throwable $e) {
+            $p = db()->prepare(
+                'SELECT id, name, dorsal, position, access_code
+                   FROM players WHERE team_id = ? AND active = 1
+                  ORDER BY (dorsal IS NULL), dorsal, name'
+            );
+            $p->execute([$teamId]);
+            $jugadores = array_map(fn($j) => $j + [
+                'position_alt' => '', 'foot' => '', 'birth_date' => null,
+                'email' => null, 'notes' => '', 'invite_status' => 'sin_invitar',
+                'invited_at' => null, 'registered_at' => null,
+            ], $p->fetchAll());
         }
-
-        $p = db()->prepare(
-            'SELECT id, name, dorsal, position, access_code
-               FROM players WHERE team_id = ? AND active = 1
-              ORDER BY (dorsal IS NULL), dorsal, name'
-        );
-        $p->execute([$teamId]);
 
         json_out([
             'ok'      => true,
+            'acceso'  => $acceso,
             'team'    => $team,
-            'players' => $p->fetchAll(),
+            'players' => $jugadores,
             'licencia'=> [
                 'max_jugadores' => $limits['players'],
                 'nombre'        => $limits['name'],
@@ -505,14 +532,147 @@ switch ($action) {
 
         $dorsal = body()['dorsal'] ?? null;
         $dorsal = ($dorsal === '' || $dorsal === null) ? null : (int) $dorsal;
+        [$fecha, $email] = datos_jugador_opcionales();
 
-        $ins = db()->prepare(
-            'INSERT INTO players (team_id, name, dorsal, position, access_code)
-             VALUES (?, ?, ?, ?, ?)'
-        );
-        $ins->execute([$teamId, $name, $dorsal, param('position'), $code]);
+        try {
+            $ins = db()->prepare(
+                'INSERT INTO players
+                    (team_id, name, dorsal, position, position_alt, foot,
+                     birth_date, email, notes, access_code)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $ins->execute([
+                $teamId, $name, $dorsal, param('position'), param('position_alt'),
+                param('foot'), $fecha, $email, mb_substr(param('notes'), 0, 500), $code,
+            ]);
+        } catch (Throwable $e) {
+            // Sin la migración 09 esas columnas no existen: el alta
+            // sencilla de siempre, sin cortar por una ficha que todavía
+            // no cabe en la base.
+            $ins = db()->prepare(
+                'INSERT INTO players (team_id, name, dorsal, position, access_code)
+                 VALUES (?, ?, ?, ?, ?)'
+            );
+            $ins->execute([$teamId, $name, $dorsal, param('position'), $code]);
+        }
 
         json_out(['ok' => true, 'id' => (int) db()->lastInsertId(), 'code' => $code], 201);
+
+    // ── Editar la ficha de un jugador ────────────────────────────────
+    // El nombre es lo único obligatorio, igual que al crearlo. El
+    // código de acceso no se toca aquí: es su credencial y cambiarla
+    // sin más lo desconectaría del móvil donde ya la tiene guardada.
+    case 'editar_jugador':
+        $id = (int) (body()['player_id'] ?? 0);
+        $name = param('name');
+
+        if ($name === '') {
+            fail('El jugador necesita un nombre.');
+        }
+
+        $st = db()->prepare('SELECT id, team_id, email, invite_status FROM players WHERE id = ?');
+        try {
+            $st->execute([$id]);
+            $j = $st->fetch();
+        } catch (Throwable $e) {
+            // Sin migración 09 no hay `invite_status` que leer.
+            $st = db()->prepare('SELECT id, team_id FROM players WHERE id = ?');
+            $st->execute([$id]);
+            $j = $st->fetch();
+        }
+
+        if (!$j) {
+            fail('Ese jugador no existe.', 404);
+        }
+        exige_acceso((int) $j['team_id'], $userId, ['propietario', 'club']);
+
+        $dorsal = body()['dorsal'] ?? null;
+        $dorsal = ($dorsal === '' || $dorsal === null) ? null : (int) $dorsal;
+        [$fecha, $email] = datos_jugador_opcionales();
+
+        // Si el correo cambia mientras había una invitación esperando,
+        // esa invitación se fue a una dirección que ya no vale: vuelve a
+        // «sin invitar» para que no quede colgada una que nadie va a
+        // abrir. Un jugador que ya entró con su código no se toca: entrar
+        // no depende del correo, y corregirlo después no debería
+        // desregistrar a nadie.
+        $reabre = isset($j['invite_status'])
+            && $j['invite_status'] === 'invitado'
+            && $email !== ($j['email'] ?? null);
+
+        try {
+            $up = db()->prepare(
+                'UPDATE players SET
+                    name = ?, dorsal = ?, position = ?, position_alt = ?, foot = ?,
+                    birth_date = ?, email = ?, notes = ?
+                    ' . ($reabre ? ", invite_status = 'sin_invitar', invited_at = NULL" : '') . '
+                  WHERE id = ?'
+            );
+            $up->execute([
+                $name, $dorsal, param('position'), param('position_alt'), param('foot'),
+                $fecha, $email, mb_substr(param('notes'), 0, 500), $id,
+            ]);
+        } catch (Throwable $e) {
+            $up = db()->prepare(
+                'UPDATE players SET name = ?, dorsal = ?, position = ? WHERE id = ?'
+            );
+            $up->execute([$name, $dorsal, param('position'), $id]);
+        }
+
+        json_out(['ok' => true, 'reabierta' => $reabre]);
+
+    // ── Invitar a un jugador por correo ──────────────────────────────
+    // No manda una contraseña ni un enlace de un solo uso: el jugador ya
+    // entra sin contraseña con su código, y ese código no caduca. El
+    // correo solo se lo acerca, para no depender de que el entrenador se
+    // lo dicte de viva voz. «Registrado» llega solo, la primera vez que
+    // ese código abra sesión — con o sin este correo de por medio.
+    case 'invitar_jugador':
+        $id = (int) (body()['player_id'] ?? 0);
+
+        $st = db()->prepare(
+            'SELECT p.id, p.team_id, p.name, p.email, p.access_code,
+                    p.invite_status, t.name AS team_name
+               FROM players p JOIN teams t ON t.id = p.team_id
+              WHERE p.id = ?'
+        );
+        $st->execute([$id]);
+        $j = $st->fetch();
+
+        if (!$j) {
+            fail('Ese jugador no existe.', 404);
+        }
+        exige_acceso((int) $j['team_id'], $userId, ['propietario', 'club']);
+
+        if (!$j['email']) {
+            fail('Este jugador todavía no tiene un correo en su ficha.');
+        }
+        if ($j['invite_status'] === 'registrado') {
+            fail('Ya ha entrado con su código: no hace falta invitarlo.');
+        }
+
+        $link = rtrim($CONFIG['app_url'], '/') . '/acceso.html?v=player';
+        $enviado = send_mail(
+            $j['email'],
+            'Tu acceso a ' . $j['team_name'] . ' en PlayLoad',
+            "Hola {$j['name']},\n\n" .
+            "{$user['name']} te ha dado acceso a {$j['team_name']} en PlayLoad.\n\n" .
+            "Entra aquí con tu código:\n{$link}\n\n" .
+            "Tu código de acceso es: {$j['access_code']}\n\n" .
+            "Con él entras sin contraseña, entrenamiento a entrenamiento, para mandar\n" .
+            "cómo te encuentras y el esfuerzo de cada sesión.\n\n" .
+            "Si no esperabas este correo, puedes ignorarlo: sin el código nadie entra.\n"
+        );
+
+        if (!$enviado) {
+            fail('No se ha podido enviar el correo. Revisa mail_from en config.php.', 502);
+        }
+
+        db()->prepare(
+            "UPDATE players SET invite_status = 'invitado', invited_at = NOW() WHERE id = ?"
+        )->execute([$id]);
+
+        json_out(['ok' => true]);
 
     // ── Editar equipo ──────────────────────────────────────────────
     case 'editar_equipo':
@@ -1523,6 +1683,30 @@ function vincular_staff(int $userId, string $email): void
     } catch (Throwable $e) {
         // Sin migración 05 no hay nada que vincular.
     }
+}
+
+/**
+ * Fecha de nacimiento y correo de un jugador, leídos del cuerpo de la
+ * petición. Los dos son opcionales —vacío es válido, es justo lo normal
+ * al dar de alta a alguien deprisa— pero si llega algo que no tiene la
+ * forma correcta, se avisa en vez de guardarlo a medias o descartarlo en
+ * silencio.
+ *
+ * @return array{0: ?string, 1: ?string} [fecha, correo]
+ */
+function datos_jugador_opcionales(): array
+{
+    $fecha = param('birth_date');
+    if ($fecha !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+        fail('La fecha de nacimiento debe ser AAAA-MM-DD.');
+    }
+
+    $email = mb_strtolower(trim(param('email')));
+    if ($email !== '' && !valid_email($email)) {
+        fail('Ese correo no es válido.');
+    }
+
+    return [$fecha !== '' ? $fecha : null, $email !== '' ? $email : null];
 }
 
 /**

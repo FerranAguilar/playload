@@ -11,8 +11,8 @@ doble clic en `index.html`.
 |---|---|
 | `index.html` | Portada pública. Presenta el producto y da entrada al panel desde *Iniciar sesión* y desde la prueba de 30 días. |
 | `PlayLoad-dashboard.html` | Panel del equipo una vez dentro: carga del microciclo, sesión del día, control de carga jugador a jugador, alertas e informe. Desde aquí se pasa el RPE de una sesión y el wellness del día. |
-| `PlayLoad-equipos.html` | Gestor de equipos del club. Rejilla de equipos y, al abrir uno, su ficha con plantilla, cuerpo técnico, calendario y ajustes. |
-| `PlayLoad-club.html` | Lo que ve una cuenta de club: un panel con el día de todos sus equipos y los avisos del staff, y luego plantillas, calendarios, staff y perfil del club. El club no entrena: gestiona y mira, así que los calendarios de aquí son de solo lectura. |
+| `PlayLoad-equipos.html` | Gestor de equipos del club. Rejilla de equipos y, al abrir uno, su ficha con plantilla, cuerpo técnico, calendario y ajustes. Clicar un jugador abre su ficha completa —posición alternativa, pie, nacimiento, correo, comentarios del staff— y, con correo puesto, invitarlo por email. Editable para quien es dueño del equipo o del club; solo lectura para el staff invitado. |
+| `PlayLoad-club.html` | Lo que ve una cuenta de club: un panel con el día de todos sus equipos y los avisos del staff, y luego plantillas, calendarios, staff y perfil del club. El club no entrena: gestiona y mira, así que los calendarios de aquí son de solo lectura; la plantilla no, y la ficha del jugador —y su invitación por correo— se abren igual que en el gestor de equipos. |
 | `PlayLoad-sesiones.html` | La sesión por dentro. A la izquierda todas las del equipo; al abrir una, se monta por bloques —calentamiento, tareas, vuelta a la calma— con sus minutos y su intensidad. De los bloques salen la duración y la carga prevista, que dejan de escribirse a mano. También se duplica, se edita y se cierra desde aquí. |
 | `PlayLoad-calendario.html` | Calendario del equipo. Lo primero es la semana: siete columnas con las sesiones de cada día, su carga al pie y el total del microciclo. Debajo, lo que viene después y el mes en miniatura para saltar de semana. |
 | `img/` | Fotografías de la portada. |
@@ -29,9 +29,10 @@ de cerca y durante horas.
 
 ## Datos
 
-Los datos que aparecen (CF Bellvitge, plantillas, cargas, wellness) son de ejemplo y viven
-dentro de cada archivo. En `PlayLoad-equipos.html` están en la constante `TEAMS`, al
-principio del bloque `<script>`.
+Las páginas de aplicación leen y escriben en `api/app.php`, contra la base de datos de
+verdad; ver [BACKEND.md](BACKEND.md). Solo se ve un dato de ejemplo cuando el archivo se
+abre con doble clic, sin servidor por detrás (`DEMO` en cada `<script>`): entonces se
+enseña el estado inicial, vacío, en vez de intentar hablar con un API que no existe.
 
 ## Fotografías
 

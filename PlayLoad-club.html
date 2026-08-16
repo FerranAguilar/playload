@@ -394,7 +394,8 @@ a.rail-top:hover{color:var(--color-accent)}
 .dialog-backdrop{position:fixed;inset:0;z-index:90;display:none;place-items:center;padding:16px;
   background:color-mix(in srgb,#0b0d14 70%,transparent);backdrop-filter:blur(3px)}
 .dialog-backdrop.open{display:grid}
-.dialog{width:min(470px,100%);display:flex;flex-direction:column;gap:15px;padding:22px;
+.dialog{width:min(470px,100%);max-height:calc(100vh - 32px);overflow-y:auto;
+  display:flex;flex-direction:column;gap:15px;padding:22px;
   border-radius:var(--radius-lg);background:var(--color-surface);
   border:1px solid var(--color-neutral-800);box-shadow:0 20px 50px rgba(0,0,0,.6)}
 .dialog h2{font-size:20px}
@@ -402,6 +403,18 @@ a.rail-top:hover{color:var(--color-accent)}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field>label{font-size:13px;color:var(--muted)}
+
+/* ── ficha de jugador ──────────────────────────────────────── */
+.dialog.wide{width:min(640px,100%)}
+textarea.input{resize:vertical;min-height:62px;line-height:1.5;padding-top:9px;font-family:inherit}
+.field-hint{margin:5px 0 0;font-size:11.5px;color:var(--muted)}
+.jug-invite{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius-md);
+  background:color-mix(in srgb,var(--color-text) 4%,transparent);border:1px solid var(--line)}
+.jug-invite p{margin:0;font-size:12.5px;color:var(--muted);flex:1;line-height:1.5}
+.badge-inv{display:inline-flex;align-items:center;gap:4px;font-size:10px;letter-spacing:.02em;
+  padding:2px 7px;border-radius:20px;margin-left:7px;vertical-align:middle}
+.badge-inv.invitado{background:var(--color-warn-bg);color:var(--color-warn)}
+.badge-inv.registrado{background:var(--color-ok-bg);color:var(--color-ok)}
 
 /* — responsive — */
 @media (max-width:1240px){ .equipos,.perfil-fila,.panel-fila{grid-template-columns:minmax(0,1fr)} }
@@ -780,8 +793,9 @@ body{transition:background .18s ease,color .18s ease}
   </div>
 </div>
 
+<!-- jJugId vacío = alta; con id = ficha de uno ya creado -->
 <div class="dialog-backdrop" id="dlgJugador">
-  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgJugT">
+  <div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="dlgJugT">
     <div>
       <h2 id="dlgJugT">Añadir jugador</h2>
       <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgJugSub"></p>
@@ -791,7 +805,7 @@ body{transition:background .18s ease,color .18s ease}
     <div class="grid-2">
       <div class="field"><label for="jDorsal">Dorsal</label>
         <input class="input" id="jDorsal" inputmode="numeric" placeholder="9"></div>
-      <div class="field"><label for="jPos">Posición</label>
+      <div class="field"><label for="jPos">Posición principal</label>
         <select class="input" id="jPos">
           <option value="POR">Portero</option>
           <option value="DFC">Central</option>
@@ -803,9 +817,45 @@ body{transition:background .18s ease,color .18s ease}
           <option value="DC">Delantero</option>
         </select></div>
     </div>
+    <div class="grid-2">
+      <div class="field"><label for="jPosAlt">Posición alternativa</label>
+        <select class="input" id="jPosAlt">
+          <option value="">Sin asignar</option>
+          <option value="POR">Portero</option>
+          <option value="DFC">Central</option>
+          <option value="LTD">Lateral derecho</option>
+          <option value="LTI">Lateral izquierdo</option>
+          <option value="MC">Centrocampista</option>
+          <option value="MP">Mediapunta</option>
+          <option value="EXT">Extremo</option>
+          <option value="DC">Delantero</option>
+        </select></div>
+      <div class="field"><label for="jPie">Pie dominante</label>
+        <select class="input" id="jPie">
+          <option value="">Sin indicar</option>
+          <option value="dcha">Derecho</option>
+          <option value="izq">Izquierdo</option>
+          <option value="ambidiestro">Ambidiestro</option>
+        </select></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label for="jNac">Fecha de nacimiento</label>
+        <input class="input" id="jNac" type="date"></div>
+      <div class="field"><label for="jEmail">Correo electrónico</label>
+        <input class="input" id="jEmail" type="email" placeholder="familia@correo.com" autocomplete="off"></div>
+    </div>
+    <div class="field"><label for="jNotas">Comentarios</label>
+      <textarea class="input" id="jNotas" rows="3" maxlength="500"
+        placeholder="Lo que conviene que sepa quien entre a esta plantilla…"></textarea>
+      <p class="field-hint">Solo lo ve el cuerpo técnico y el club: nunca llega a la pantalla del jugador.</p>
+    </div>
+
+    <div id="jInvite"></div>
+    <div id="jCodigo" style="display:none"></div>
+
     <div class="dialog-actions">
       <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
-      <button class="btn btn-primary" data-guardar-jugador>Añadir</button>
+      <button class="btn btn-primary" data-guardar-jugador id="jGuardar">Añadir</button>
     </div>
   </div>
 </div>
@@ -899,6 +949,7 @@ function toast(msg, kind){
 let D = {club:null, teams:[], lic:null, resumen:null};
 let sec      = 'plantillas';
 let equipoId = 0;                    // el elegido en plantillas y calendarios
+let jugEditId = null;                // jugador que edita el diálogo; null = alta
 let plantillas = {};                 // id de equipo → jugadores, ya pedidos
 let sesiones   = [];                 // las del equipo elegido
 let ancla = lunesDe(new Date());
@@ -1064,6 +1115,112 @@ function tira(destino){
 }
 
 /* ── plantillas ─────────────────────────────────────────────── */
+/* ── ficha de jugador ───────────────────────────────────────── */
+const CAMPOS_JUG = ['jNombre','jDorsal','jPos','jPosAlt','jPie','jNac','jEmail','jNotas'];
+
+function leerCamposJugador(){
+  return {
+    name:         $('jNombre').value.trim(),
+    dorsal:       $('jDorsal').value.trim(),
+    position:     $('jPos').value,
+    position_alt: $('jPosAlt').value,
+    foot:         $('jPie').value,
+    birth_date:   $('jNac').value,
+    email:        $('jEmail').value.trim(),
+    notes:        $('jNotas').value
+  };
+}
+function rellenarCamposJugador(p){
+  $('jNombre').value  = p.name || '';
+  $('jDorsal').value  = p.dorsal ?? '';
+  $('jPos').value     = p.position || 'MC';
+  $('jPosAlt').value  = p.position_alt || '';
+  $('jPie').value     = p.foot || '';
+  $('jNac').value     = p.birth_date || '';
+  $('jEmail').value   = p.email || '';
+  $('jNotas').value   = p.notes || '';
+}
+const jugadorActual = () => (plantillas[equipoId] || []).find(p => p.id === jugEditId);
+
+function pintarCodigoJugador(p){
+  const caja = $('jCodigo');
+  caja.style.display = 'block';
+  caja.innerHTML = `
+    <div style="padding:12px 14px;border-radius:var(--radius-md);
+                background:color-mix(in srgb,var(--color-text) 5%,transparent);border:1px solid var(--line)">
+      <div style="font-size:13px;color:var(--muted)">Código de acceso</div>
+      <div class="num" style="font-size:20px;letter-spacing:.14em;margin-top:2px">${esc(p.access_code)}</div>
+      <div class="p-sub" style="margin-top:4px">Con esto entra sin contraseña, desde el móvil.</div>
+    </div>`;
+}
+
+/* La invitación manda el correo que hay guardado en el jugador, no el
+   que se esté viendo a medio escribir: si no coinciden, primero hay que
+   guardar, o se avisaría a una dirección que ya no es la de la pantalla. */
+function pintarInvite(p){
+  const caja  = $('jInvite');
+  const email = $('jEmail').value.trim();
+
+  if(!jugEditId){
+    caja.innerHTML = email
+      ? '<p class="field-hint" style="margin:0">Guarda primero y podrás invitarlo por correo.</p>' : '';
+    return;
+  }
+  if(!email){ caja.innerHTML = ''; return; }
+
+  if(p && email !== (p.email || '')){
+    caja.innerHTML = `<div class="jug-invite">
+      <p>Guarda los cambios y podrás invitarlo a <b>${esc(email)}</b>.</p></div>`;
+    return;
+  }
+
+  if(p?.invite_status === 'registrado'){
+    caja.innerHTML = `<div class="jug-invite">
+      <span class="tag tag-ok">Registrado</span><p>Ya ha entrado con su código.</p></div>`;
+    return;
+  }
+
+  const reenvia = p?.invite_status === 'invitado';
+  caja.innerHTML = `<div class="jug-invite">
+    <p>${reenvia ? 'Se le invitó a este correo. Puedes volver a mandarle el acceso.'
+                 : 'Mándale el código de acceso por correo para que entre desde su móvil.'}</p>
+    <button class="btn btn-secondary btn-sm" data-invitar-jugador>
+      ${reenvia ? 'Reenviar invitación' : 'Invitar al equipo'}</button>
+  </div>`;
+}
+
+function abrirDialogoJugador(){
+  jugEditId = null;
+  $('dlgJugT').textContent = 'Añadir jugador';
+  $('dlgJugSub').textContent = equipo() ? equipo().name : '';
+  CAMPOS_JUG.forEach(id => { if(id !== 'jPos') $(id).value = ''; });
+  $('jPos').value = 'MC';
+  $('jCodigo').style.display = 'none';
+  $('jGuardar').textContent = 'Añadir';
+  pintarInvite(null);
+  $('dlgJugador').classList.add('open');
+  $('jNombre').focus();
+}
+
+function abrirFichaJugador(id){
+  const p = (plantillas[equipoId] || []).find(x => x.id === id);
+  if(!p) return;
+
+  jugEditId = id;
+  $('dlgJugT').textContent = p.name;
+  $('dlgJugSub').textContent = [equipo()?.name, esc(p.position) || null].filter(Boolean).join(' · ');
+  rellenarCamposJugador(p);
+  $('jGuardar').textContent = 'Guardar cambios';
+  pintarCodigoJugador(p);
+  pintarInvite(p);
+  $('dlgJugador').classList.add('open');
+  $('jNombre').focus();
+}
+
+document.addEventListener('input', e => {
+  if(e.target.id === 'jEmail') pintarInvite(jugadorActual());
+});
+
 function pintarPlantillas(){
   tira('tiraPlantillas');
   const caja = $('panelPlantilla');
@@ -1097,6 +1254,11 @@ function pintarPlantillas(){
     (grupos[linea] = grupos[linea] || []).push(p);
   });
 
+  const badgeInv = p => p.invite_status === 'registrado'
+    ? '<span class="badge-inv registrado">Registrado</span>'
+    : p.invite_status === 'invitado'
+      ? '<span class="badge-inv invitado">Invitado</span>' : '';
+
   caja.innerHTML = `
     <div class="card-head">
       <div>
@@ -1104,6 +1266,7 @@ function pintarPlantillas(){
         <div class="eyebrow" style="margin-top:4px">${esc(t.category) || 'Sin categoría'} ·
           ${esc(t.modality)} · ${jug.length} jugador${jug.length===1?'':'es'}</div>
       </div>
+      <button class="btn btn-secondary btn-sm" data-add-jugador>+ Jugador</button>
     </div>
     <table class="table">
       <thead><tr><th style="width:56px">Dorsal</th><th>Jugador</th><th>Posición</th>
@@ -1114,10 +1277,10 @@ function pintarPlantillas(){
             <i style="background:${esc(t.tint) || 'var(--color-accent)'}"></i>${linea} · ${grupos[linea].length}
           </span></td></tr>
           ${grupos[linea].map(p => `
-            <tr>
+            <tr data-jugador="${p.id}" style="cursor:pointer">
               <td><span class="dorsal">${p.dorsal ?? '—'}</span></td>
               <td><div class="jugador"><span class="avatar">${esc(ini(p.name))}</span>
-                    <span>${esc(p.name)}</span></div></td>
+                    <span>${esc(p.name)}${badgeInv(p)}</span></div></td>
               <td class="p-sub">${esc(p.position) || '—'}</td>
               <td><span class="codigo">${esc(p.access_code)}</span></td>
             </tr>`).join('')}
@@ -1492,27 +1655,70 @@ document.addEventListener('click', async e => {
   if(e.target.closest('[data-add-jugador]')){
     if(DEMO){ toast('Sin servidor no se pueden añadir jugadores: esta es la vista de diseño.'); return; }
     if(!equipoId){ toast('Elige un equipo primero.', 'bad'); return; }
-    $('dlgJugSub').textContent = equipo() ? equipo().name : '';
-    $('jNombre').value = ''; $('jDorsal').value = '';
-    $('dlgJugador').classList.add('open');
-    $('jNombre').focus();
+    abrirDialogoJugador();
     return;
   }
 
+  const filaJug = e.target.closest('[data-jugador]');
+  if(filaJug){ abrirFichaJugador(+filaJug.dataset.jugador); return; }
+
   if(e.target.closest('[data-guardar-jugador]')){
     const btn = e.target.closest('[data-guardar-jugador]');
-    btn.disabled = true;
-    const r = await post({action:'crear_jugador', team_id:equipoId,
-      name:$('jNombre').value, dorsal:$('jDorsal').value, position:$('jPos').value});
-    btn.disabled = false;
+    if(!$('jNombre').value.trim()){ $('jNombre').focus(); return; }
 
-    if(r.ok){
-      $('dlgJugador').classList.remove('open');
-      delete plantillas[equipoId];      // se vuelve a pedir, ya con el nuevo
-      await cargar();
-      await cargarPlantilla();
-      toast('Jugador añadido · código ' + r.code);
-    } else toast(r.error || 'No se ha podido añadir.', 'bad');
+    const datos = leerCamposJugador();
+    btn.disabled = true;
+
+    if(jugEditId){
+      const r = await post({action:'editar_jugador', player_id:jugEditId, ...datos});
+      btn.disabled = false;
+      if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
+
+      const p = jugadorActual();
+      if(p){
+        Object.assign(p, datos, {dorsal: datos.dorsal ? +datos.dorsal : null});
+        if(r.reabierta){ p.invite_status = 'sin_invitar'; p.invited_at = null; }
+        pintarInvite(p);
+      }
+      if(sec === 'plantillas') pintarPlantillas();
+      toast('Jugador actualizado');
+      return;
+    }
+
+    const r = await post({action:'crear_jugador', team_id:equipoId, ...datos});
+    btn.disabled = false;
+    if(!r.ok){ toast(r.error || 'No se ha podido añadir.', 'bad'); return; }
+
+    /* el diálogo sigue con el recién creado: así el correo que se acaba
+       de escribir ya se puede invitar sin cerrar y volver a abrir */
+    jugEditId = r.id;
+    const nuevo = {id:r.id, ...datos, dorsal: datos.dorsal ? +datos.dorsal : null,
+      access_code:r.code, invite_status:'sin_invitar', invited_at:null, registered_at:null};
+    (plantillas[equipoId] = plantillas[equipoId] || []).push(nuevo);
+    if(sec === 'plantillas') pintarPlantillas();
+
+    $('dlgJugT').textContent = nuevo.name;
+    $('jGuardar').textContent = 'Guardar cambios';
+    pintarCodigoJugador(nuevo);
+    pintarInvite(nuevo);
+    toast('Jugador añadido');
+    return;
+  }
+
+  const invJug = e.target.closest('[data-invitar-jugador]');
+  if(invJug){
+    if(DEMO){ toast('Sin servidor no se pueden mandar invitaciones: esta es la vista de diseño.'); return; }
+    invJug.disabled = true;
+    const r = await post({action:'invitar_jugador', player_id:jugEditId});
+    invJug.disabled = false;
+
+    if(!r.ok){ toast(r.error || 'No se ha podido invitar.', 'bad'); return; }
+
+    const p = jugadorActual();
+    if(p){ p.invite_status = 'invitado'; p.invited_at = new Date().toISOString(); }
+    pintarInvite(p);
+    if(sec === 'plantillas') pintarPlantillas();
+    toast('Invitación enviada por correo');
     return;
   }
 
@@ -1540,6 +1746,7 @@ document.addEventListener('click', async e => {
   if(e.target.closest('[data-cerrar-dlg]') || e.target.id === 'dlgStaff' ||
      e.target.id === 'dlgJugador' || e.target.id === 'dlgEquipo'){
     document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
+    jugEditId = null;
     return;
   }
 
