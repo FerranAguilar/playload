@@ -326,6 +326,7 @@ textarea.input{resize:vertical;min-height:62px;line-height:1.5;padding-top:9px;f
   padding:2px 7px;border-radius:20px;margin-left:7px;vertical-align:middle}
 .badge-inv.invitado{background:var(--color-warn-bg);color:var(--color-warn)}
 .badge-inv.registrado{background:var(--color-ok-bg);color:var(--color-ok)}
+.pos-alt{color:var(--muted-2);font-size:11.5px}
 
 @media (max-width:1240px){ .sheet{grid-template-columns:minmax(0,1fr)}
   .side{border-left:0;border-top:1px solid var(--line)}
@@ -595,7 +596,7 @@ body{transition:background .18s ease,color .18s ease}
           <div id="tabPanel" style="overflow-x:auto">
             <table class="table">
               <thead><tr>
-                <th style="width:54px">Dor.</th><th>Jugador</th><th>Posición</th>
+                <th style="width:54px">Dor.</th><th>Jugador</th><th>Posición</th><th style="width:56px">Edad</th>
                 <th>Estado</th><th>Wellness hoy</th><th>Carga 7 d</th><th></th>
               </tr></thead>
               <tbody id="roster"></tbody>
@@ -718,6 +719,17 @@ const puedeEditarEquipo    = () => S.access === 'propietario' || S.access === 'c
 const esc  = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const ini  = n => (n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || 'EQ';
 const fmt  = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+
+/* Años cumplidos a día de hoy, no la resta simple de los años: sin
+   contar el mes y el día, alguien que cumple en diciembre se enseñaría
+   un año mayor de lo que es durante todo el curso. null sin fecha. */
+function edad(fechaNac){
+  if(!fechaNac) return null;
+  const n = new Date(fechaNac + 'T00:00:00'), hoy = new Date();
+  let a = hoy.getFullYear() - n.getFullYear();
+  if(hoy.getMonth() < n.getMonth() || (hoy.getMonth() === n.getMonth() && hoy.getDate() < n.getDate())) a--;
+  return a;
+}
 
 /* ── carga ──────────────────────────────────────────────────── */
 async function cargar(){
@@ -1052,7 +1064,7 @@ function renderRoster(){
 
   if(!n){
     cuerpo.innerHTML = `
-      <tr><td colspan="7" style="padding:0">
+      <tr><td colspan="8" style="padding:0">
         <div class="vacio" style="margin:0;border:0">
           <h3>La plantilla está vacía</h3>
           <p>${puede
@@ -1078,15 +1090,22 @@ function renderRoster(){
     : p.invite_status === 'invitado'
       ? '<span class="badge-inv invitado">Invitado</span>' : '';
 
+  /* La posición alternativa va pegada a la principal, no en su propia
+     columna: es un dato secundario, no todos la tienen, y separarla
+     habría dejado una columna casi siempre vacía. */
+  const posiciones = p => (esc(p.position) || '—')
+    + (p.position_alt ? ` <span class="pos-alt">· ${esc(p.position_alt)}</span>` : '');
+
   cuerpo.innerHTML = ORDEN.concat(['Sin posición']).filter(l => grupos[l]).map(linea => {
     const filas = grupos[linea];
-    return `<tr class="grp"><td colspan="7"><span class="line">
+    return `<tr class="grp"><td colspan="8"><span class="line">
         <i style="background:${esc(S.team.tint||'#9184d9')}"></i>${linea} · ${filas.length}</span></td></tr>` +
       filas.map(p => `<tr class="pl" data-jugador="${p.id}" style="cursor:pointer">
         <td><span class="dorsal">${p.dorsal ?? '—'}</span></td>
         <td><div class="player"><span class="avatar">${ini(p.name)}</span>
               <span>${esc(p.name)}${badgeInv(p)}</span></div></td>
-        <td class="p-sub">${esc(p.position) || '—'}</td>
+        <td class="p-sub">${posiciones(p)}</td>
+        <td class="p-sub">${edad(p.birth_date) ?? '—'}</td>
         <td><span class="tag tag-ok">Disponible</span></td>
         <td class="p-sub">Sin enviar</td>
         <td class="p-sub">—</td>

@@ -716,13 +716,25 @@ switch ($action) {
     case 'invitar_jugador':
         $id = (int) (body()['player_id'] ?? 0);
 
-        $st = db()->prepare(
-            'SELECT p.id, p.team_id, p.name, p.email, p.invite_status, t.name AS team_name
-               FROM players p JOIN teams t ON t.id = p.team_id
-              WHERE p.id = ?'
-        );
-        $st->execute([$id]);
-        $j = $st->fetch();
+        // Sin las migraciones 09/10, `invite_status` ni siquiera existe:
+        // antes esto tumbaba la petición entera y el navegador solo veía
+        // una respuesta vacía, sin decir por qué. Ahora se explica.
+        try {
+            $st = db()->prepare(
+                'SELECT p.id, p.team_id, p.name, p.email, p.invite_status, t.name AS team_name
+                   FROM players p JOIN teams t ON t.id = p.team_id
+                  WHERE p.id = ?'
+            );
+            $st->execute([$id]);
+            $j = $st->fetch();
+        } catch (Throwable $e) {
+            fail(
+                'Faltan las migraciones 09 y 10 en la base de datos: sin ellas no se puede '
+                    . 'invitar a nadie. Impórtalas desde phpMyAdmin (db/migracion-09-jugador-perfil.sql '
+                    . 'y db/migracion-10-acceso-por-correo.sql).',
+                500
+            );
+        }
 
         if (!$j) {
             fail('Ese jugador no existe.', 404);
@@ -765,12 +777,25 @@ switch ($action) {
 
         // Un jugador que ya entró sigue «registrado» aunque se le mande
         // un enlace nuevo: eso no deshace que ya haya entrado.
-        db()->prepare(
-            "UPDATE players SET
-                login_token_hash = ?, invited_at = NOW(),
-                invite_status = IF(invite_status = 'registrado', 'registrado', 'invitado')
-              WHERE id = ?"
-        )->execute([hash('sha256', $token), $id]);
+        try {
+            db()->prepare(
+                "UPDATE players SET
+                    login_token_hash = ?, invited_at = NOW(),
+                    invite_status = IF(invite_status = 'registrado', 'registrado', 'invitado')
+                  WHERE id = ?"
+            )->execute([hash('sha256', $token), $id]);
+        } catch (Throwable $e) {
+            // El correo ya ha salido, pero sin la migración 10 no hay
+            // `login_token_hash` donde guardar el testigo: el enlace que
+            // acaba de recibir no va a funcionar. Mejor decirlo claro que
+            // dejar creer que la invitación quedó completa.
+            fail(
+                'El correo se ha mandado, pero falta la migración 10 en la base de datos y el '
+                    . 'enlace no va a funcionar todavía. Impórtala desde phpMyAdmin '
+                    . '(db/migracion-10-acceso-por-correo.sql) y vuelve a invitarlo.',
+                500
+            );
+        }
 
         json_out(['ok' => true]);
 

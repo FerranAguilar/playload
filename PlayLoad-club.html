@@ -415,6 +415,7 @@ textarea.input{resize:vertical;min-height:62px;line-height:1.5;padding-top:9px;f
   padding:2px 7px;border-radius:20px;margin-left:7px;vertical-align:middle}
 .badge-inv.invitado{background:var(--color-warn-bg);color:var(--color-warn)}
 .badge-inv.registrado{background:var(--color-ok-bg);color:var(--color-ok)}
+.pos-alt{color:var(--muted-2);font-size:11.5px}
 
 /* — responsive — */
 @media (max-width:1240px){ .equipos,.perfil-fila,.panel-fila{grid-template-columns:minmax(0,1fr)} }
@@ -875,6 +876,15 @@ const esc = s => String(s ?? '').replace(/[<>&"']/g, c =>
 const ini = n => (n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || '··';
 const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 
+/* Años cumplidos a día de hoy, no la resta simple de los años. null sin fecha. */
+function edad(fechaNac){
+  if(!fechaNac) return null;
+  const n = new Date(fechaNac + 'T00:00:00'), hoy = new Date();
+  let a = hoy.getFullYear() - n.getFullYear();
+  if(hoy.getMonth() < n.getMonth() || (hoy.getMonth() === n.getMonth() && hoy.getDate() < n.getDate())) a--;
+  return a;
+}
+
 /* Fecha AAAA-MM-DD en hora LOCAL: toISOString() pasa a UTC y en España
    devuelve el día anterior a partir de medianoche. */
 const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1241,8 +1251,8 @@ function pintarPlantillas(){
       <div class="panel-body">
         <div class="vacio">
           <h3>${esc(t.name)} no tiene jugadores</h3>
-          <p>Añádelos aquí y cada uno recibirá su código para entrar en la
-             aplicación y mandar su RPE y su wellness.</p>
+          <p>Añádelos aquí. Con su correo en la ficha, cada uno recibe un enlace para entrar
+             y mandar su RPE y su wellness.</p>
           <button class="btn btn-primary" data-add-jugador>Añadir el primero</button>
         </div>
       </div>`;
@@ -1260,6 +1270,11 @@ function pintarPlantillas(){
     : p.invite_status === 'invitado'
       ? '<span class="badge-inv invitado">Invitado</span>' : '';
 
+  /* La posición alternativa va pegada a la principal, no en su propia
+     columna: es un dato secundario que no todos tienen. */
+  const posiciones = p => (esc(p.position) || '—')
+    + (p.position_alt ? ` <span class="pos-alt">· ${esc(p.position_alt)}</span>` : '');
+
   caja.innerHTML = `
     <div class="card-head">
       <div>
@@ -1271,10 +1286,10 @@ function pintarPlantillas(){
     </div>
     <table class="table">
       <thead><tr><th style="width:56px">Dorsal</th><th>Jugador</th><th>Posición</th>
-                 <th>Correo</th></tr></thead>
+                 <th style="width:56px">Edad</th><th>Correo</th></tr></thead>
       <tbody>
         ${ORDEN.concat(['Sin posición']).filter(l => grupos[l]).map(linea => `
-          <tr class="grp"><td colspan="4"><span class="linea">
+          <tr class="grp"><td colspan="5"><span class="linea">
             <i style="background:${esc(t.tint) || 'var(--color-accent)'}"></i>${linea} · ${grupos[linea].length}
           </span></td></tr>
           ${grupos[linea].map(p => `
@@ -1282,7 +1297,8 @@ function pintarPlantillas(){
               <td><span class="dorsal">${p.dorsal ?? '—'}</span></td>
               <td><div class="jugador"><span class="avatar">${esc(ini(p.name))}</span>
                     <span>${esc(p.name)}${badgeInv(p)}</span></div></td>
-              <td class="p-sub">${esc(p.position) || '—'}</td>
+              <td class="p-sub">${posiciones(p)}</td>
+              <td class="p-sub">${edad(p.birth_date) ?? '—'}</td>
               <td class="p-sub">${esc(p.email) || '—'}</td>
             </tr>`).join('')}
         `).join('')}

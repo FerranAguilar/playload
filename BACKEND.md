@@ -157,7 +157,10 @@ quita `access_code` —ya no hace falta, y era `NOT NULL`— y añade
 generando un código como antes (`crear_jugador` cae a ese camino en
 cuanto el de siempre falla), porque la base todavía lo exige; y
 `invitar_jugador` y `player_login.php`, que dependen enteros de
-`login_token_hash`, no funcionan.
+`login_token_hash`, no funcionan. `invitar_jugador` lo dice con un
+mensaje concreto en vez de romperse en silencio —antes, sin esta
+migración, el navegador solo veía «el servidor no ha contestado como se
+esperaba», sin ninguna pista de qué faltaba—.
 
 ## La sesión por dentro
 
