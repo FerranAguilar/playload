@@ -162,6 +162,11 @@ mensaje concreto en vez de romperse en silencio —antes, sin esta
 migración, el navegador solo veía «el servidor no ha contestado como se
 esperaba», sin ninguna pista de qué faltaba—.
 
+La última por ahora: `db/migracion-11-genero-equipo.sql` añade `gender`
+a `teams`. Sin ella, crear y editar un equipo siguen funcionando —se
+cae al `INSERT`/`UPDATE` de siempre, sin esa columna— pero el género que
+se elija en el formulario no se guarda hasta que se importe.
+
 ## La sesión por dentro
 
 Una sesión se monta por **bloques** (`session_blocks`): calentamiento,
@@ -324,6 +329,38 @@ equipo existía en `action=estado` pero no en su propia ficha. Ahora usa
 la misma función que todo lo demás, y el nivel viaja en la respuesta
 como `acceso` para que `PlayLoad-equipos.html` sepa qué enseñar
 editable y qué en solo lectura.
+
+### La sección Plantillas del club: rejilla primero, ficha después
+
+Antes se abría directamente la plantilla del primer equipo, con una
+tira de chips arriba para cambiar de uno a otro. Ahora lo primero que
+se ve es una rejilla con todos los equipos del club —mismo diseño de
+tarjeta que la lista de `PlayLoad-equipos.html`, para que sea la misma
+aplicación aunque sea otra pantalla—; clicar una abre su ficha, con un
+enlace «← Todas las plantillas» para volver. Entrar en la sección desde
+el menú vuelve siempre a la rejilla, aunque se hubiera dejado una ficha
+abierta: es un estado de la interfaz, `plantillaLista`, que no depende
+de qué equipo esté cargado por detrás.
+
+La ficha abierta tiene botón **Editar equipo**: usa el mismo
+`editar_equipo` que ya tenía `PlayLoad-equipos.html`, así que un cambio
+de nombre o de categoría desde el club llega exactamente igual que si
+lo hubiera hecho quien creó el equipo.
+
+### Categoría libre, género con tres valores
+
+La categoría es un select con la escalera habitual —prebenjamín a
+sénior— y una opción **Otra…** que revela un campo de texto: cada
+federación las llama a su manera, así que no hay catálogo cerrado que
+imponer. El servidor no valida la categoría contra ninguna lista, igual
+que ya pasaba con `position`: es la pantalla la que ofrece las
+habituales, no la base la que las exige.
+
+El género sí tiene tres valores fijos —masculino, femenino, mixto— y un
+select normal, sin opción libre: a diferencia de la categoría, no hay
+ambigüedad de federación que resolver ahí. Mismo patrón de columna que
+`foot` o `position_alt`: `VARCHAR`, no `ENUM`, para no tener que tocar
+la base el día que haga falta un cuarto valor.
 
 ## La ficha del jugador
 

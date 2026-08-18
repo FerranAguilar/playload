@@ -176,13 +176,26 @@ switch ($action) {
         }
         $clubId = (int) $club['id'];
 
-        $st = db()->prepare(
-            'SELECT t.id, t.name, t.category, t.modality, t.tint,
-                    (SELECT COUNT(*) FROM players p WHERE p.team_id = t.id AND p.active = 1) AS players
-               FROM teams t WHERE t.club_id = ? ORDER BY t.name, t.id'
-        );
-        $st->execute([$clubId]);
-        $teams = $st->fetchAll();
+        // La ficha completa del equipo es de la migración 11. Sin ella, se
+        // cae a las columnas de siempre en vez de romper la página del
+        // club entera por una columna que no existe todavía.
+        try {
+            $st = db()->prepare(
+                'SELECT t.id, t.name, t.category, t.gender, t.modality, t.formation, t.tint,
+                        (SELECT COUNT(*) FROM players p WHERE p.team_id = t.id AND p.active = 1) AS players
+                   FROM teams t WHERE t.club_id = ? ORDER BY t.name, t.id'
+            );
+            $st->execute([$clubId]);
+            $teams = $st->fetchAll();
+        } catch (Throwable $e) {
+            $st = db()->prepare(
+                'SELECT t.id, t.name, t.category, t.modality, t.formation, t.tint,
+                        (SELECT COUNT(*) FROM players p WHERE p.team_id = t.id AND p.active = 1) AS players
+                   FROM teams t WHERE t.club_id = ? ORDER BY t.name, t.id'
+            );
+            $st->execute([$clubId]);
+            $teams = array_map(fn($t) => $t + ['gender' => ''], $st->fetchAll());
+        }
 
         $porEquipo = [];
         try {
@@ -525,17 +538,38 @@ switch ($action) {
             $clubId = ($c->fetch()['id'] ?? null);
         }
 
-        $ins = db()->prepare(
-            'INSERT INTO teams (club_id, owner_user_id, name, category, modality, formation, tint)
-             VALUES (?, ?, ?, ?, ?, ?, ?)'
-        );
-        $ins->execute([
-            $clubId, $userId, $name,
-            param('category'),
-            param('modality', 'Fútbol 11'),
-            param('formation', '1-4-3-3'),
-            preg_match('/^#[0-9a-f]{6}$/i', param('tint')) ? param('tint') : '#9184d9',
-        ]);
+        // Sin catálogo cerrado: la categoría la escribe quien crea el
+        // equipo, porque cambia según la federación. El género sí tiene
+        // tres valores fijos.
+        $gender = in_array(param('gender'), ['masculino', 'femenino', 'mixto'], true)
+            ? param('gender') : '';
+
+        try {
+            $ins = db()->prepare(
+                'INSERT INTO teams (club_id, owner_user_id, name, category, gender, modality, formation, tint)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $ins->execute([
+                $clubId, $userId, $name,
+                param('category'), $gender,
+                param('modality', 'Fútbol 11'),
+                param('formation', '1-4-3-3'),
+                preg_match('/^#[0-9a-f]{6}$/i', param('tint')) ? param('tint') : '#9184d9',
+            ]);
+        } catch (Throwable $e) {
+            // Sin la migración 11 no hay `gender` que rellenar.
+            $ins = db()->prepare(
+                'INSERT INTO teams (club_id, owner_user_id, name, category, modality, formation, tint)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)'
+            );
+            $ins->execute([
+                $clubId, $userId, $name,
+                param('category'),
+                param('modality', 'Fútbol 11'),
+                param('formation', '1-4-3-3'),
+                preg_match('/^#[0-9a-f]{6}$/i', param('tint')) ? param('tint') : '#9184d9',
+            ]);
+        }
 
         json_out(['ok' => true, 'id' => (int) db()->lastInsertId()], 201);
 
@@ -814,18 +848,24 @@ switch ($action) {
             fail('El sistema se escribe como 1-4-3-3.');
         }
 
-        $up = db()->prepare(
-            'UPDATE teams SET name = ?, category = ?, modality = ?, formation = ?, tint = ?
-              WHERE id = ?'
-        );
-        $up->execute([
-            $name,
-            param('category'),
-            param('modality', 'Fútbol 11'),
-            $form,
-            preg_match('/^#[0-9a-f]{6}$/i', param('tint')) ? param('tint') : '#9184d9',
-            $teamId,
-        ]);
+        $gender = in_array(param('gender'), ['masculino', 'femenino', 'mixto'], true)
+            ? param('gender') : '';
+        $tint = preg_match('/^#[0-9a-f]{6}$/i', param('tint')) ? param('tint') : '#9184d9';
+
+        try {
+            $up = db()->prepare(
+                'UPDATE teams SET name = ?, category = ?, gender = ?, modality = ?, formation = ?, tint = ?
+                  WHERE id = ?'
+            );
+            $up->execute([$name, param('category'), $gender, param('modality', 'Fútbol 11'), $form, $tint, $teamId]);
+        } catch (Throwable $e) {
+            // Sin la migración 11 no hay `gender` que guardar.
+            $up = db()->prepare(
+                'UPDATE teams SET name = ?, category = ?, modality = ?, formation = ?, tint = ?
+                  WHERE id = ?'
+            );
+            $up->execute([$name, param('category'), param('modality', 'Fútbol 11'), $form, $tint, $teamId]);
+        }
 
         json_out(['ok' => true]);
 

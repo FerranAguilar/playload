@@ -219,6 +219,36 @@ a.rail-top:hover{color:var(--color-accent)}
 .chip-eq[aria-pressed="true"] b{color:var(--color-accent)}
 
 /* ═══ PLANTILLAS ═══ */
+/* — rejilla de equipos: lo primero que se ve — */
+.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:16px}
+.team{position:relative;text-align:left;cursor:pointer;background:var(--color-surface);
+  border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px 18px 14px;
+  display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-sm);
+  transition:border-color .16s ease,transform .16s ease}
+.team:hover{border-color:var(--tint);transform:translateY(-2px)}
+.team:hover .t-open{opacity:1;transform:translateX(0)}
+.t-head{display:flex;align-items:center;gap:12px}
+.badge-lg{width:42px;height:42px;border-radius:10px;flex:none;display:flex;align-items:center;
+  justify-content:center;font-family:var(--font-heading);font-weight:600;font-size:13px;
+  color:#14161f;background:linear-gradient(150deg,var(--tint),color-mix(in srgb,var(--tint) 70%,#14161f))}
+.t-name{font-family:var(--font-heading);font-weight:500;font-size:17px;letter-spacing:-.015em;line-height:1.2}
+.t-cat{font-size:12.5px;color:var(--muted);margin-top:3px}
+.t-open{margin-left:auto;color:var(--tint);opacity:0;transform:translateX(-4px);flex:none;
+  transition:opacity .16s ease,transform .16s ease}
+.t-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:13px;
+  border-top:1px solid var(--hair);font-size:13px}
+.t-count{color:var(--muted)}
+.t-count b{font-family:var(--font-heading);font-weight:500;color:var(--color-text);font-size:14px}
+
+/* — volver, y la cabecera de la ficha abierta — */
+.back{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--muted);
+  cursor:pointer;padding:4px 2px;background:none;border:0;font-family:inherit;margin-bottom:14px}
+.back:hover{color:var(--color-accent-300)}
+.team-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.team-head .badge-lg{width:52px;height:52px;border-radius:12px;font-size:15px}
+.team-head h1{font-size:26px;letter-spacing:-.02em}
+.team-head .t-cat{font-size:13.5px;margin-top:4px}
+
 .table{width:100%;border-collapse:collapse;font-size:13.5px}
 .table th{text-align:left;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
   color:var(--muted);padding:9px 10px;font-weight:400}
@@ -635,8 +665,15 @@ body{transition:background .18s ease,color .18s ease}
 
       <!-- ═══ PLANTILLAS ═══ -->
       <section class="seccion" id="secPlantillas" hidden>
-        <div class="equipos-tira" id="tiraPlantillas"></div>
-        <div class="panel" id="panelPlantilla"></div>
+        <div class="teams" id="listaPlantillas"></div>
+        <div id="fichaPlantillaWrap" style="display:none">
+          <button class="back" data-volver-plantillas>
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.8 3.4 5.2 8l4.6 4.6"/></svg>
+            Todas las plantillas
+          </button>
+          <div class="team-head" id="fichaPlantillaHead"></div>
+          <div class="panel" id="panelPlantilla"></div>
+        </div>
       </section>
 
       <!-- ═══ CALENDARIOS ═══ -->
@@ -760,36 +797,57 @@ body{transition:background .18s ease,color .18s ease}
   </div>
 </div>
 
+<!-- eEquipoId vacío = alta; con id = editar uno ya creado -->
 <div class="dialog-backdrop" id="dlgEquipo">
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgEqT">
     <div>
       <h2 id="dlgEqT">Nuevo equipo</h2>
-      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)">
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgEqSub">
         Una categoría del club. Después le subes la plantilla y le pones staff.</p>
     </div>
     <div class="field"><label for="eNombre">Nombre</label>
       <input class="input" id="eNombre" placeholder="Cadete A"></div>
     <div class="grid-2">
       <div class="field"><label for="eCategoria">Categoría</label>
-        <input class="input" id="eCategoria" placeholder="Cadete"></div>
+        <select class="input" id="eCategoria">
+          <option value="Prebenjamín">Prebenjamín</option>
+          <option value="Benjamín">Benjamín</option>
+          <option value="Alevín">Alevín</option>
+          <option value="Infantil">Infantil</option>
+          <option value="Cadete">Cadete</option>
+          <option value="Juvenil">Juvenil</option>
+          <option value="Sénior">Sénior</option>
+          <option value="__otra">Otra…</option>
+        </select></div>
+      <div class="field"><label for="eGenero">Género</label>
+        <select class="input" id="eGenero">
+          <option value="">Sin indicar</option>
+          <option value="masculino">Masculino</option>
+          <option value="femenino">Femenino</option>
+          <option value="mixto">Mixto</option>
+        </select></div>
+    </div>
+    <div class="field" id="eCategoriaOtraCampo" style="display:none">
+      <label for="eCategoriaOtra">Escribe la categoría</label>
+      <input class="input" id="eCategoriaOtra" placeholder="Como la llame tu federación">
+    </div>
+    <div class="grid-2">
       <div class="field"><label for="eModalidad">Modalidad</label>
         <select class="input" id="eModalidad">
           <option>Fútbol 11</option>
           <option>Fútbol 7</option>
           <option>Fútbol sala</option>
         </select></div>
-    </div>
-    <div class="grid-2">
       <div class="field"><label for="eSistema">Sistema</label>
         <input class="input" id="eSistema" value="1-4-3-3" placeholder="1-4-3-3"></div>
-      <div class="field"><label for="eColor">Color</label>
-        <input class="input" id="eColor" type="color" value="#9184d9"
-               style="padding:4px;height:36px"></div>
     </div>
+    <div class="field"><label for="eColor">Color</label>
+      <input class="input" id="eColor" type="color" value="#9184d9"
+             style="padding:4px;height:36px;max-width:120px"></div>
     <p class="p-sub" id="eAviso"></p>
     <div class="dialog-actions">
       <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
-      <button class="btn btn-primary" data-guardar-equipo>Crear equipo</button>
+      <button class="btn btn-primary" id="eGuardarBtn" data-guardar-equipo>Crear equipo</button>
     </div>
   </div>
 </div>
@@ -959,12 +1017,30 @@ function toast(msg, kind){
 let D = {club:null, teams:[], lic:null, resumen:null};
 let sec      = 'plantillas';
 let equipoId = 0;                    // el elegido en plantillas y calendarios
+let plantillaLista = true;           // true = rejilla de equipos; false = ficha abierta
+let equipoEditId = null;             // equipo que edita el diálogo; null = alta
 let jugEditId = null;                // jugador que edita el diálogo; null = alta
 let plantillas = {};                 // id de equipo → jugadores, ya pedidos
 let sesiones   = [];                 // las del equipo elegido
 let ancla = lunesDe(new Date());
 
 const equipo = () => D.teams.find(t => t.id === equipoId) || null;
+
+/* Pre-benjamín a sénior es la escalera habitual; cada federación la
+   toca a su manera, así que «Otra…» deja escribir la que corresponda. */
+const CATEGORIAS = ['Prebenjamín','Benjamín','Alevín','Infantil','Cadete','Juvenil','Sénior'];
+
+function rellenarCategoria(valor){
+  const esPreset = CATEGORIAS.includes(valor);
+  $('eCategoria').value = esPreset ? valor : '__otra';
+  $('eCategoriaOtraCampo').style.display = esPreset ? 'none' : '';
+  $('eCategoriaOtra').value = esPreset ? '' : (valor || '');
+}
+function leerCategoria(){
+  return $('eCategoria').value === '__otra'
+    ? $('eCategoriaOtra').value.trim()
+    : $('eCategoria').value;
+}
 
 /* ── secciones ──────────────────────────────────────────────── */
 function irA(nombre, empujar){
@@ -999,7 +1075,7 @@ function accionesDeArriba(){
        entrenador a hacerlo, así que la puerta está aquí. */
     caja.innerHTML =
       `<button class="btn btn-secondary" data-nuevo-equipo>Nuevo equipo</button>` +
-      (equipoId
+      (!plantillaLista
         ? `<button class="btn btn-primary" data-add-jugador>
              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
              Añadir jugador</button>` : '');
@@ -1232,13 +1308,63 @@ document.addEventListener('input', e => {
   if(e.target.id === 'jEmail') pintarInvite(jugadorActual());
 });
 
-function pintarPlantillas(){
-  tira('tiraPlantillas');
-  const caja = $('panelPlantilla');
+document.addEventListener('change', e => {
+  if(e.target.id === 'eCategoria'){
+    const otra = e.target.value === '__otra';
+    $('eCategoriaOtraCampo').style.display = otra ? '' : 'none';
+    if(otra) $('eCategoriaOtra').focus();
+  }
+});
 
-  if(!D.teams.length){ caja.innerHTML = vacioSinEquipos(); return; }
+/* Rótulos del selector de género: cortos, para caber en la ficha
+   pequeña sin partirse en dos líneas. */
+const GENERO = {masculino:'Masculino', femenino:'Femenino', mixto:'Mixto'};
+
+/* Lo primero al entrar en Plantillas es la rejilla del club entero;
+   clicar un equipo abre su ficha. «← Todas las plantillas» vuelve. */
+function pintarListaPlantillas(){
+  const box = $('listaPlantillas');
+
+  if(!D.teams.length){ box.innerHTML = vacioSinEquipos(true); return; }
+
+  box.innerHTML = D.teams.map(t => `
+    <button class="team" style="--tint:${esc(t.tint) || 'var(--color-accent)'}" data-abrir-plantilla="${t.id}">
+      <div class="t-head">
+        <span class="badge-lg">${esc(ini(t.name))}</span>
+        <div style="min-width:0">
+          <div class="t-name">${esc(t.name)}</div>
+          <div class="t-cat">${esc(t.category) || 'Sin categoría'}${t.gender ? ' · ' + (GENERO[t.gender] || '') : ''}</div>
+        </div>
+        <svg class="t-open" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5 10.5 8 6 12.5"/></svg>
+      </div>
+      <div class="t-foot">
+        <span class="t-count">${t.players
+          ? `<b>${t.players}</b> jugador${t.players===1?'':'es'}`
+          : '<span style="color:var(--color-warn)">Sin plantilla</span>'}</span>
+      </div>
+    </button>`).join('');
+}
+
+function pintarPlantillas(){
+  $('listaPlantillas').style.display     = plantillaLista ? 'grid' : 'none';
+  $('fichaPlantillaWrap').style.display  = plantillaLista ? 'none' : 'block';
+
+  if(plantillaLista){ pintarListaPlantillas(); return; }
 
   const t = equipo();
+  if(!t){ plantillaLista = true; pintarPlantillas(); return; }   // se borró desde otra pestaña
+
+  $('fichaPlantillaHead').innerHTML = `
+    <span class="badge-lg" style="--tint:${esc(t.tint) || 'var(--color-accent)'}">${esc(ini(t.name))}</span>
+    <div style="min-width:0;flex:1">
+      <h1>${esc(t.name)}</h1>
+      <div class="t-cat">${esc(t.category) || 'Sin categoría'}${t.gender ? ' · ' + (GENERO[t.gender] || '') : ''}
+        · ${esc(t.modality)}</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" data-editar-equipo>Editar equipo</button>`;
+
+  const caja = $('panelPlantilla');
   const jug = plantillas[equipoId];
 
   if(jug === undefined){
@@ -1278,9 +1404,8 @@ function pintarPlantillas(){
   caja.innerHTML = `
     <div class="card-head">
       <div>
-        <div class="card-title">${esc(t.name)}</div>
-        <div class="eyebrow" style="margin-top:4px">${esc(t.category) || 'Sin categoría'} ·
-          ${esc(t.modality)} · ${jug.length} jugador${jug.length===1?'':'es'}</div>
+        <div class="card-title">Plantilla</div>
+        <div class="eyebrow" style="margin-top:4px">${jug.length} jugador${jug.length===1?'':'es'}</div>
       </div>
       <button class="btn btn-secondary btn-sm" data-add-jugador>+ Jugador</button>
     </div>
@@ -1600,16 +1725,39 @@ window.addEventListener('hashchange', () => irA((location.hash || '#plantillas')
 document.addEventListener('click', async e => {
 
   const nav = e.target.closest('.nav-item[data-sec]');
-  if(nav){ e.preventDefault(); irA(nav.dataset.sec, true); return; }
+  if(nav){
+    e.preventDefault();
+    // Entrar en Plantillas por el menú siempre enseña la rejilla
+    // primero, aunque antes se hubiera dejado una ficha abierta.
+    if(nav.dataset.sec === 'plantillas') plantillaLista = true;
+    irA(nav.dataset.sec, true);
+    return;
+  }
 
-  /* elegir equipo en plantillas o calendarios */
+  /* elegir equipo en calendarios (plantillas ya no usa esta tira) */
   const chip = e.target.closest('[data-equipo]');
   if(chip){
     equipoId = +chip.dataset.equipo;
     pintarSeccion();
     accionesDeArriba();
-    if(sec === 'plantillas') cargarPlantilla();
     if(sec === 'calendarios') cargarSesiones();
+    return;
+  }
+
+  const abrePlantilla = e.target.closest('[data-abrir-plantilla]');
+  if(abrePlantilla){
+    equipoId = +abrePlantilla.dataset.abrirPlantilla;
+    plantillaLista = false;
+    accionesDeArriba();
+    pintarPlantillas();
+    await cargarPlantilla();
+    return;
+  }
+
+  if(e.target.closest('[data-volver-plantillas]')){
+    plantillaLista = true;
+    accionesDeArriba();
+    pintarPlantillas();
     return;
   }
 
@@ -1641,7 +1789,16 @@ document.addEventListener('click', async e => {
   if(e.target.closest('[data-nuevo-equipo]')){
     if(DEMO){ toast('Sin servidor no se pueden crear equipos: esta es la vista de diseño.'); return; }
     const l = D.lic || {};
-    $('eNombre').value = ''; $('eCategoria').value = '';
+    equipoEditId = null;
+    $('dlgEqT').textContent = 'Nuevo equipo';
+    $('dlgEqSub').textContent = 'Una categoría del club. Después le subes la plantilla y le pones staff.';
+    $('eGuardarBtn').textContent = 'Crear equipo';
+    $('eNombre').value = '';
+    rellenarCategoria('');
+    $('eGenero').value = '';
+    $('eModalidad').value = 'Fútbol 11';
+    $('eSistema').value = '1-4-3-3';
+    $('eColor').value = '#9184d9';
     $('eAviso').textContent = l.max_equipos
       ? `Llevas ${D.teams.length} de ${l.max_equipos} equipos que permite tu plan.`
       : 'Tu plan no limita los equipos.';
@@ -1650,21 +1807,54 @@ document.addEventListener('click', async e => {
     return;
   }
 
+  if(e.target.closest('[data-editar-equipo]')){
+    const t = equipo();
+    if(!t) return;
+    equipoEditId = t.id;
+    $('dlgEqT').textContent = 'Editar equipo';
+    $('dlgEqSub').textContent = 'Nombre, categoría, género y todo lo que lo identifica.';
+    $('eGuardarBtn').textContent = 'Guardar cambios';
+    $('eNombre').value = t.name;
+    rellenarCategoria(t.category || '');
+    $('eGenero').value = t.gender || '';
+    $('eModalidad').value = t.modality || 'Fútbol 11';
+    $('eSistema').value = t.formation || '1-4-3-3';
+    $('eColor').value = t.tint || '#9184d9';
+    $('eAviso').textContent = '';
+    $('dlgEquipo').classList.add('open');
+    $('eNombre').focus();
+    return;
+  }
+
   if(e.target.closest('[data-guardar-equipo]')){
     const btn = e.target.closest('[data-guardar-equipo]');
+    if(!$('eNombre').value.trim()){ $('eNombre').focus(); return; }
+
+    const datos = {name:$('eNombre').value.trim(), category:leerCategoria(),
+      gender:$('eGenero').value, modality:$('eModalidad').value,
+      formation:$('eSistema').value, tint:$('eColor').value};
+
     btn.disabled = true;
-    const r = await post({action:'crear_equipo', name:$('eNombre').value,
-      category:$('eCategoria').value, modality:$('eModalidad').value,
-      formation:$('eSistema').value, tint:$('eColor').value});
+    const r = await post(equipoEditId
+      ? {action:'editar_equipo', team_id:equipoEditId, ...datos}
+      : {action:'crear_equipo', ...datos});
     btn.disabled = false;
 
-    if(r.ok){
-      $('dlgEquipo').classList.remove('open');
+    if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
+
+    $('dlgEquipo').classList.remove('open');
+    if(equipoEditId){
+      await cargar();
+      plantillaLista = false;
+      pintarPlantillas();
+      toast('Equipo actualizado');
+    } else {
       equipoId = r.id;              // se abre el recién creado
+      plantillaLista = false;
       await cargar();
       await cargarPlantilla();
       toast('Equipo creado');
-    } else toast(r.error || 'No se ha podido crear.', 'bad');
+    }
     return;
   }
 
@@ -1777,6 +1967,7 @@ document.addEventListener('click', async e => {
      e.target.id === 'dlgJugador' || e.target.id === 'dlgEquipo'){
     document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
     jugEditId = null;
+    equipoEditId = null;
     return;
   }
 

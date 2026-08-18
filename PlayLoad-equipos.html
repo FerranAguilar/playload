@@ -709,6 +709,10 @@ const LINEAS = {POR:'Portería', DFC:'Defensa', LD:'Defensa', LI:'Defensa',
 const ORDEN = ['Portería','Defensa','Medio','Ataque'];
 const PIES  = {dcha:'Derecho', izq:'Izquierdo', ambidiestro:'Ambidiestro'};
 
+/* Pre-benjamín a sénior es la escalera habitual; cada federación la
+   toca a su manera, así que «Otra…» deja escribir la que corresponda. */
+const CATEGORIAS = ['Prebenjamín','Benjamín','Alevín','Infantil','Cadete','Juvenil','Sénior'];
+
 /* La ficha del jugador la edita todo el staff del equipo, club incluido:
    es trabajo del día a día. Los ajustes del equipo —nombre, categoría,
    sistema— siguen siendo solo de quien lo creó o del club. Mismo
@@ -1008,17 +1012,33 @@ function renderTab(name){
     const puede = puedeEditarEquipo();
     const dis = puede ? '' : 'disabled';
     const colores = ['#9184d9','#84b6d9','#9fd984','#d9a184','#b5abfc','#84c9d9'];
+    const esPreset = CATEGORIAS.includes(t.category);
     extra.innerHTML = `
       <div style="padding:22px 20px 24px;display:flex;flex-direction:column;gap:18px;max-width:640px">
         ${puede ? '' : `<div class="jug-solo-lectura">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3.2" y="7" width="9.6" height="6.4" rx="1.2"/><path d="M5.2 7V4.8a2.8 2.8 0 0 1 5.6 0V7"/></svg>
           Los ajustes del equipo los lleva el club o quien lo creó.
         </div>`}
+        <div class="field"><label for="eNombre">Nombre del equipo</label>
+          <input class="input" id="eNombre" value="${esc(t.name)}" ${dis}></div>
         <div class="grid-2">
-          <div class="field"><label for="eNombre">Nombre del equipo</label>
-            <input class="input" id="eNombre" value="${esc(t.name)}" ${dis}></div>
           <div class="field"><label for="eCat">Categoría</label>
-            <input class="input" id="eCat" value="${esc(t.category)}" placeholder="Sub-19 · Preferente" ${dis}></div>
+            <select class="input" id="eCat" ${dis}>
+              ${CATEGORIAS.map(c => `<option ${t.category===c?'selected':''}>${c}</option>`).join('')}
+              <option value="__otra" ${esPreset?'':'selected'}>Otra…</option>
+            </select></div>
+          <div class="field"><label for="eGenero">Género</label>
+            <select class="input" id="eGenero" ${dis}>
+              <option value="">Sin indicar</option>
+              <option value="masculino" ${t.gender==='masculino'?'selected':''}>Masculino</option>
+              <option value="femenino" ${t.gender==='femenino'?'selected':''}>Femenino</option>
+              <option value="mixto" ${t.gender==='mixto'?'selected':''}>Mixto</option>
+            </select></div>
+        </div>
+        <div class="field" id="eCatOtraCampo" style="${esPreset?'display:none':''}">
+          <label for="eCatOtra">Escribe la categoría</label>
+          <input class="input" id="eCatOtra" value="${esPreset?'':esc(t.category)}"
+            placeholder="Como la llame tu federación" ${dis}>
         </div>
         <div class="grid-2">
           <div class="field"><label for="eMod">Modalidad</label>
@@ -1249,9 +1269,10 @@ document.addEventListener('click', async e => {
     if(DEMO){ toast('Sin servidor no se puede guardar: esta es la vista de diseño.'); return; }
 
     const val = id => document.getElementById(id).value.trim();
+    const categoria = val('eCat') === '__otra' ? val('eCatOtra') : val('eCat');
     gt.disabled = true;
     const r = await post({action:'editar_equipo', team_id:S.team.id,
-      name:val('eNombre'), category:val('eCat'), modality:val('eMod'),
+      name:val('eNombre'), category:categoria, gender:val('eGenero'), modality:val('eMod'),
       formation:val('eForm'), tint:val('eTint')});
     gt.disabled = false;
 
@@ -1459,6 +1480,14 @@ async function guardarJugador(seguir){
 
 document.addEventListener('input', e => {
   if(e.target.id === 'jEmail') pintarInvite(S.players.find(x => x.id === S.editId));
+});
+
+document.addEventListener('change', e => {
+  if(e.target.id === 'eCat'){
+    const otra = e.target.value === '__otra';
+    document.getElementById('eCatOtraCampo').style.display = otra ? '' : 'none';
+    if(otra) document.getElementById('eCatOtra').focus();
+  }
 });
 
 document.addEventListener('keydown', e => {
