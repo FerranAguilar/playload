@@ -381,17 +381,30 @@ Por eso `api/subir_escudo.php` es un archivo aparte, con su propio
 
 Admite `.jpg`, `.png` y `.svg`, hasta 3 MB. Lo que decide el tipo es el
 **contenido**, nunca la extensión ni el `Content-Type` que mande el
-navegador —los dos se falsean sin esfuerzo—: `finfo_file()` para jpg y
-png, más `getimagesize()` como segunda comprobación de que el archivo
-es de verdad una imagen y no una cabecera falseada. El SVG es texto, y
-`finfo` no siempre lo reconoce como tal, así que si el tipo no es
-concluyente se mira si el contenido empieza como un SVG de verdad.
+navegador —los dos se falsean sin esfuerzo—: `getimagesize()` para jpg
+y png, que además de decir el tipo comprueba que el archivo es de
+verdad una imagen y no una cabecera falseada. No `finfo_file()`: esa
+función depende de una extensión de PHP que en según qué hosting
+compartido puede no estar activa, y ahí toda la subida caía con un
+error 500 sin ninguna pista de por qué; `getimagesize()` es del núcleo
+del lenguaje, nada que activar aparte. El SVG es texto y
+`getimagesize()` no lo reconoce como imagen, así que para ese caso se
+mira si el contenido empieza de verdad como un SVG.
 
 El nombre final tampoco sale de lo que suba el navegador: es
 `bin2hex(random_bytes(16))` más la extensión que decidió el servidor
 según el contenido. Así nunca es quien sube el archivo quien elige
 dónde acaba escrito ni con qué extensión —cerrando de raíz el ataque
 clásico de subir un `.php` disfrazado de imagen—.
+
+Todo el archivo va dentro de un único `try`, con un `catch (Throwable)`
+al final que convierte cualquier fallo no previsto en el JSON de
+siempre en vez de en una página en blanco: en un hosting compartido
+siempre puede faltar algo —una extensión, un permiso— que no se pueda
+adivinar desde aquí. El detalle real solo se enseña si `debug` está
+activo en `config.php`; si no, se queda en el registro de errores del
+hosting y quien sube el escudo solo ve «No se ha podido procesar el
+escudo».
 
 El SVG, además, se sanea antes de guardarse: fuera `<script>`,
 manejadores `on*` (`onload`, `onclick`…) y cualquier `javascript:` en

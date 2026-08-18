@@ -10,122 +10,125 @@ declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
 require_method('POST');
 
-$user = require_user();
-$club = mi_club((int) $user['id']);
-if (!$club) {
-    fail('Solo una cuenta de club tiene escudo que subir.', 403);
-}
-
-// Cuando el archivo pesa más que `post_max_size` en el servidor, PHP no
-// rellena `$_FILES` con un error que leer: la petición entera llega
-// vacía, como si no se hubiera adjuntado nada. Sin este aviso aparte, el
-// mensaje habría sido el genérico de «no ha llegado ningún archivo»,
-// que para un archivo grande despista más que ayuda.
-if (empty($_FILES) && empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
-    fail('El archivo pesa más de lo que este servidor admite en una subida. Prueba con uno más pequeño.', 413);
-}
-
-if (!isset($_FILES['escudo']) || $_FILES['escudo']['error'] === UPLOAD_ERR_NO_FILE) {
-    fail('No ha llegado ningún archivo.');
-}
-
-$archivo = $_FILES['escudo'];
-
-if ($archivo['error'] !== UPLOAD_ERR_OK) {
-    $motivos = [
-        UPLOAD_ERR_INI_SIZE   => 'El archivo pesa más de lo que el servidor admite.',
-        UPLOAD_ERR_FORM_SIZE  => 'El archivo pesa más de lo que el servidor admite.',
-        UPLOAD_ERR_PARTIAL    => 'El archivo se ha subido a medias. Inténtalo otra vez.',
-        UPLOAD_ERR_NO_TMP_DIR => 'El servidor no tiene dónde guardarlo. Avisa al soporte.',
-        UPLOAD_ERR_CANT_WRITE => 'El servidor no ha podido escribir el archivo.',
-    ];
-    fail($motivos[$archivo['error']] ?? 'No se ha podido subir el archivo.', 500);
-}
-
-// Tres megas es de sobra para un escudo, y poco margen para colar
-// cualquier otra cosa.
-if ($archivo['size'] > 3 * 1024 * 1024) {
-    fail('El archivo pesa más de 3 MB. Recórtalo o comprímelo e inténtalo de nuevo.');
-}
-
-$tmp = $archivo['tmp_name'];
-if (!is_uploaded_file($tmp)) {
-    fail('Ese archivo no ha llegado como se esperaba.');
-}
-
-// El tipo lo dice el contenido, no la extensión ni lo que mande el
-// navegador: los dos se pueden falsear sin esfuerzo. El nombre final
-// tampoco sale de lo que mande quien sube, para que nunca decida él
-// dónde acaba escrito ni con qué extensión.
-$finfo = finfo_open(FILEINFO_MIME_TYPE);
-if ($finfo === false) {
-    fail('El servidor no puede comprobar el tipo de archivo (falta la extensión fileinfo de PHP).', 500);
-}
-$mime = finfo_file($finfo, $tmp);
-finfo_close($finfo);
-if ($mime === false) {
-    fail('No se ha podido leer ese archivo. Pruebe con otro.');
-}
-
-$contenido = null;   // solo se rellena para SVG, que se reescribe saneado
-$ext       = null;
-
-if (in_array($mime, ['image/jpeg', 'image/png'], true)) {
-    $ext = $mime === 'image/png' ? 'png' : 'jpg';
-    // Además del tipo, que de verdad se puedan leer sus medidas: un
-    // archivo con la cabecera falseada no pasa de aquí.
-    if (@getimagesize($tmp) === false) {
-        fail('Ese archivo no es una imagen válida.');
+// Todo el cuerpo va dentro de un try: así, cualquier fallo que no se
+// haya previsto —uno de estos servidores compartidos siempre encuentra
+// alguno— sale como el JSON de siempre con un mensaje legible, en vez
+// de como una página en blanco que el navegador no sabe interpretar y
+// que el «código 500» por sí solo no explica.
+try {
+    $user = require_user();
+    $club = mi_club((int) $user['id']);
+    if (!$club) {
+        fail('Solo una cuenta de club tiene escudo que subir.', 403);
     }
-} elseif (in_array($mime, ['image/svg+xml', 'text/plain', 'text/xml', 'application/xml'], true)) {
-    // finfo no siempre reconoce el SVG como tal —es texto, y depende de
-    // qué lleve dentro—, así que sin un tipo concluyente se mira si
-    // empieza de verdad como un SVG.
-    $texto  = (string) file_get_contents($tmp);
-    $inicio = ltrim($texto, "\xEF\xBB\xBF \t\n\r");
-    if (!preg_match('/^(<\?xml\b[^>]*>\s*)?<svg[\s>]/i', $inicio)) {
-        fail('Ese archivo no es una imagen admitida. Sube un .jpg, .png o .svg.');
+
+    // Cuando el archivo pesa más que `post_max_size` en el servidor, PHP
+    // no rellena `$_FILES` con un error que leer: la petición entera
+    // llega vacía, como si no se hubiera adjuntado nada. Sin este aviso
+    // aparte, el mensaje habría sido el genérico de «no ha llegado
+    // ningún archivo», que para un archivo grande despista más que ayuda.
+    if (empty($_FILES) && empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        fail('El archivo pesa más de lo que este servidor admite en una subida. Prueba con uno más pequeño.', 413);
     }
-    $ext       = 'svg';
-    $contenido = escudo_sanear_svg($texto);
-} else {
-    fail('Ese archivo no es una imagen admitida. Sube un .jpg, .png o .svg.');
-}
 
-$dir = __DIR__ . '/../uploads/escudos';
-if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
-    fail('No se ha podido guardar: revisa los permisos de la carpeta uploads/escudos.', 500);
-}
+    if (!isset($_FILES['escudo']) || $_FILES['escudo']['error'] === UPLOAD_ERR_NO_FILE) {
+        fail('No ha llegado ningún archivo.');
+    }
 
-$nombre  = bin2hex(random_bytes(16)) . '.' . $ext;
-$destino = $dir . '/' . $nombre;
+    $archivo = $_FILES['escudo'];
 
-if ($contenido !== null) {
-    if (file_put_contents($destino, $contenido) === false) {
+    if ($archivo['error'] !== UPLOAD_ERR_OK) {
+        $motivos = [
+            UPLOAD_ERR_INI_SIZE   => 'El archivo pesa más de lo que el servidor admite.',
+            UPLOAD_ERR_FORM_SIZE  => 'El archivo pesa más de lo que el servidor admite.',
+            UPLOAD_ERR_PARTIAL    => 'El archivo se ha subido a medias. Inténtalo otra vez.',
+            UPLOAD_ERR_NO_TMP_DIR => 'El servidor no tiene dónde guardarlo. Avisa al soporte.',
+            UPLOAD_ERR_CANT_WRITE => 'El servidor no ha podido escribir el archivo.',
+        ];
+        fail($motivos[$archivo['error']] ?? 'No se ha podido subir el archivo.', 500);
+    }
+
+    // Tres megas es de sobra para un escudo, y poco margen para colar
+    // cualquier otra cosa.
+    if ($archivo['size'] > 3 * 1024 * 1024) {
+        fail('El archivo pesa más de 3 MB. Recórtalo o comprímelo e inténtalo de nuevo.');
+    }
+
+    $tmp = $archivo['tmp_name'];
+    if (!is_uploaded_file($tmp)) {
+        fail('Ese archivo no ha llegado como se esperaba.');
+    }
+
+    // El tipo lo dice el contenido, no la extensión ni lo que mande el
+    // navegador: los dos se pueden falsear sin esfuerzo. Se usa
+    // getimagesize() y no la extensión fileinfo —que en según qué
+    // hosting puede no estar activa, y ahí toda la subida caía con un
+    // error 500 sin explicación— porque getimagesize() es parte del
+    // núcleo de PHP, no algo que haya que activar aparte. El nombre
+    // final tampoco sale de lo que mande quien sube, para que nunca
+    // decida él dónde acaba escrito ni con qué extensión.
+    $info = @getimagesize($tmp);
+
+    $contenido = null;   // solo se rellena para SVG, que se reescribe saneado
+    $ext       = null;
+
+    if ($info !== false && in_array($info['mime'] ?? '', ['image/jpeg', 'image/png'], true)) {
+        $ext = $info['mime'] === 'image/png' ? 'png' : 'jpg';
+    } else {
+        // getimagesize() no reconoce el SVG —es texto, no un mapa de
+        // bits—, así que aquí se mira si el contenido empieza de verdad
+        // como uno.
+        $texto  = (string) file_get_contents($tmp);
+        $inicio = ltrim($texto, "\xEF\xBB\xBF \t\n\r");
+        if (!preg_match('/^(<\?xml\b[^>]*>\s*)?<svg[\s>]/i', $inicio)) {
+            fail('Ese archivo no es una imagen admitida. Sube un .jpg, .png o .svg.');
+        }
+        $ext       = 'svg';
+        $contenido = escudo_sanear_svg($texto);
+    }
+
+    $dir = __DIR__ . '/../uploads/escudos';
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        fail('No se ha podido guardar: revisa los permisos de la carpeta uploads/escudos.', 500);
+    }
+
+    $nombre  = bin2hex(random_bytes(16)) . '.' . $ext;
+    $destino = $dir . '/' . $nombre;
+
+    if ($contenido !== null) {
+        if (file_put_contents($destino, $contenido) === false) {
+            fail('No se ha podido guardar el archivo.', 500);
+        }
+    } elseif (!move_uploaded_file($tmp, $destino)) {
         fail('No se ha podido guardar el archivo.', 500);
     }
-} elseif (!move_uploaded_file($tmp, $destino)) {
-    fail('No se ha podido guardar el archivo.', 500);
-}
 
-$ruta     = 'uploads/escudos/' . $nombre;
-$anterior = $club['badge_url'] ?? null;
+    $ruta     = 'uploads/escudos/' . $nombre;
+    $anterior = $club['badge_url'] ?? null;
 
-$up = db()->prepare('UPDATE clubs SET badge_url = ? WHERE id = ?');
-$up->execute([$ruta, (int) $club['id']]);
+    $up = db()->prepare('UPDATE clubs SET badge_url = ? WHERE id = ?');
+    $up->execute([$ruta, (int) $club['id']]);
 
-// El anterior ya no lo enlaza nadie: se borra para no ir dejando
-// huérfanos. Comprobando antes que sigue dentro de uploads/escudos,
-// por si esa columna llegara a tener algo distinto algún día.
-if ($anterior && $anterior !== $ruta) {
-    $viejo = realpath(__DIR__ . '/../' . $anterior);
-    $base  = realpath($dir);
-    if ($viejo && $base && strpos($viejo, $base) === 0) {
-        @unlink($viejo);
+    // El anterior ya no lo enlaza nadie: se borra para no ir dejando
+    // huérfanos. Comprobando antes que sigue dentro de uploads/escudos,
+    // por si esa columna llegara a tener algo distinto algún día.
+    if ($anterior && $anterior !== $ruta) {
+        $viejo = realpath(__DIR__ . '/../' . $anterior);
+        $base  = realpath($dir);
+        if ($viejo && $base && strpos($viejo, $base) === 0) {
+            @unlink($viejo);
+        }
     }
-}
 
-json_out(['ok' => true, 'badge_url' => $ruta]);
+    json_out(['ok' => true, 'badge_url' => $ruta]);
+} catch (Throwable $e) {
+    // fail() ya ha contestado y cortado la ejecución en cada caso
+    // previsto; si se llega aquí es que ha pasado algo que no se había
+    // previsto. `$CONFIG['debug']` decide si el detalle se enseña o se
+    // queda solo en el registro de errores del hosting.
+    error_log('subir_escudo: ' . $e->getMessage());
+    fail('No se ha podido procesar el escudo.', 500, !empty($CONFIG['debug']) ? $e->getMessage() : null);
+}
 
 /**
  * Saneado mínimo de un SVG: fuera scripts, manejadores de eventos
