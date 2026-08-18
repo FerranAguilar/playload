@@ -255,6 +255,21 @@ function team_count(int $userId): int
     return (int) ($st->fetch()['n'] ?? 0);
 }
 
+/**
+ * El club del que es dueña esta cuenta, o null si no tiene.
+ *
+ * Vive aquí y no en app.php porque también la necesita
+ * api/subir_escudo.php, que solo carga este archivo: una función
+ * definida en app.php no existe para ningún endpoint que no sea el
+ * propio app.php.
+ */
+function mi_club(int $userId): ?array
+{
+    $st = db()->prepare('SELECT id, name, city, badge_url FROM clubs WHERE owner_user_id = ? LIMIT 1');
+    $st->execute([$userId]);
+    return $st->fetch() ?: null;
+}
+
 // ── Ajustes ────────────────────────────────────────────────────────
 function setting(string $key, string $default = ''): string
 {

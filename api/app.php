@@ -1811,13 +1811,8 @@ function staff_count(int $clubId): int
     }
 }
 
-/** El club del que es dueña esta cuenta, o null si no tiene. */
-function mi_club(int $userId): ?array
-{
-    $st = db()->prepare('SELECT id, name, city, badge_url FROM clubs WHERE owner_user_id = ? LIMIT 1');
-    $st->execute([$userId]);
-    return $st->fetch() ?: null;
-}
+// mi_club() vive en bootstrap.php: la necesita también
+// api/subir_escudo.php, que no carga este archivo.
 
 function es_mi_equipo_legacy(int $teamId, int $userId): bool
 {
