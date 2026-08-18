@@ -402,6 +402,10 @@ a.rail-top:hover{color:var(--color-accent)}
 
 /* ═══ PERFIL DEL CLUB ═══ */
 .perfil-fila{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start}
+.escudo-preview{width:64px;height:64px;border-radius:14px;flex:none;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);
+  font-family:var(--font-heading);font-weight:600;font-size:17px;color:#161822}
+.escudo-preview img{width:100%;height:100%;object-fit:contain}
 .dato{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px;
   padding:10px 0;color:var(--muted)}
 .dato+.dato{border-top:1px solid var(--hair)}
@@ -728,7 +732,22 @@ body{transition:background .18s ease,color .18s ease}
         <div class="perfil-fila">
           <div class="panel">
             <div class="card-head"><div class="card-title">Datos del club</div></div>
-            <div class="panel-body" style="display:flex;flex-direction:column;gap:14px">
+            <div class="panel-body" style="display:flex;flex-direction:column;gap:16px">
+              <div class="field">
+                <label>Escudo</label>
+                <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                  <div class="escudo-preview" id="escudoPreview">··</div>
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                      <button class="btn btn-secondary btn-sm" id="escudoSubirBtn" data-subir-escudo>Subir escudo</button>
+                      <button class="btn btn-ghost btn-sm" id="escudoQuitarBtn" data-quitar-escudo style="display:none">Quitar</button>
+                    </div>
+                    <span class="p-sub">JPG, PNG o SVG · máximo 3 MB</span>
+                  </div>
+                  <input type="file" id="escudoInput" style="display:none"
+                    accept="image/jpeg,image/png,image/svg+xml,.jpg,.jpeg,.png,.svg">
+                </div>
+              </div>
               <div class="grid-2">
                 <div class="field"><label for="pNombre">Nombre</label>
                   <input class="input" id="pNombre" placeholder="CF Bellvitge"></div>
@@ -992,6 +1011,16 @@ async function post(data){
   const r = await fetch(API + 'app.php', {method:'POST',
     headers:{'Content-Type':'application/json'}, credentials:'same-origin',
     body:JSON.stringify(data)});
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
+}
+/* El escudo va a su propio endpoint, porque necesita mandar el archivo
+   en sí y no JSON: sin cabecera Content-Type a mano, para que el
+   navegador ponga el boundary del multipart él solo. */
+async function subirArchivo(endpoint, campo, archivo){
+  const fd = new FormData();
+  fd.append(campo, archivo);
+  const r = await fetch(API + endpoint, {method:'POST', credentials:'same-origin', body:fd});
   let b = null; try { b = await r.json(); } catch(e){}
   return respuesta(r.status, b);
 }
@@ -1307,11 +1336,37 @@ document.addEventListener('input', e => {
   if(e.target.id === 'jEmail') pintarInvite(jugadorActual());
 });
 
-document.addEventListener('change', e => {
+document.addEventListener('change', async e => {
   if(e.target.id === 'eCategoria'){
     const otra = e.target.value === '__otra';
     $('eCategoriaOtraCampo').style.display = otra ? '' : 'none';
     if(otra) $('eCategoriaOtra').focus();
+    return;
+  }
+
+  if(e.target.id === 'escudoInput' && e.target.files.length){
+    const archivo = e.target.files[0];
+    e.target.value = '';   // para poder volver a elegir el mismo archivo si hace falta
+
+    // Aviso rápido antes de mandarlo: el servidor vuelve a comprobarlo
+    // todo, esto solo ahorra la espera cuando el archivo obviamente no vale.
+    if(archivo.size > 3 * 1024 * 1024){
+      toast('El archivo pesa más de 3 MB. Recórtalo o comprímelo e inténtalo de nuevo.', 'bad');
+      return;
+    }
+    if(!['image/jpeg','image/png','image/svg+xml'].includes(archivo.type)){
+      toast('Sube un archivo .jpg, .png o .svg.', 'bad');
+      return;
+    }
+
+    const btn = $('escudoSubirBtn');
+    btn.disabled = true;
+    btn.textContent = 'Subiendo…';
+    const r = await subirArchivo('subir_escudo.php', 'escudo', archivo);
+    btn.disabled = false;
+
+    if(r.ok){ D.club.badge_url = r.badge_url; pintarEscudo(); toast('Escudo actualizado'); }
+    else { pintarEscudo(); toast(r.error || 'No se ha podido subir el escudo.', 'bad'); }
   }
 });
 
@@ -1581,6 +1636,15 @@ function pintarPendientes(){
 }
 
 /* ── perfil del club ────────────────────────────────────────── */
+function pintarEscudo(){
+  const url = D.club && D.club.badge_url;
+  $('escudoPreview').innerHTML = url
+    ? `<img src="${esc(url)}?v=${Date.now()}" alt="Escudo de ${esc(D.club.name || 'el club')}">`
+    : esc(ini(D.club ? D.club.name : ''));
+  $('escudoQuitarBtn').style.display = url ? '' : 'none';
+  $('escudoSubirBtn').textContent = url ? 'Cambiar escudo' : 'Subir escudo';
+}
+
 function pintarPerfil(){
   const l = D.lic || {};
   const r = D.resumen || {equipos:0, personas:0, jugadores:0};
@@ -1589,6 +1653,7 @@ function pintarPerfil(){
     $('pNombre').value = D.club.name || '';
     $('pCiudad').value = D.club.city || '';
   }
+  pintarEscudo();
 
   $('pPlan').textContent      = l.nombre || '—';
   $('pEquipos').textContent   = r.equipos;
@@ -2010,6 +2075,25 @@ document.addEventListener('click', async e => {
 
     if(r.ok){ await cargar(); toast('Datos del club guardados'); }
     else toast(r.error || 'No se ha podido guardar.', 'bad');
+    return;
+  }
+
+  if(e.target.closest('[data-subir-escudo]')){
+    if(DEMO){ toast('Sin servidor no se puede subir el escudo: esta es la vista de diseño.'); return; }
+    $('escudoInput').click();
+    return;
+  }
+
+  if(e.target.closest('[data-quitar-escudo]')){
+    if(DEMO){ toast('Sin servidor no se puede quitar el escudo: esta es la vista de diseño.'); return; }
+    const btn = e.target.closest('[data-quitar-escudo]');
+    btn.disabled = true;
+    const r = await post({action:'quitar_escudo'});
+    btn.disabled = false;
+
+    if(r.ok){ D.club.badge_url = null; pintarEscudo(); toast('Escudo quitado'); }
+    else toast(r.error || 'No se ha podido quitar.', 'bad');
+    return;
   }
 });
 

@@ -1,0 +1,10 @@
+# Aquí solo hay imágenes que ha subido cada club. Aunque el nombre del
+# archivo lo pone siempre el servidor —nunca lo que mande quien sube—,
+# esto es una segunda cerradura: ni un .php coleado a mano llegaría a
+# ejecutarse desde esta carpeta.
+<IfModule mod_php.c>
+  php_flag engine off
+</IfModule>
+<FilesMatch "\.(php|php[0-9]|phtml|phar)$">
+  Require all denied
+</FilesMatch>

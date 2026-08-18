@@ -371,6 +371,30 @@ switch ($action) {
 
         json_out(['ok' => true]);
 
+    // ── Quitar el escudo ─────────────────────────────────────────────
+    // Subirlo es cosa de api/subir_escudo.php, que necesita leer
+    // $_FILES; quitarlo es una fila normal y cabe aquí, con el resto.
+    case 'quitar_escudo':
+        $club = mi_club($userId);
+        if (!$club) {
+            fail('Esta cuenta no lleva ningún club.', 403);
+        }
+
+        db()->prepare('UPDATE clubs SET badge_url = NULL WHERE id = ?')->execute([(int) $club['id']]);
+
+        // El archivo se borra después de quitarlo de la base, no antes:
+        // si el borrado del archivo fallara, mejor una fila sin escudo
+        // que un escudo roto apuntando a un archivo que ya no existe.
+        if (!empty($club['badge_url'])) {
+            $dir    = realpath(__DIR__ . '/../uploads/escudos');
+            $archivo = realpath(__DIR__ . '/../' . $club['badge_url']);
+            if ($dir && $archivo && strpos($archivo, $dir) === 0) {
+                @unlink($archivo);
+            }
+        }
+
+        json_out(['ok' => true]);
+
     // ── Dar acceso a alguien, por correo ───────────────────────────
     case 'invitar_staff':
         $club = mi_club($userId);
@@ -1790,7 +1814,7 @@ function staff_count(int $clubId): int
 /** El club del que es dueña esta cuenta, o null si no tiene. */
 function mi_club(int $userId): ?array
 {
-    $st = db()->prepare('SELECT id, name, city FROM clubs WHERE owner_user_id = ? LIMIT 1');
+    $st = db()->prepare('SELECT id, name, city, badge_url FROM clubs WHERE owner_user_id = ? LIMIT 1');
     $st->execute([$userId]);
     return $st->fetch() ?: null;
 }

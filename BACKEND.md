@@ -111,6 +111,8 @@ correo sale con un enlace que no lleva a ninguna parte.
 | `api/logout.php` | POST | Cierra la sesión |
 | `api/player_login.php` | POST | Acceso del jugador con el enlace que le mandó el club |
 | `api/invitacion.php` | GET | Qué correo hay detrás de un enlace de invitación |
+| `api/subir_escudo.php` | POST | El escudo del club, en `multipart/form-data` |
+| `api/app.php` `quitar_escudo` | POST | Borra el escudo, de la base y del disco |
 | `api/app.php?action=equipo` | GET | Un equipo con su plantilla completa; el nivel de acceso viene en `acceso` |
 | `api/app.php` `editar_jugador` | POST | Cambia la ficha de un jugador |
 | `api/app.php` `invitar_jugador` | POST | Manda (o reenvía) el enlace de acceso por correo |
@@ -361,6 +363,50 @@ select normal, sin opción libre: a diferencia de la categoría, no hay
 ambigüedad de federación que resolver ahí. Mismo patrón de columna que
 `foot` o `position_alt`: `VARCHAR`, no `ENUM`, para no tener que tocar
 la base el día que haga falta un cuarto valor.
+
+### El escudo del club
+
+`clubs.badge_url` viene en el esquema desde el principio —esperando
+pantalla, como pasó con `session_blocks` o con los campos del jugador—
+y ahora se sube desde «Datos del club».
+
+Sube y quita son dos rutas distintas a propósito. Subir necesita leer
+`$_FILES`, y el resto del API espera JSON en el cuerpo (lo lee
+`body()`); mezclar los dos formatos en el mismo despachador de
+`app.php` habría complicado cada acción para un caso que solo usa esta.
+Por eso `api/subir_escudo.php` es un archivo aparte, con su propio
+`require_method('POST')`. Quitar sí es una fila normal —solo pone
+`badge_url` a NULL y borra el archivo— y vive en `app.php` como
+`quitar_escudo`, con el resto.
+
+Admite `.jpg`, `.png` y `.svg`, hasta 3 MB. Lo que decide el tipo es el
+**contenido**, nunca la extensión ni el `Content-Type` que mande el
+navegador —los dos se falsean sin esfuerzo—: `finfo_file()` para jpg y
+png, más `getimagesize()` como segunda comprobación de que el archivo
+es de verdad una imagen y no una cabecera falseada. El SVG es texto, y
+`finfo` no siempre lo reconoce como tal, así que si el tipo no es
+concluyente se mira si el contenido empieza como un SVG de verdad.
+
+El nombre final tampoco sale de lo que suba el navegador: es
+`bin2hex(random_bytes(16))` más la extensión que decidió el servidor
+según el contenido. Así nunca es quien sube el archivo quien elige
+dónde acaba escrito ni con qué extensión —cerrando de raíz el ataque
+clásico de subir un `.php` disfrazado de imagen—.
+
+El SVG, además, se sanea antes de guardarse: fuera `<script>`,
+manejadores `on*` (`onload`, `onclick`…) y cualquier `javascript:` en
+un atributo. No es un analizador de XML completo, va por expresiones
+regulares sobre texto, pero es una capa más y no la única: el escudo
+solo se enseña dentro de una etiqueta `<img>` en todas las pantallas
+—nunca inyectado inline ni en un `<object>`—, que de por sí ya no
+ejecuta nada de lo que haya dentro del archivo. `uploads/escudos/`
+lleva además su propio `.htaccess` con el motor de PHP apagado, por si
+alguna de las capas anteriores fallara.
+
+Al reemplazar un escudo se borra el archivo anterior, para no ir
+dejando huérfanos; al quitarlo, primero se limpia `badge_url` en la
+base y solo después se borra el archivo, para que un borrado que
+fallara deje una ficha sin escudo y no un escudo roto.
 
 ## La ficha del jugador
 
