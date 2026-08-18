@@ -190,6 +190,8 @@ a.rail-top:hover{color:var(--color-accent)}
 .crumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-width:0}
 .crumbs b{font-weight:400;color:var(--color-text)}
 .crumbs span.sep{color:var(--muted-2)}
+.crumb-escudo{width:20px;height:20px;border-radius:5px;object-fit:contain;background:#fff;
+  flex:none;border:1px solid var(--line)}
 .top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
 
 .content{padding:26px 30px 56px;display:flex;flex-direction:column;gap:22px}
@@ -618,6 +620,7 @@ body{transition:background .18s ease,color .18s ease}
 
     <header class="topbar">
       <div class="crumbs">
+        <img id="crumbEscudo" class="crumb-escudo" style="display:none" alt="">
         <b id="crumbClub">Club</b>
         <span class="sep">/</span>
         <span id="crumbSec">Plantillas</span>
@@ -1648,11 +1651,21 @@ function pintarPendientes(){
 /* ── perfil del club ────────────────────────────────────────── */
 function pintarEscudo(){
   const url = D.club && D.club.badge_url;
+  const v   = Date.now();
+  const alt = `Escudo de ${esc(D.club && D.club.name || 'el club')}`;
+
   $('escudoPreview').innerHTML = url
-    ? `<img src="${esc(url)}?v=${Date.now()}" alt="Escudo de ${esc(D.club.name || 'el club')}">`
+    ? `<img src="${esc(url)}?v=${v}" alt="${alt}">`
     : esc(ini(D.club ? D.club.name : ''));
   $('escudoQuitarBtn').style.display = url ? '' : 'none';
   $('escudoSubirBtn').textContent = url ? 'Cambiar escudo' : 'Subir escudo';
+
+  // A la izquierda del nombre del club en la cabecera, en todas las
+  // secciones: solo si hay escudo. Sin uno, la cabecera se queda tal
+  // como estaba, sin ningún hueco ni marcador de posición.
+  const crumb = $('crumbEscudo');
+  if(url){ crumb.src = `${url}?v=${v}`; crumb.alt = alt; crumb.style.display = ''; }
+  else crumb.style.display = 'none';
 }
 
 function pintarPerfil(){
@@ -1774,6 +1787,7 @@ async function cargar(){
   $('clubSub').textContent   = r.club.city || 'Club';
   $('clubBadge').textContent = ini(r.club.name);
   $('crumbClub').textContent = r.club.name;
+  pintarEscudo();   // el de la cabecera, aquí; el del panel de perfil, cuando toque esa sección
 
   const est = await get('action=estado').catch(() => null);
   if(est && est.ok && est.user){
