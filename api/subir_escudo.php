@@ -16,6 +16,15 @@ if (!$club) {
     fail('Solo una cuenta de club tiene escudo que subir.', 403);
 }
 
+// Cuando el archivo pesa más que `post_max_size` en el servidor, PHP no
+// rellena `$_FILES` con un error que leer: la petición entera llega
+// vacía, como si no se hubiera adjuntado nada. Sin este aviso aparte, el
+// mensaje habría sido el genérico de «no ha llegado ningún archivo»,
+// que para un archivo grande despista más que ayuda.
+if (empty($_FILES) && empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    fail('El archivo pesa más de lo que este servidor admite en una subida. Prueba con uno más pequeño.', 413);
+}
+
 if (!isset($_FILES['escudo']) || $_FILES['escudo']['error'] === UPLOAD_ERR_NO_FILE) {
     fail('No ha llegado ningún archivo.');
 }
@@ -49,8 +58,14 @@ if (!is_uploaded_file($tmp)) {
 // tampoco sale de lo que mande quien sube, para que nunca decida él
 // dónde acaba escrito ni con qué extensión.
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
-$mime  = finfo_file($finfo, $tmp);
+if ($finfo === false) {
+    fail('El servidor no puede comprobar el tipo de archivo (falta la extensión fileinfo de PHP).', 500);
+}
+$mime = finfo_file($finfo, $tmp);
 finfo_close($finfo);
+if ($mime === false) {
+    fail('No se ha podido leer ese archivo. Pruebe con otro.');
+}
 
 $contenido = null;   // solo se rellena para SVG, que se reescribe saneado
 $ext       = null;

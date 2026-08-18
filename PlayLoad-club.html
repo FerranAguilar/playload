@@ -996,11 +996,14 @@ const SECCIONES = {
   perfil:      {titulo:'Perfil del club', sub:'Datos del club y licencia'}
 };
 
-/* El `ok` de fetch dice que la respuesta llegó, no que la diera el API. */
+/* El `ok` de fetch dice que la respuesta llegó, no que la diera el API.
+   El código va dentro del aviso —404, 500…— porque es la pista que
+   dice si el archivo no está subido al servidor, si PHP se ha caído a
+   medias, o si ha sido otra cosa; sin él, todo se ve exactamente igual. */
 function respuesta(status, b){
   return (b && typeof b.ok !== 'undefined')
     ? {status, ...b}
-    : {status, ok:false, error:'El servidor no ha contestado como se esperaba.'};
+    : {status, ok:false, error:`El servidor no ha contestado como se esperaba (código ${status}).`};
 }
 async function get(qs){
   const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
