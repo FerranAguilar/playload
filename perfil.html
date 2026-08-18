@@ -306,11 +306,11 @@ function render(){
         <span class="tag tag-accent">${esc(l.nombre)}</span>
       </div>
       <div class="panel-body" style="border-top:1px solid var(--line)">
-        <div class="grid-2">
+        <div class="${u.type === 'club' ? '' : 'grid-2'}">
           <div class="field"><label for="pNombre">Nombre y apellidos</label>
             <input class="input" id="pNombre" value="${esc(u.name)}"></div>
-          <div class="field"><label for="pRol">Rol</label>
-            <input class="input" id="pRol" value="${esc(u.role)}" placeholder="Preparador físico"></div>
+          ${u.type === 'club' ? '' : `<div class="field"><label for="pRol">Rol</label>
+            <input class="input" id="pRol" value="${esc(u.role)}" placeholder="Preparador físico"></div>`}
         </div>
         <div class="grid-2">
           <div class="field"><label>Correo</label>
@@ -505,7 +505,7 @@ document.addEventListener('click', async e => {
   if(e.target.closest('[data-guardar-perfil]')){
     if(DEMO){ toast('Sin servidor no se guarda: esta es la vista de diseño.'); return; }
     const r = await post({action:'guardar_perfil',
-      name:$('pNombre').value.trim(), role:$('pRol').value.trim()});
+      name:$('pNombre').value.trim(), role:$('pRol')?.value.trim() || ''});
     if(r.ok){ D.user.name = $('pNombre').value.trim(); toast('Perfil actualizado'); render(); }
     else toast(r.error || 'No se ha podido guardar.', true);
     return;

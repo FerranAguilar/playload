@@ -604,7 +604,6 @@ body{transition:background .18s ease,color .18s ease}
         <span class="avatar" id="meAvatar">··</span>
         <span class="me-text">
           <div class="me-name" id="meName">…</div>
-          <div class="me-role" id="meRole"></div>
         </span>
       </div>
     </div>
@@ -1705,10 +1704,6 @@ async function cargar(){
   if(est && est.ok && est.user){
     if(window.plSyncPrefs) window.plSyncPrefs(est.user.theme, est.user.locale);
     $('meName').textContent   = est.user.name || est.user.email;
-    /* Sin rol: quien entra aquí es el club, no una persona con oficio.
-       Las cuentas creadas antes traen un rol de entrenador guardado en
-       la base, así que no basta con haberlo arreglado en el alta. */
-    $('meRole').textContent   = '';
     $('meAvatar').textContent = ini(est.user.name || est.user.email);
   }
 
@@ -2072,25 +2067,23 @@ cargar();
 
   function pintar(){
     const nombre = document.getElementById('meName')?.textContent || 'Tu cuenta';
-    const rol    = document.getElementById('meRole')?.textContent || '';
     const t      = tema();
     const idioma = lee('pl-locale') || 'es';
 
     pop.innerHTML = `
       <div class="umenu-yo">
         <div class="umenu-n">${nombre}</div>
-        <div class="umenu-s">${rol}</div>
       </div>
 
       <a class="umenu-it" href="perfil.html">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="5.4" r="2.6"/><path d="M2.9 13.6c0-2.6 2.3-4.2 5.1-4.2s5.1 1.6 5.1 4.2"/></svg>
-        Tu perfil</a>
+        Perfil del club</a>
       <a class="umenu-it" href="perfil.html#suscripcion">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="3.4" width="12.4" height="9.2" rx="1.8"/><path d="M1.8 6.6h12.4" stroke-linecap="round"/></svg>
         Suscripción</a>
       <a class="umenu-it" href="perfil.html#datos">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10.4V2.6M5.3 5.3 8 2.6l2.7 2.7"/><path d="M2.6 9.8v3.6h10.8V9.8"/></svg>
-        Tus datos</a>
+        Datos del club</a>
 
       <div class="umenu-sep"></div>
 
