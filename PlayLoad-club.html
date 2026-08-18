@@ -1369,7 +1369,14 @@ document.addEventListener('change', async e => {
     btn.disabled = false;
 
     if(r.ok){ D.club.badge_url = r.badge_url; pintarEscudo(); toast('Escudo actualizado'); }
-    else { pintarEscudo(); toast(r.error || 'No se ha podido subir el escudo.', 'bad'); }
+    else {
+      pintarEscudo();
+      // `detail` solo llega si `debug` está activo en config.php: es el
+      // mensaje real de PHP, para poder leerlo sin abrir las
+      // herramientas de desarrollador.
+      const msg = (r.error || 'No se ha podido subir el escudo.') + (r.detail ? ' — ' + r.detail : '');
+      toast(msg, 'bad');
+    }
   }
 });
 
