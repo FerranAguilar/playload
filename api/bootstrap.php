@@ -150,15 +150,162 @@ function record_attempt(string $email, bool $ok): void
 }
 
 // ── Sesión de la persona que entra ─────────────────────────────────
+
+/**
+ * Máximo de cuentas que un mismo navegador puede tener enlazadas a la
+ * vez (selector de cuentas del avatar). Evita que la cookie "recordar"
+ * y la sesión crezcan sin límite.
+ */
+const MAX_LINKED_ACCOUNTS = 5;
+
+/**
+ * Entra con esta cuenta SIN soltar las que ya estuvieran enlazadas en
+ * este navegador: la añade a la lista si no estaba y la deja activa.
+ * Todos los flujos de entrada (login, 2FA, Google, alta, cambio de
+ * contraseña y la reanudación por cookie) pasan por aquí, así que el
+ * cambio de cuenta simultánea funciona en todos sin tocarlos.
+ */
 function login_user(int $userId): void
 {
     session_regenerate_id(true);
+
+    if (!isset($_SESSION['linked']) || !is_array($_SESSION['linked'])) {
+        $_SESSION['linked'] = [];
+    }
+    if (!in_array($userId, $_SESSION['linked'], true)) {
+        $_SESSION['linked'][] = $userId;
+    }
+
     $_SESSION['uid']        = $userId;
     $_SESSION['login_at']   = time();
     unset($_SESSION['pending_uid']);
 
     $st = db()->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?');
     $st->execute([$userId]);
+}
+
+/** ¿Cabe una cuenta más en el selector de este navegador? */
+function can_link_account(int $userId): bool
+{
+    $linked = $_SESSION['linked'] ?? [];
+    return in_array($userId, $linked, true) || count($linked) < MAX_LINKED_ACCOUNTS;
+}
+
+// ── "Mantener sesión" para varias cuentas a la vez ─────────────────
+//
+// playload_remember ya no guarda un único par selector:validador, sino
+// una lista separada por comas: uno por cuenta recordada en este
+// navegador. Cada par sigue siendo una fila de `remember_tokens`, así
+// que no hace falta ninguna tabla nueva para esto.
+//
+// playload_active guarda el user_id que estaba activo, para saber cuál
+// de las cuentas recordadas retomar cuando la sesión de PHP ha
+// caducado pero la cookie sigue viva.
+
+function https_now(): bool
+{
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+}
+
+/** Los pares selector:validador que trae ahora mismo la cookie "recordar". */
+function remember_pairs_from_cookie(): array
+{
+    $raw = (string) ($_COOKIE['playload_remember'] ?? '');
+    return array_values(array_filter(explode(',', $raw), fn($p) => $p !== ''));
+}
+
+function set_remember_cookie(array $pairs): void
+{
+    $pairs = array_values(array_filter($pairs, fn($p) => $p !== ''));
+    if (!$pairs) {
+        setcookie('playload_remember', '', [
+            'expires' => time() - 3600, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax',
+        ]);
+        return;
+    }
+    setcookie('playload_remember', implode(',', $pairs), [
+        'expires'  => time() + 30 * 24 * 3600,
+        'path'     => '/',
+        'httponly' => true,
+        'secure'   => https_now(),
+        'samesite' => 'Lax',
+    ]);
+}
+
+function set_active_cookie(int $userId): void
+{
+    setcookie('playload_active', (string) $userId, [
+        'expires'  => time() + 30 * 24 * 3600,
+        'path'     => '/',
+        'httponly' => true,
+        'secure'   => https_now(),
+        'samesite' => 'Lax',
+    ]);
+}
+
+function clear_account_cookies(): void
+{
+    setcookie('playload_remember', '', [
+        'expires' => time() - 3600, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax',
+    ]);
+    setcookie('playload_active', '', [
+        'expires' => time() - 3600, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax',
+    ]);
+}
+
+/**
+ * Añade un par selector:validador nuevo para esta cuenta a la cookie
+ * "recordar", sin tocar los pares que ya hubiera de otras cuentas, y
+ * la deja como la activa.
+ */
+function issue_remember_cookie(int $userId): void
+{
+    $selector  = bin2hex(random_bytes(12));
+    $validator = bin2hex(random_bytes(32));
+
+    $st = db()->prepare(
+        'INSERT INTO remember_tokens (user_id, selector, validator_hash, expires_at)
+         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))'
+    );
+    $st->execute([$userId, $selector, hash('sha256', $validator)]);
+
+    $pairs   = remember_pairs_from_cookie();
+    $pairs[] = $selector . ':' . $validator;
+    set_remember_cookie($pairs);
+    set_active_cookie($userId);
+}
+
+/**
+ * Olvida una cuenta concreta en este navegador: borra de
+ * `remember_tokens` los selectores de la cookie que sean suyos y
+ * reescribe la cookie sin ellos. Las demás cuentas recordadas no se
+ * tocan.
+ */
+function forget_account(int $userId): void
+{
+    $pairs = remember_pairs_from_cookie();
+    if (!$pairs) {
+        return;
+    }
+
+    $selectors = array_map(fn($p) => explode(':', $p, 2)[0], $pairs);
+    $in        = implode(',', array_fill(0, count($selectors), '?'));
+
+    $st = db()->prepare("SELECT selector FROM remember_tokens WHERE user_id = ? AND selector IN ($in)");
+    $st->execute([$userId, ...$selectors]);
+    $toDrop = array_column($st->fetchAll(), 'selector');
+
+    if ($toDrop) {
+        $del = db()->prepare("DELETE FROM remember_tokens WHERE user_id = ? AND selector IN ($in)");
+        $del->execute([$userId, ...$selectors]);
+    }
+
+    $kept = array_values(array_filter(
+        $pairs,
+        fn($p) => !in_array(explode(':', $p, 2)[0], $toDrop, true)
+    ));
+    set_remember_cookie($kept);
 }
 
 function current_user(): ?array

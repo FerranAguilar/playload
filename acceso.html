@@ -764,6 +764,14 @@ if(qs.get('email')) S.email = qs.get('email');
 if(qs.get('token')){ S.token = qs.get('token'); S.view = 'reset'; }
 if(qs.get('v') && VIEWS[qs.get('v')]) S.view = qs.get('v');
 
+/* ?add=1: se abre desde el menú de cuentas para enlazar una cuenta más
+   sin soltar la que ya está activa en este navegador. */
+const addingAccount = qs.get('add') === '1';
+if(addingAccount){
+  ASIDE.login.t = 'Añade otra cuenta';
+  ASIDE.login.x = 'Entra con el correo de la otra cuenta. La que ya tenías abierta sigue activa: podrás cambiar entre las dos desde el menú del avatar.';
+}
+
 if(S.view === 'player'){
   if(DEMO){
     /* Sin servidor no hay nada que comprobar: se enseña directamente
@@ -788,8 +796,9 @@ if(GOOGLE_CLIENT_ID && !DEMO){
   document.head.appendChild(g);
 }
 
-/* Si ya hay sesión abierta, no hace falta volver a entrar. */
-if(!DEMO && S.view==='login'){
+/* Si ya hay sesión abierta, no hace falta volver a entrar —salvo que
+   se haya abierto a propósito para enlazar una cuenta más. */
+if(!DEMO && S.view==='login' && !addingAccount){
   fetch(API + 'me.php', {credentials:'same-origin'})
     .then(r => r.ok ? r.json() : null)
     .then(d => { if(d && d.ok){ S.spaces = d.spaces || []; enter(); } })

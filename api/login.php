@@ -44,6 +44,11 @@ record_attempt($email, true);
 $userId = (int) $user['id'];
 assert_active($userId);
 
+if (!can_link_account($userId)) {
+    fail('Ya tienes ' . MAX_LINKED_ACCOUNTS . ' cuentas añadidas en este navegador. '
+       . 'Cierra alguna antes de añadir otra.', 409);
+}
+
 // Rehash si el coste por defecto de PHP ha subido desde el alta.
 if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT)) {
     $up = db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
@@ -91,27 +96,4 @@ function send_login_code(int $userId, string $email): void
         "Caduca en 10 minutos y solo sirve una vez.\n" .
         "Si no has intentado entrar, cambia tu contraseña en {$CONFIG['app_url']}/acceso.html.\n"
     );
-}
-
-function issue_remember_cookie(int $userId): void
-{
-    $selector  = bin2hex(random_bytes(12));   // 24 caracteres
-    $validator = bin2hex(random_bytes(32));
-
-    $st = db()->prepare(
-        'INSERT INTO remember_tokens (user_id, selector, validator_hash, expires_at)
-         VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))'
-    );
-    $st->execute([$userId, $selector, hash('sha256', $validator)]);
-
-    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-          || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-
-    setcookie('playload_remember', $selector . ':' . $validator, [
-        'expires'  => time() + 30 * 24 * 3600,
-        'path'     => '/',
-        'httponly' => true,
-        'secure'   => $https,
-        'samesite' => 'Lax',
-    ]);
 }
