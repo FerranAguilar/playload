@@ -147,10 +147,11 @@ a.rail-top:hover .mark{background:color-mix(in srgb,var(--color-accent) 18%,tran
 a.rail-top:hover{color:var(--color-accent)}
 .club{margin:0 12px 4px;padding:9px 10px;border-radius:var(--radius-md);
   border:1px solid var(--color-divider);display:flex;align-items:center;gap:9px}
-.club-badge{width:26px;height:26px;border-radius:var(--radius-sm);flex:none;
+.club-badge{width:26px;height:26px;border-radius:var(--radius-sm);flex:none;overflow:hidden;
   background:linear-gradient(150deg,var(--color-section-glow),var(--color-section));
   display:flex;align-items:center;justify-content:center;font-size:10px;
   font-family:var(--font-heading);color:var(--color-neutral-100);letter-spacing:.02em}
+.club-badge img{width:100%;height:100%;object-fit:contain;background:#fff}
 .club-name{font-size:13.5px;line-height:1.25}
 .club-sub{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2)}
 .nav{flex:1;overflow-y:auto;padding:10px 12px 12px;display:flex;flex-direction:column;gap:2px;
@@ -1690,6 +1691,12 @@ function pintarEscudo(){
   const crumb = $('crumbEscudo');
   if(url){ crumb.src = `${url}?v=${v}`; crumb.alt = alt; crumb.style.display = ''; }
   else crumb.style.display = 'none';
+
+  // El icono de perfil del club, arriba de la barra lateral: mismo
+  // criterio que el resto de esta función.
+  $('clubBadge').innerHTML = url
+    ? `<img src="${url}?v=${v}" alt="${alt}">`
+    : esc(ini(D.club ? D.club.name : ''));
 }
 
 function pintarPerfil(){
@@ -1809,9 +1816,8 @@ async function cargar(){
 
   $('clubName').textContent  = r.club.name;
   $('clubSub').textContent   = r.club.city || 'Club';
-  $('clubBadge').textContent = ini(r.club.name);
   $('crumbClub').textContent = r.club.name;
-  pintarEscudo();   // el de la cabecera, aquí; el del panel de perfil, cuando toque esa sección
+  pintarEscudo();   // clubBadge, cabecera y panel de perfil: los tres a la vez
 
   const est = await get('action=estado').catch(() => null);
   if(est && est.ok && est.user){

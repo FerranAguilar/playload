@@ -153,10 +153,11 @@ a.rail-top:hover{color:var(--color-accent)}
 .club{margin:0 12px 4px;padding:9px 10px;border-radius:var(--radius-md);
   border:1px solid var(--color-divider);display:flex;align-items:center;gap:9px;cursor:pointer}
 .club:hover{border-color:var(--color-accent)}
-.club-badge{width:26px;height:26px;border-radius:var(--radius-sm);flex:none;
+.club-badge{width:26px;height:26px;border-radius:var(--radius-sm);flex:none;overflow:hidden;
   background:linear-gradient(150deg,var(--color-section-glow),var(--color-section));
   display:flex;align-items:center;justify-content:center;font-size:10px;
   font-family:var(--font-heading);color:var(--color-neutral-100);letter-spacing:.02em}
+.club-badge img{width:100%;height:100%;object-fit:contain;background:#fff}
 .club-name{font-size:13.5px;line-height:1.25}
 .club-sub{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2)}
 .nav{flex:1;overflow-y:auto;padding:10px 12px 12px;display:flex;flex-direction:column;gap:2px;
@@ -195,6 +196,8 @@ a.rail-top:hover{color:var(--color-accent)}
 .crumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-width:0}
 .crumbs b{font-weight:400;color:var(--color-text)}
 .crumbs span.sep{color:var(--muted-2)}
+.crumb-escudo{width:20px;height:20px;border-radius:5px;object-fit:contain;background:#fff;
+  flex:none;border:1px solid var(--line)}
 .search{position:relative;margin-left:auto;width:min(280px,26vw)}
 .search .input{padding-left:32px;height:34px;min-height:34px}
 .search svg{position:absolute;left:10px;top:9px;width:15px;height:15px;color:var(--muted-2)}
@@ -575,6 +578,7 @@ body{transition:background .18s ease,color .18s ease}
 
     <header class="topbar">
       <div class="crumbs">
+        <img id="crumbEscudo" class="crumb-escudo" style="display:none" alt="">
         <a href="PlayLoad-equipos.html" style="color:var(--color-text)" id="crumbTeam">Equipos</a>
         <span class="sep">/</span>
         <b>Sesiones</b>
@@ -1116,6 +1120,17 @@ function ponerEquipo(){
   $('crumbTeam').textContent = D.equipo.name;
   $('sesEquipo').textContent = D.equipo.name;
   $('sesSub').textContent    = `${D.equipo.category || 'Equipo'} · ${D.equipo.players} jugador${D.equipo.players===1?'':'es'}`;
+
+  /* El escudo del club del equipo seleccionado, no el de la cuenta: un
+     entrenador de staff ve el del club aunque no sea el suyo. */
+  const crumb = $('crumbEscudo');
+  if(D.equipo.club_badge_url){
+    crumb.src = `${D.equipo.club_badge_url}?v=${Date.now()}`;
+    crumb.alt = `Escudo de ${D.equipo.club_name || 'el club'}`;
+    crumb.style.display = '';
+  } else {
+    crumb.style.display = 'none';
+  }
 }
 
 async function cargar(){
@@ -1153,7 +1168,9 @@ async function cargar(){
   $('clubName').textContent  = r.club ? r.club.name : (r.user.name || 'Mi cuenta');
   $('clubSub').textContent   = r.club ? `Club · ${D.teams.length} ${D.teams.length===1?'equipo':'equipos'}`
                                       : 'Cuenta profesional';
-  $('clubBadge').textContent = ini(r.club ? r.club.name : r.user.name);
+  $('clubBadge').innerHTML = (r.club && r.club.badge_url)
+    ? `<img src="${esc(r.club.badge_url)}?v=${Date.now()}" alt="Escudo de ${esc(r.club.name)}">`
+    : esc(ini(r.club ? r.club.name : r.user.name));
   $('meName').textContent    = r.user.name || r.user.email;
   $('meRole').textContent    = r.user.role || 'Profesional';
   if($('meAvatar'))     $('meAvatar').textContent     = ini(r.user.name || r.user.email);

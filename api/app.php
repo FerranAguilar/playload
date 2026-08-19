@@ -28,12 +28,11 @@ switch ($action) {
         // si no, la persona entraría y no vería sus equipos.
         vincular_staff($userId, (string) $user['email']);
 
-        $club = db()->prepare('SELECT id, name, city FROM clubs WHERE owner_user_id = ? LIMIT 1');
-        $club->execute([$userId]);
-        $club = $club->fetch() ?: null;
+        $club = mi_club($userId);
 
         $st = db()->prepare(
             "SELECT t.id, t.name, t.category, t.modality, t.formation, t.tint, t.club_id,
+                    c.name AS club_name, c.badge_url AS club_badge_url,
                     (SELECT COUNT(*) FROM players p WHERE p.team_id = t.id AND p.active = 1) AS players,
                     -- Mismo orden que acceso_equipo(): el club manda sobre
                     -- la propiedad, porque los equipos del club los creó él.
@@ -56,9 +55,11 @@ switch ($action) {
             // Sin migración 05: la lista de siempre, sin equipos de staff.
             $st = db()->prepare(
                 "SELECT t.id, t.name, t.category, t.modality, t.formation, t.tint, t.club_id,
+                        c.name AS club_name, c.badge_url AS club_badge_url,
                         (SELECT COUNT(*) FROM players p WHERE p.team_id = t.id AND p.active = 1) AS players,
                         CASE WHEN t.owner_user_id = ? THEN 'propietario' ELSE 'club' END AS acceso
                    FROM teams t
+                   LEFT JOIN clubs c ON c.id = t.club_id
                   WHERE t.owner_user_id = ?
                      OR t.club_id IN (SELECT id FROM clubs WHERE owner_user_id = ?)
                   ORDER BY t.id"
@@ -122,7 +123,7 @@ switch ($action) {
         }
 
         $st = db()->prepare(
-            'SELECT t.*, c.name AS club_name
+            'SELECT t.*, c.name AS club_name, c.badge_url AS club_badge_url
                FROM teams t
                LEFT JOIN clubs c ON c.id = t.club_id
               WHERE t.id = ?'

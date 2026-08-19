@@ -139,10 +139,11 @@ a.rail-top:hover .mark{background:color-mix(in srgb,var(--color-accent) 18%,tran
   border:1px solid var(--color-divider);display:flex;align-items:center;gap:9px;cursor:pointer;
   width:calc(100% - 24px);text-align:left}
 .club:hover{border-color:var(--color-accent)}
-.club-badge{width:26px;height:26px;border-radius:var(--radius-sm);flex:none;
+.club-badge{width:26px;height:26px;border-radius:var(--radius-sm);flex:none;overflow:hidden;
   background:linear-gradient(150deg,var(--color-section-glow),var(--color-section));
   display:flex;align-items:center;justify-content:center;font-size:10px;
   font-family:var(--font-heading);color:var(--color-neutral-100);letter-spacing:.02em}
+.club-badge img{width:100%;height:100%;object-fit:contain;background:#fff}
 .club-name{font-size:13.5px;line-height:1.25;display:block}
 .club-sub{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2)}
 .nav{flex:1;overflow-y:auto;padding:10px 12px 12px;display:flex;flex-direction:column;gap:2px;
@@ -820,7 +821,11 @@ function pintar(){
   }
 
   const badge = document.getElementById('clubBadge');
-  if(badge) badge.textContent = ini(S.club ? S.club.name : (S.user?.name || ''));
+  if(badge){
+    badge.innerHTML = (S.club && S.club.badge_url)
+      ? `<img src="${esc(S.club.badge_url)}?v=${Date.now()}" alt="Escudo de ${esc(S.club.name)}">`
+      : esc(ini(S.club ? S.club.name : (S.user?.name || '')));
+  }
   const me = document.getElementById('meName');
   if(me) me.textContent = S.user?.name || S.user?.email || '';
   const rol = document.getElementById('meRole');
