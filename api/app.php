@@ -904,7 +904,7 @@ switch ($action) {
         // El número de bloques viaja con cada fila: la lista de sesiones
         // distingue así la que está montada de la que es solo un hueco
         // en el calendario, sin pedir el detalle de todas.
-        $campos = 'id, date, time, title, kind, md_label, place, duration_min,
+        $campos = 'id, date, time, title, kind, color, md_label, place, duration_min,
                    planned_rpe, planned_load, actual_rpe, actual_load, status,
                    (SELECT COUNT(*) FROM session_blocks b WHERE b.session_id = sessions.id)
                      AS bloques';
@@ -931,7 +931,14 @@ switch ($action) {
             $st->execute([$teamId]);
         }
 
-        json_out(['ok' => true, 'sesiones' => $st->fetchAll()]);
+        $filas   = $st->fetchAll();
+        $colores = colores_tipo_sesion($teamId);
+        foreach ($filas as &$f) {
+            $f['color'] = $f['color'] ?: ($colores[$f['kind']] ?? $colores['otro']);
+        }
+        unset($f);
+
+        json_out(['ok' => true, 'sesiones' => $filas, 'colores' => $colores]);
 
     // ── Crear sesión ───────────────────────────────────────────────
     case 'crear_sesion':
@@ -945,8 +952,13 @@ switch ($action) {
         }
 
         $kind = param('kind', 'entrenamiento');
-        if (!in_array($kind, ['entrenamiento', 'partido', 'recuperacion', 'descanso'], true)) {
+        if (!in_array($kind, tipos_sesion(), true)) {
             $kind = 'entrenamiento';
+        }
+
+        $color = color_valido(param('color'));
+        if ($color !== null) {
+            guardar_color_tipo($teamId, $kind, $color);
         }
 
         $dur = max(0, min(240, (int) (body()['duration_min'] ?? 90)));
@@ -955,14 +967,14 @@ switch ($action) {
 
         $ins = db()->prepare(
             'INSERT INTO sessions
-                (team_id, date, time, title, kind, md_label, place,
+                (team_id, date, time, title, kind, color, md_label, place,
                  duration_min, planned_rpe, planned_load)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $ins->execute([
             $teamId, $date,
             param('time') !== '' ? param('time') : null,
-            param('title'), $kind, param('md_label'), param('place'),
+            param('title'), $kind, $color, param('md_label'), param('place'),
             $dur, $rpe,
             $rpe !== null ? $rpe * $dur : null,
         ]);
@@ -974,7 +986,7 @@ switch ($action) {
         $id = (int) ($_GET['session_id'] ?? 0);
 
         $st = db()->prepare(
-            'SELECT id, team_id, date, time, title, kind, md_label, place,
+            'SELECT id, team_id, date, time, title, kind, color, md_label, place,
                     duration_min, planned_rpe, planned_load,
                     actual_rpe, actual_load, status
                FROM sessions WHERE id = ?'
@@ -986,12 +998,38 @@ switch ($action) {
             fail('Esa sesión no es tuya.', 403);
         }
 
+        $colores      = colores_tipo_sesion((int) $ses['team_id']);
+        $ses['color'] = $ses['color'] ?: ($colores[$ses['kind']] ?? $colores['otro']);
+
         $st = db()->prepare(
-            'SELECT id, name, minutes, intensity, sort
+            'SELECT id, name, block_type, location, minutes, intensity, sort
                FROM session_blocks WHERE session_id = ?
               ORDER BY sort, id'
         );
         $st->execute([$id]);
+        $bloques = $st->fetchAll();
+
+        // Los ejercicios de todos los bloques, de una vez, y luego se
+        // reparten por bloque: una consulta por bloque no compensa
+        // cuando una sesión puede tener media docena.
+        $porBloque = [];
+        if ($bloques) {
+            $ids = array_map(static fn ($b) => (int) $b['id'], $bloques);
+            $ph  = implode(',', array_fill(0, count($ids), '?'));
+            $eq  = db()->prepare(
+                "SELECT id, block_id, exercise_id, name, notes, sort
+                   FROM block_exercises WHERE block_id IN ($ph)
+                  ORDER BY sort, id"
+            );
+            $eq->execute($ids);
+            foreach ($eq->fetchAll() as $e) {
+                $porBloque[(int) $e['block_id']][] = $e;
+            }
+        }
+        foreach ($bloques as &$b) {
+            $b['ejercicios'] = $porBloque[(int) $b['id']] ?? [];
+        }
+        unset($b);
 
         // Cuántos han contestado ya: el botón de pasar lista dice una
         // cosa u otra según lo haya hecho alguien o nadie.
@@ -1001,7 +1039,7 @@ switch ($action) {
         json_out([
             'ok'         => true,
             'sesion'     => $ses,
-            'bloques'    => $st->fetchAll(),
+            'bloques'    => $bloques,
             'respuestas' => (int) ($q->fetch()['n'] ?? 0),
         ]);
 
@@ -1027,7 +1065,7 @@ switch ($action) {
         }
 
         $kind = param('kind', 'entrenamiento');
-        if (!in_array($kind, ['entrenamiento', 'partido', 'recuperacion', 'descanso'], true)) {
+        if (!in_array($kind, tipos_sesion(), true)) {
             $kind = 'entrenamiento';
         }
 
@@ -1046,6 +1084,17 @@ switch ($action) {
             $id,
         ]);
 
+        // Un color solo se toca si llega uno válido: si no, este guardado
+        // no habla de color y el que hubiera se queda como estaba. Y en
+        // cuanto se toca, de paso pasa a ser el color por defecto de su
+        // tipo, que es justo lo que pide poder elegirlo y que las
+        // siguientes sesiones de ese tipo lo hereden.
+        $color = color_valido(param('color'));
+        if ($color !== null) {
+            db()->prepare('UPDATE sessions SET color = ? WHERE id = ?')->execute([$color, $id]);
+            guardar_color_tipo((int) $ses['team_id'], $kind, $color);
+        }
+
         if (!$conBloques) {
             $dur = max(0, min(240, (int) (body()['duration_min'] ?? 90)));
             $rpe = body()['planned_rpe'] ?? null;
@@ -1061,9 +1110,11 @@ switch ($action) {
         json_out(['ok' => true, 'bloques' => $conBloques]);
 
     // ── Los bloques de una sesión ──────────────────────────────────
-    // Llega la lista entera y sustituye a la anterior. Reordenar,
-    // borrar y añadir en la misma pasada sale más simple así que
-    // llevando la cuenta de qué cambió respecto a lo que había.
+    // Llega la lista entera. A diferencia de antes, el id de cada
+    // bloque se conserva (se actualiza, no se borra y recrea): con
+    // guardado automático esto se llama todo el rato, y los ejercicios
+    // enganchados a un bloque (block_exercises) van atados a su id por
+    // clave foránea. Recrear el bloque en cada guardado los borraría.
     case 'guardar_bloques':
         $id = (int) (body()['session_id'] ?? 0);
 
@@ -1081,16 +1132,29 @@ switch ($action) {
             fail('Faltan los bloques.');
         }
 
-        db()->prepare('DELETE FROM session_blocks WHERE session_id = ?')->execute([$id]);
+        $st = db()->prepare('SELECT id FROM session_blocks WHERE session_id = ?');
+        $st->execute([$id]);
+        $previos = array_map('intval', array_column($st->fetchAll(), 'id'));
 
+        $tiposBloque = tipos_bloque();
+        $espaciosOk  = espacios();
+
+        $up = db()->prepare(
+            'UPDATE session_blocks SET name = ?, block_type = ?, location = ?,
+                    minutes = ?, intensity = ?, sort = ?
+              WHERE id = ? AND session_id = ?'
+        );
         $ins = db()->prepare(
-            'INSERT INTO session_blocks (session_id, name, minutes, intensity, sort)
-             VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO session_blocks
+                (session_id, name, block_type, location, minutes, intensity, sort)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
 
-        $orden = 0;
-        $min   = 0;
-        $carga = 0;
+        $orden  = 0;
+        $min    = 0;
+        $carga  = 0;
+        $vistos = [];
+        $salida = [];
 
         foreach ($bloques as $b) {
             $nombre = trim(mb_substr((string) ($b['name'] ?? ''), 0, 120));
@@ -1098,16 +1162,41 @@ switch ($action) {
                 continue;                       // un bloque sin nombre no es un bloque
             }
 
+            $tipo    = in_array($b['block_type'] ?? '', $tiposBloque, true) ? $b['block_type'] : 'otro';
+            $espacio = in_array($b['location'] ?? '', $espaciosOk, true) ? $b['location'] : '';
+
             $m = max(0, min(240, (int) ($b['minutes'] ?? 0)));
             $i = (int) ($b['intensity'] ?? 0);
             $i = ($i < 1 || $i > 10) ? null : $i;
 
-            $ins->execute([$id, $nombre, $m, $i, $orden++]);
+            $bid = (int) ($b['id'] ?? 0);
+            if ($bid > 0 && in_array($bid, $previos, true)) {
+                $up->execute([$nombre, $tipo, $espacio, $m, $i, $orden, $bid, $id]);
+            } else {
+                $ins->execute([$id, $nombre, $tipo, $espacio, $m, $i, $orden]);
+                $bid = (int) db()->lastInsertId();
+            }
+            $vistos[] = $bid;
 
+            $salida[] = [
+                'id' => $bid, 'name' => $nombre, 'block_type' => $tipo, 'location' => $espacio,
+                'minutes' => $m, 'intensity' => $i, 'sort' => $orden,
+            ];
+
+            $orden++;
             $min += $m;
             // Un bloque sin intensidad suma tiempo pero no carga: es lo
             // que pasa con una charla o un rondo de vuelta a la calma.
             $carga += $i !== null ? $m * $i : 0;
+        }
+
+        // Los que ya no vienen en la lista se han quitado: se borran, y
+        // sus ejercicios se van con ellos por la clave foránea.
+        $fuera = array_diff($previos, $vistos);
+        if ($fuera) {
+            $ph = implode(',', array_fill(0, count($fuera), '?'));
+            db()->prepare("DELETE FROM session_blocks WHERE id IN ($ph)")
+                ->execute(array_values($fuera));
         }
 
         // Con bloques, la sesión ya no se describe a ojo: dura lo que
@@ -1136,7 +1225,159 @@ switch ($action) {
             )->execute([$id]);
         }
 
-        json_out(['ok' => true, 'bloques' => $orden, 'minutos' => $min, 'carga' => $carga]);
+        json_out([
+            'ok' => true, 'bloques' => $salida, 'n_bloques' => $orden,
+            'minutos' => $min, 'carga' => $carga,
+        ]);
+
+    // ── Biblioteca de ejercicios ─────────────────────────────────────
+    // Es de la cuenta, no del equipo: un mismo entrenador con varios
+    // equipos ve y reutiliza los mismos ejercicios en todos. `team_id`
+    // solo sirve para comprobar que quien pregunta gestiona al menos
+    // un equipo — no filtra nada.
+    case 'ejercicios':
+        $teamId = (int) ($_GET['team_id'] ?? 0);
+        if ($teamId && !es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        $tipo = (string) ($_GET['block_type'] ?? '');
+        $q    = trim((string) ($_GET['q'] ?? ''));
+
+        $sql  = 'SELECT id, name, block_type, description, materials,
+                        duration_min, intensity, space
+                   FROM exercises WHERE owner_user_id = ?';
+        $args = [$userId];
+
+        if (in_array($tipo, tipos_bloque(), true)) {
+            $sql   .= ' AND block_type = ?';
+            $args[] = $tipo;
+        }
+        if ($q !== '') {
+            $sql   .= ' AND name LIKE ?';
+            $args[] = '%' . $q . '%';
+        }
+        $sql .= ' ORDER BY name';
+
+        $st = db()->prepare($sql);
+        $st->execute($args);
+
+        json_out(['ok' => true, 'ejercicios' => $st->fetchAll()]);
+
+    // ── Crear un ejercicio en la biblioteca ──────────────────────────
+    case 'crear_ejercicio':
+        $teamId = (int) (body()['team_id'] ?? 0);
+        exige_acceso($teamId, $userId, ['propietario', 'staff']);
+
+        $nombre = trim(mb_substr(param('name'), 0, 120));
+        if ($nombre === '') {
+            fail('El ejercicio necesita un nombre.');
+        }
+
+        $ej = insertar_ejercicio($userId, $nombre);
+        json_out(['ok' => true, 'ejercicio' => $ej], 201);
+
+    // ── Editar un ejercicio de la biblioteca ─────────────────────────
+    case 'editar_ejercicio':
+        $id = (int) (body()['exercise_id'] ?? 0);
+        exige_ejercicio_propio($id, $userId);
+
+        $nombre = trim(mb_substr(param('name'), 0, 120));
+        if ($nombre === '') {
+            fail('El ejercicio necesita un nombre.');
+        }
+
+        $tipo = in_array(param('block_type'), tipos_bloque(), true) ? param('block_type') : 'otro';
+        $esp  = in_array(param('space'), espacios(), true) ? param('space') : '';
+        $dur  = body()['duration_min'] ?? null;
+        $dur  = ($dur === '' || $dur === null) ? null : max(0, min(240, (int) $dur));
+        $int  = body()['intensity'] ?? null;
+        $int  = ($int === '' || $int === null) ? null : max(1, min(10, (int) $int));
+
+        $up = db()->prepare(
+            'UPDATE exercises SET name = ?, block_type = ?, description = ?, materials = ?,
+                    duration_min = ?, intensity = ?, space = ? WHERE id = ?'
+        );
+        $up->execute([
+            $nombre, $tipo, mb_substr(param('description'), 0, 400),
+            mb_substr(param('materials'), 0, 200), $dur, $int, $esp, $id,
+        ]);
+
+        json_out(['ok' => true]);
+
+    // ── Borrar un ejercicio de la biblioteca ─────────────────────────
+    // Los bloques que ya lo tenían enganchado no lo pierden: guardan su
+    // nombre por su cuenta (block_exercises.name), solo se desvincula.
+    case 'borrar_ejercicio':
+        $id = (int) (body()['exercise_id'] ?? 0);
+        exige_ejercicio_propio($id, $userId);
+
+        db()->prepare('DELETE FROM exercises WHERE id = ?')->execute([$id]);
+
+        json_out(['ok' => true]);
+
+    // ── Añadir un ejercicio a un bloque ───────────────────────────────
+    // O bien llega `exercise_id` de la biblioteca, o bien los datos para
+    // crear uno nuevo — que de paso queda guardado en la biblioteca,
+    // porque para eso está: no se escribe un ejercicio dos veces.
+    case 'anadir_ejercicio_bloque':
+        $blockId = (int) (body()['block_id'] ?? 0);
+        $bloque  = bloque_propio($blockId, $userId);
+
+        $exerciseId = (int) (body()['exercise_id'] ?? 0);
+
+        if ($exerciseId > 0) {
+            $st = db()->prepare('SELECT id, name FROM exercises WHERE id = ? AND owner_user_id = ?');
+            $st->execute([$exerciseId, $userId]);
+            $ej = $st->fetch();
+            if (!$ej) {
+                fail('Ese ejercicio no está en tu biblioteca.', 403);
+            }
+            $nombre = $ej['name'];
+        } else {
+            $nombre = trim(mb_substr(param('name'), 0, 120));
+            if ($nombre === '') {
+                fail('El ejercicio necesita un nombre.');
+            }
+            $ej = insertar_ejercicio($userId, $nombre, (string) $bloque['block_type']);
+            $exerciseId = (int) $ej['id'];
+        }
+
+        $q = db()->prepare('SELECT COALESCE(MAX(sort), -1) + 1 AS n FROM block_exercises WHERE block_id = ?');
+        $q->execute([$blockId]);
+        $sort = (int) ($q->fetch()['n'] ?? 0);
+
+        $ins = db()->prepare(
+            'INSERT INTO block_exercises (block_id, exercise_id, name, notes, sort)
+             VALUES (?, ?, ?, ?, ?)'
+        );
+        $ins->execute([$blockId, $exerciseId, $nombre, mb_substr(param('notes'), 0, 240), $sort]);
+
+        json_out(['ok' => true, 'id' => (int) db()->lastInsertId(), 'exercise_id' => $exerciseId,
+                   'name' => $nombre], 201);
+
+    // ── Quitar un ejercicio de un bloque ──────────────────────────────
+    case 'quitar_ejercicio_bloque':
+        $id = (int) (body()['id'] ?? 0);
+
+        $st = db()->prepare(
+            'SELECT be.id, s.team_id
+               FROM block_exercises be
+               JOIN session_blocks sb ON sb.id = be.block_id
+               JOIN sessions s ON s.id = sb.session_id
+              WHERE be.id = ?'
+        );
+        $st->execute([$id]);
+        $fila = $st->fetch();
+
+        if (!$fila) {
+            fail('Ese ejercicio no es tuyo.', 403);
+        }
+        exige_acceso((int) $fila['team_id'], $userId, ['propietario', 'staff']);
+
+        db()->prepare('DELETE FROM block_exercises WHERE id = ?')->execute([$id]);
+
+        json_out(['ok' => true]);
 
     // ── Duplicar una sesión ────────────────────────────────────────
     // Una semana de trabajo se parece a la anterior: copiar y mover la
@@ -1145,7 +1386,7 @@ switch ($action) {
         $id = (int) (body()['session_id'] ?? 0);
 
         $st = db()->prepare(
-            'SELECT id, team_id, time, title, kind, md_label, place,
+            'SELECT id, team_id, time, title, kind, color, md_label, place,
                     duration_min, planned_rpe, planned_load
                FROM sessions WHERE id = ?'
         );
@@ -1166,29 +1407,49 @@ switch ($action) {
         // el plan, no lo que costó aquel día.
         $ins = db()->prepare(
             'INSERT INTO sessions
-                (team_id, date, time, title, kind, md_label, place,
+                (team_id, date, time, title, kind, color, md_label, place,
                  duration_min, planned_rpe, planned_load)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $ins->execute([
-            (int) $ses['team_id'], $date, $ses['time'], $ses['title'], $ses['kind'],
+            (int) $ses['team_id'], $date, $ses['time'], $ses['title'], $ses['kind'], $ses['color'],
             $ses['md_label'], $ses['place'], $ses['duration_min'],
             $ses['planned_rpe'], $ses['planned_load'],
         ]);
         $nuevo = (int) db()->lastInsertId();
 
         $st = db()->prepare(
-            'SELECT name, minutes, intensity, sort FROM session_blocks
-              WHERE session_id = ? ORDER BY sort, id'
+            'SELECT id, name, block_type, location, minutes, intensity, sort
+               FROM session_blocks WHERE session_id = ? ORDER BY sort, id'
         );
         $st->execute([$id]);
+        $bloquesPrevios = $st->fetchAll();
 
         $ins = db()->prepare(
-            'INSERT INTO session_blocks (session_id, name, minutes, intensity, sort)
+            'INSERT INTO session_blocks
+                (session_id, name, block_type, location, minutes, intensity, sort)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
+        );
+        $insEj = db()->prepare(
+            'INSERT INTO block_exercises (block_id, exercise_id, name, notes, sort)
              VALUES (?, ?, ?, ?, ?)'
         );
-        foreach ($st->fetchAll() as $b) {
-            $ins->execute([$nuevo, $b['name'], $b['minutes'], $b['intensity'], $b['sort']]);
+        $selEj = db()->prepare(
+            'SELECT exercise_id, name, notes, sort FROM block_exercises
+              WHERE block_id = ? ORDER BY sort, id'
+        );
+
+        foreach ($bloquesPrevios as $b) {
+            $ins->execute([
+                $nuevo, $b['name'], $b['block_type'], $b['location'],
+                $b['minutes'], $b['intensity'], $b['sort'],
+            ]);
+            $bloqueNuevo = (int) db()->lastInsertId();
+
+            $selEj->execute([(int) $b['id']]);
+            foreach ($selEj->fetchAll() as $e) {
+                $insEj->execute([$bloqueNuevo, $e['exercise_id'], $e['name'], $e['notes'], $e['sort']]);
+            }
         }
 
         json_out(['ok' => true, 'id' => $nuevo], 201);
@@ -1942,4 +2203,135 @@ function recalcular_sesion(int $sessionId): array
         'rpe'        => $rpe,
         'total'      => (int) $r['total'],
     ];
+}
+
+// ── Catálogos fijos: tipo de sesión, tipo de bloque, espacio ────────
+// El mismo catálogo que impone el ENUM en la base, repetido aquí para
+// poder validar sin una vuelta a la base solo para eso.
+function tipos_sesion(): array
+{
+    return ['entrenamiento', 'partido', 'charla', 'recuperacion', 'descanso', 'otro'];
+}
+
+function tipos_bloque(): array
+{
+    return ['activacion', 'fisico', 'tecnico', 'tactico', 'posesion',
+            'estrategia', 'competicion', 'charla', 'vuelta_calma', 'otro'];
+}
+
+function espacios(): array
+{
+    return ['campo', 'gimnasio', 'sala', 'piscina', 'exterior', 'otro'];
+}
+
+/** El color de cada tipo de sesión cuando el equipo aún no ha elegido
+ *  ninguno propio: para que la pantalla nazca ya en color. */
+function colores_tipo_defecto(): array
+{
+    return [
+        'entrenamiento' => '#9184d9',
+        'partido'       => '#d9846f',
+        'charla'        => '#6fa8d9',
+        'recuperacion'  => '#7ecf8e',
+        'descanso'      => '#9397ab',
+        'otro'          => '#d9b36f',
+    ];
+}
+
+/** Los colores por tipo de sesión de un equipo: los que ha elegido,
+ *  completados con los de defecto en los tipos que aún no ha tocado. */
+function colores_tipo_sesion(int $teamId): array
+{
+    $colores = colores_tipo_defecto();
+
+    $st = db()->prepare('SELECT kind, color FROM session_type_colors WHERE team_id = ?');
+    $st->execute([$teamId]);
+    foreach ($st->fetchAll() as $c) {
+        $colores[$c['kind']] = $c['color'];
+    }
+
+    return $colores;
+}
+
+/** Un '#rrggbb' válido, o null si lo que llega no lo es (incluido
+ *  vacío: un guardado que no habla de color no debe borrar el que
+ *  hubiera). */
+function color_valido(string $v): ?string
+{
+    return preg_match('/^#[0-9a-fA-F]{6}$/', $v) ? strtolower($v) : null;
+}
+
+/** Recuerda este color como el que le toca por defecto a este tipo de
+ *  sesión, de ahora en adelante, para este equipo. */
+function guardar_color_tipo(int $teamId, string $kind, string $color): void
+{
+    if (!in_array($kind, tipos_sesion(), true)) {
+        return;
+    }
+    $up = db()->prepare(
+        'INSERT INTO session_type_colors (team_id, kind, color) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE color = VALUES(color)'
+    );
+    $up->execute([$teamId, $kind, $color]);
+}
+
+/** Da de alta un ejercicio en la biblioteca del usuario y lo devuelve
+ *  tal cual lo vería la pantalla. Los campos que no llegan en el
+ *  cuerpo de la petición se quedan vacíos: se pueden rellenar después
+ *  editando el ejercicio. */
+function insertar_ejercicio(int $userId, string $nombre, string $tipoPorDefecto = 'otro'): array
+{
+    $tipo = in_array(param('block_type'), tipos_bloque(), true) ? param('block_type') : $tipoPorDefecto;
+    $esp  = in_array(param('space'), espacios(), true) ? param('space') : '';
+    $dur  = body()['duration_min'] ?? null;
+    $dur  = ($dur === '' || $dur === null) ? null : max(0, min(240, (int) $dur));
+    $int  = body()['intensity'] ?? null;
+    $int  = ($int === '' || $int === null) ? null : max(1, min(10, (int) $int));
+
+    $ins = db()->prepare(
+        'INSERT INTO exercises
+            (owner_user_id, name, block_type, description, materials, duration_min, intensity, space)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    );
+    $ins->execute([
+        $userId, $nombre, $tipo, mb_substr(param('description'), 0, 400),
+        mb_substr(param('materials'), 0, 200), $dur, $int, $esp,
+    ]);
+
+    return [
+        'id' => (int) db()->lastInsertId(), 'name' => $nombre, 'block_type' => $tipo,
+        'description' => param('description'), 'materials' => param('materials'),
+        'duration_min' => $dur, 'intensity' => $int, 'space' => $esp,
+    ];
+}
+
+/** Corta la petición si el ejercicio no existe o no es de esta cuenta. */
+function exige_ejercicio_propio(int $id, int $userId): void
+{
+    $st = db()->prepare('SELECT id FROM exercises WHERE id = ? AND owner_user_id = ?');
+    $st->execute([$id, $userId]);
+    if (!$st->fetch()) {
+        fail('Ese ejercicio no está en tu biblioteca.', 403);
+    }
+}
+
+/** El bloque, si es de un equipo de esta cuenta con nivel para
+ *  planificar; si no, corta la petición aquí mismo. */
+function bloque_propio(int $blockId, int $userId): array
+{
+    $st = db()->prepare(
+        'SELECT sb.id, sb.block_type, s.team_id
+           FROM session_blocks sb
+           JOIN sessions s ON s.id = sb.session_id
+          WHERE sb.id = ?'
+    );
+    $st->execute([$blockId]);
+    $bloque = $st->fetch();
+
+    if (!$bloque) {
+        fail('Ese bloque no es tuyo.', 403);
+    }
+    exige_acceso((int) $bloque['team_id'], $userId, ['propietario', 'staff']);
+
+    return $bloque;
 }

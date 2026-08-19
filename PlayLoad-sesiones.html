@@ -105,6 +105,7 @@ svg{display:block}
 .btn-icon:hover{color:var(--color-text);background:color-mix(in srgb,var(--color-text) 7%,transparent)}
 .btn-sm{font-size:13px;padding:4px 10px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn[hidden]{display:none}
 
 /* — inputs — */
 .input{width:100%;min-height:36px;padding:6px 10px;font:inherit;font-size:14px;
@@ -218,7 +219,14 @@ a.rail-top:hover{color:var(--color-accent)}
    los bloques sale lo que dura y lo que cuesta: no hay un número suelto
    que contradiga al contenido. */
 .ses-wrap{display:grid;gap:16px;align-items:start;
-  grid-template-columns:minmax(290px,360px) minmax(0,1fr)}
+  grid-template-columns:minmax(290px,360px) minmax(0,1fr);
+  transition:grid-template-columns .22s ease}
+/* Con una sesión abierta, la lista cede sitio: la que se está editando
+   tiene que verse más grande, no igual de grande que el resto. */
+.ses-wrap.abierta{grid-template-columns:minmax(230px,270px) minmax(0,1fr)}
+.ses-wrap.abierta .ses-t{font-size:12.5px}
+.ses-wrap.abierta .ses-f{width:34px}
+.btn-volver{display:none}
 
 /* — filtros y lista — */
 .filtros{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
@@ -236,8 +244,8 @@ a.rail-top:hover{color:var(--color-accent)}
   position:relative}
 .ses-it+.ses-it{border-top:1px solid var(--hair)}
 .ses-it:hover{background:color-mix(in srgb,var(--color-text) 4%,transparent)}
-.ses-it[aria-current="true"]{background:color-mix(in srgb,var(--color-accent) 11%,transparent);
-  box-shadow:inset 2px 0 0 var(--color-accent)}
+.ses-it[aria-current="true"]{background:color-mix(in srgb,var(--acento,var(--color-accent)) 14%,transparent);
+  box-shadow:inset 2px 0 0 var(--acento,var(--color-accent))}
 .ses-f{width:40px;flex:none;text-align:center;line-height:1.15}
 .ses-f b{display:block;font-family:var(--font-heading);font-weight:500;font-size:16px;
   letter-spacing:-.02em}
@@ -263,27 +271,53 @@ a.rail-top:hover{color:var(--color-accent)}
 .perfil-b{border-radius:3px;min-width:3px;display:flex;align-items:center;justify-content:center;
   font-size:10px;color:#fff;overflow:hidden;white-space:nowrap}
 
-/* — bloques — */
-.bloques{display:flex;flex-direction:column}
-.bl-cab{display:flex;align-items:center;gap:10px;padding:0 18px 7px;
-  font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2)}
-.bloque{display:flex;align-items:center;gap:10px;padding:8px 18px}
-.bloque+.bloque{border-top:1px solid var(--hair)}
+/* — bloques: tarjetas, no filas —
+   Cada bloque lleva el color de su tipo en el borde y en el icono: se
+   reconoce de un vistazo qué es cada uno antes de leer el nombre. */
+.bloques{display:flex;flex-direction:column;gap:12px;padding:0 18px 4px}
+.bl-card{--tipo:var(--color-accent);border-radius:var(--radius-lg);
+  background:color-mix(in srgb,var(--tipo) 7%,var(--color-surface));
+  border:1px solid color-mix(in srgb,var(--tipo) 28%,var(--color-divider));
+  padding:14px 16px;display:flex;flex-direction:column;gap:11px}
+.bl-top{display:flex;align-items:center;gap:10px}
 .bl-orden{display:flex;flex-direction:column;gap:1px;flex:none}
 .bl-orden button{width:20px;height:15px;padding:0;line-height:1;border-radius:4px;
   border:1px solid var(--color-divider);background:transparent;color:var(--muted-2);
   cursor:pointer;font-size:9px}
-.bl-orden button:hover:not(:disabled){border-color:var(--color-accent);color:var(--color-accent)}
+.bl-orden button:hover:not(:disabled){border-color:var(--tipo);color:var(--tipo)}
 .bl-orden button:disabled{opacity:.3;cursor:default}
+.bl-tipo-ico{width:32px;height:32px;border-radius:9px;flex:none;display:flex;
+  align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--tipo) 22%,transparent);color:var(--tipo)}
+.bl-tipo-ico svg{width:16px;height:16px}
 .bl-nombre{flex:1;min-width:0}
-.bl-min{width:64px;flex:none}
-.bl-int{width:74px;flex:none}
-.bl-ua{width:62px;flex:none;text-align:right;font-size:12.5px;color:var(--muted);
-  font-family:var(--font-heading);font-variant-numeric:tabular-nums}
-.bl-quitar{flex:none;width:26px;height:26px;padding:0;border-radius:6px;
+.bl-nombre .input{font-size:14.5px;font-family:var(--font-heading);font-weight:500}
+.bl-quitar{flex:none;width:28px;height:28px;padding:0;border-radius:7px;
   border:1px solid var(--color-divider);background:transparent;color:var(--muted-2);cursor:pointer}
 .bl-quitar:hover{border-color:var(--color-risk);color:var(--color-risk)}
-.bloque .input{padding:6px 9px;font-size:13px}
+.bl-fila2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bl-fila2 .input{padding:6px 9px;font-size:12.5px;min-height:32px;width:auto}
+.bl-tipo-sel{color:var(--tipo);border-color:color-mix(in srgb,var(--tipo) 45%,var(--color-divider))}
+.bl-min{width:72px;flex:none}
+.bl-int{width:82px;flex:none}
+.bl-loc{width:130px;flex:none}
+.bl-ua{margin-left:auto;flex:none;text-align:right;font-size:12.5px;color:var(--muted);
+  font-family:var(--font-heading);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* — ejercicios del bloque — */
+.bl-ejercicios{display:flex;flex-direction:column;gap:6px}
+.ej-chip{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;
+  background:color-mix(in srgb,var(--color-text) 5%,transparent);
+  border:1px solid var(--hair)}
+.ej-chip-n{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ej-chip .tag{flex:none}
+.ej-quitar{flex:none;width:22px;height:22px;padding:0;border-radius:6px;border:0;
+  background:transparent;color:var(--muted-2);cursor:pointer;font-size:12px}
+.ej-quitar:hover{background:color-mix(in srgb,var(--color-risk) 16%,transparent);color:var(--color-risk)}
+.bl-add-ej{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;
+  padding:6px 11px;border-radius:8px;border:1px dashed color-mix(in srgb,var(--tipo) 50%,var(--color-divider));
+  background:transparent;color:var(--tipo);font-size:12.5px;cursor:pointer;font-family:var(--font-heading)}
+.bl-add-ej:hover{background:color-mix(in srgb,var(--tipo) 12%,transparent)}
 
 .totales{display:flex;align-items:center;gap:20px;flex-wrap:wrap;
   padding:13px 18px;border-top:1px solid var(--hair)}
@@ -295,17 +329,38 @@ a.rail-top:hover{color:var(--color-accent)}
 .ficha{display:grid;gap:12px;grid-template-columns:repeat(3,minmax(0,1fr));padding:16px 18px}
 .ficha-pie{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
   padding:0 18px 16px}
-.det-head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;
-  padding:16px 18px;border-bottom:1px solid var(--hair)}
-.det-head h2{font-size:20px;letter-spacing:-.02em;margin:0 0 5px}
+.det-head{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;
+  padding:22px 26px;border-bottom:1px solid var(--hair)}
+.det-head h2{font-size:26px;letter-spacing:-.022em;margin:0 0 6px}
 .det-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
-.det-acc{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.det-acc{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@keyframes plAbre{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+#detalle .det-head,#detalle .ficha,#detalle .bloques{animation:plAbre .22s ease both}
+.btn-volver{align-items:center;gap:6px;color:var(--muted);border-color:var(--color-divider)}
+.color-swatch{-webkit-appearance:none;appearance:none;width:36px;height:36px;padding:0;
+  border:1px solid var(--color-divider);border-radius:9px;background:transparent;cursor:pointer}
+.color-swatch::-webkit-color-swatch-wrapper{padding:3px}
+.color-swatch::-webkit-color-swatch{border:0;border-radius:6px}
+.color-swatch::-moz-color-swatch{border:0;border-radius:6px}
+.autosave{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted-2);
+  white-space:nowrap}
+.autosave .pulse{background:var(--color-ok)}
+.autosave[data-estado="guardando"] .pulse{background:var(--color-warn);animation-duration:.9s}
+.autosave[data-estado="error"] .pulse{background:var(--color-risk);animation:none;opacity:1}
 
 /* — responsive — */
 @media (max-width:1320px){
   .ses-wrap{grid-template-columns:minmax(0,1fr)}
+  .ses-wrap.abierta{grid-template-columns:minmax(0,1fr)}
   .lista-ses{max-height:330px}
   .ficha{grid-template-columns:repeat(2,minmax(0,1fr))}
+  /* Con las dos columnas apiladas, abrir una sesión debe tapar la
+     lista, no sumarse debajo: si no, "más grande" se queda en nada. */
+  .ses-wrap.abierta .panel:first-child{display:none}
+  .btn-volver{display:inline-flex}
+  /* «Sesiones» vuelve a enseñar la lista sin perder la sesión abierta */
+  .ses-wrap.abierta.forzar-lista .panel:first-child{display:flex}
+  .ses-wrap.abierta.forzar-lista #detalle{display:none}
 }
 @media (max-width:1080px){
   :root{--rail:64px}
@@ -322,10 +377,6 @@ a.rail-top:hover{color:var(--color-accent)}
   .search{display:none}
   .page-head h1{font-size:26px}
   .grid-2,.ficha{grid-template-columns:1fr}
-  /* la fila de bloque no cabe en una línea: se parte y el nombre manda */
-  .bloque{flex-wrap:wrap}
-  .bl-nombre{flex:1 1 100%;order:-1}
-  .bl-cab{display:none}
 }
 
 /* — estado vacío — */
@@ -351,6 +402,17 @@ a.rail-top:hover{color:var(--color-accent)}
 .field{display:flex;flex-direction:column;gap:6px}
 .field>label{font-size:13px;color:var(--muted)}
 .p-sub{font-size:12.5px;color:var(--muted-2);margin:0}
+.dialog-lg{width:min(620px,100%)}
+.ej-tabs{display:flex;gap:6px}
+.ej-panel[hidden]{display:none}
+.ej-lista{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.ej-op{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:9px;
+  border:1px solid var(--color-divider);background:transparent;color:inherit;text-align:left;cursor:pointer}
+.ej-op:hover{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 8%,transparent)}
+.ej-op-n{flex:1;min-width:0}
+.ej-op-t{font-size:13.5px;line-height:1.25}
+.ej-op-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.ej-vacio{padding:22px 10px;text-align:center;font-size:13px;color:var(--muted-2)}
 /* ═══════════ TEMA CLARO ═══════════ */
 :root{ --input-bg:#191b26; --rail-bg:#0f111a; --sombra:0 20px 50px rgba(0,0,0,.55); }
 
@@ -663,12 +725,11 @@ body{transition:background .18s ease,color .18s ease}
       <input class="input" id="sTitulo" placeholder="Alta intensidad"></div>
     <div class="grid-2">
       <div class="field"><label for="sTipo">Tipo</label>
-        <select class="input" id="sTipo">
-          <option value="entrenamiento">Entrenamiento</option>
-          <option value="partido">Partido</option>
-          <option value="recuperacion">Recuperación</option>
-          <option value="descanso">Descanso</option>
-        </select></div>
+        <div style="display:flex;gap:8px">
+          <select class="input" id="sTipo"></select>
+          <input class="color-swatch" id="sColor" type="color" title="Color de este tipo de sesión">
+        </div>
+      </div>
       <div class="field"><label for="sMd">Día del microciclo</label>
         <input class="input" id="sMd" placeholder="MD-3"></div>
     </div>
@@ -724,6 +785,56 @@ body{transition:background .18s ease,color .18s ease}
   </div>
 </div>
 
+<div class="dialog-backdrop" id="dlgEjercicio">
+  <div class="dialog dialog-lg" role="dialog" aria-modal="true" aria-labelledby="dlgEjercicioT">
+    <div>
+      <h2 id="dlgEjercicioT">Añadir ejercicio</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgEjercicioSub"></p>
+    </div>
+
+    <div class="ej-tabs">
+      <button class="filtro" data-ej-tab="biblioteca" aria-pressed="true">De la biblioteca</button>
+      <button class="filtro" data-ej-tab="nuevo" aria-pressed="false">Crear nuevo</button>
+    </div>
+
+    <!-- ─── elegir de la biblioteca ─── -->
+    <div class="ej-panel" id="ejPanelBiblioteca">
+      <div class="field"><label for="ejBuscar">Buscar</label>
+        <input class="input" id="ejBuscar" placeholder="Nombre del ejercicio…"></div>
+      <div class="ej-lista" id="ejLista"></div>
+    </div>
+
+    <!-- ─── crear de cero ─── -->
+    <div class="ej-panel" id="ejPanelNuevo" hidden>
+      <div class="field"><label for="ejNombre">Nombre</label>
+        <input class="input" id="ejNombre" placeholder="Rondo 4v2"></div>
+      <div class="grid-2">
+        <div class="field"><label for="ejTipo">Tipo de bloque</label>
+          <select class="input" id="ejTipo"></select></div>
+        <div class="field"><label for="ejEspacio">Espacio</label>
+          <select class="input" id="ejEspacio"></select></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label for="ejMin">Minutos</label>
+          <input class="input" id="ejMin" inputmode="numeric" placeholder="10"></div>
+        <div class="field"><label for="ejInt">Intensidad (1–10)</label>
+          <input class="input" id="ejInt" inputmode="numeric" placeholder="6"></div>
+      </div>
+      <div class="field"><label for="ejMaterial">Material necesario</label>
+        <input class="input" id="ejMaterial" placeholder="Conos, petos, balones…"></div>
+      <div class="field"><label for="ejDesc">Descripción</label>
+        <input class="input" id="ejDesc" placeholder="Cómo se juega, qué se pide…"></div>
+      <p class="p-sub">Se guarda en tu biblioteca de ejercicios: podrás reutilizarlo en
+         cualquier otro equipo o sesión.</p>
+    </div>
+
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
+      <button class="btn btn-primary" id="btnCrearEjercicio" hidden>Añadir a la sesión</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 /* ═══════════════════════════════════════════════════════════════
@@ -756,26 +867,52 @@ function loc(){
   return LOC[v] || 'es-ES';
 }
 
-const TIPOS  = {entrenamiento:'Entrenamiento', partido:'Partido',
-                recuperacion:'Recuperación', descanso:'Descanso'};
-const COLOR  = {entrenamiento:'var(--color-accent)', partido:'var(--color-warn)',
-                recuperacion:'var(--color-ok)', descanso:'var(--color-neutral-600)'};
+const TIPOS = {entrenamiento:'Entrenamiento', partido:'Partido', charla:'Charla',
+               recuperacion:'Recuperación', descanso:'Descanso', otro:'Otro'};
+
+/* El color real de cada tipo lo manda el backend (D.colores), elegido
+   por el usuario y recordado por equipo. Esto es solo lo que se ve
+   antes de que llegue esa respuesta, para que la pantalla no nazca en
+   blanco y negro. */
+const COLOR_DEFECTO = {entrenamiento:'#9184d9', partido:'#d9846f', charla:'#6fa8d9',
+                        recuperacion:'#7ecf8e', descanso:'#9397ab', otro:'#d9b36f'};
+
+/* El tipo de bloque sí tiene un color fijo, de la app: no hace falta
+   configurarlo para que los bloques ya se distingan entre sí. */
+const BLOQUE_TIPOS = {
+  activacion:   {label:'Activación',   color:'#e0b168', icono:'M8 2.4v3M8 10.6v3M2.4 8h3M10.6 8h3M4.3 4.3l2 2M9.7 9.7l2 2M11.7 4.3l-2 2M6.3 9.7l-2 2'},
+  fisico:       {label:'Físico',       color:'#dd7a7a', icono:'M2.6 8h1.8l1.2-3.4L7.4 11 8.6 5l1.6 3h3.2'},
+  tecnico:      {label:'Técnico',      color:'#6ba3dd', icono:'M8 2.6a5.4 5.4 0 1 0 0 10.8A5.4 5.4 0 0 0 8 2.6ZM8 5.4v2.6l1.8 1.8'},
+  tactico:      {label:'Táctico',      color:'#8a7cd6', icono:'M2.6 12.4 8 3.6l5.4 8.8ZM8 3.6v8.8'},
+  posesion:     {label:'Posesión',     color:'#5cb8ac', icono:'M8 2.6a5.4 5.4 0 1 0 0 10.8A5.4 5.4 0 0 0 8 2.6ZM3 8h10M8 3v10'},
+  estrategia:   {label:'Estrategia',   color:'#d67bb0', icono:'M3 13.4V8.6L8 3l5 5.6v4.8ZM8 3v10.4'},
+  competicion:  {label:'Competición',  color:'#dd9a52', icono:'M4 2.6h8v3.2a4 4 0 0 1-8 0zM6 12.4h4M8 9.8v2.6M2.4 3.4h1.6v2.6a2 2 0 0 1-1.6-2ZM13.6 3.4H12v2.6a2 2 0 0 0 1.6-2Z'},
+  charla:       {label:'Charla / vídeo', color:'#7191c9', icono:'M2.6 3.4h10.8v6.6H6.2L3.4 12.4V10H2.6Z'},
+  vuelta_calma: {label:'Vuelta a la calma', color:'#6fbf82', icono:'M8 13.4S2.2 10 2.2 6.3A3.1 3.1 0 0 1 8 4.7a3.1 3.1 0 0 1 5.8 1.6c0 3.7-5.8 7.1-5.8 7.1z'},
+  otro:         {label:'Otro',         color:'#9397ab', icono:'M4 8h.01M8 8h.01M12 8h.01'},
+};
+
+const ESPACIOS = {'':'Sin definir', campo:'Campo', gimnasio:'Gimnasio', sala:'Sala',
+                   piscina:'Piscina', exterior:'Exterior', otro:'Otro'};
 
 /* El esqueleto que se ofrece al montar una sesión desde cero. No es una
    sesión: es el orden de siempre, para no empezar ante una hoja en
    blanco. Se cambia entero en dos minutos. */
 const ESQUELETO = [
-  {name:'Calentamiento',        minutes:15, intensity:4},
-  {name:'Activación técnica',   minutes:15, intensity:5},
-  {name:'Parte principal',      minutes:40, intensity:8},
-  {name:'Competición reducida', minutes:15, intensity:8},
-  {name:'Vuelta a la calma',    minutes:10, intensity:2}
+  {name:'Calentamiento',        block_type:'activacion',  location:'', minutes:15, intensity:4},
+  {name:'Activación técnica',   block_type:'tecnico',     location:'', minutes:15, intensity:5},
+  {name:'Parte principal',      block_type:'tactico',     location:'', minutes:40, intensity:8},
+  {name:'Competición reducida', block_type:'competicion', location:'', minutes:15, intensity:8},
+  {name:'Vuelta a la calma',    block_type:'vuelta_calma',location:'', minutes:10, intensity:2}
 ];
 
-let D = {teams:[], equipo:null, user:null, club:null,
+let D = {teams:[], equipo:null, user:null, club:null, colores:{...COLOR_DEFECTO},
          sesiones:[], ses:null, bloques:[], respuestas:0};
 let filtro = 'todas';
 let busca  = '';
+let colorTocado = false;      // el usuario ha tocado el color de ESTA sesión
+let ejBloqueActivo = null;    // a qué bloque se le está añadiendo un ejercicio
+let ejercicios = [];          // última carga de la biblioteca
 
 function respuesta(status, b){
   return (b && typeof b.ok !== 'undefined')
@@ -811,6 +948,21 @@ function toast(msg, kind){
   t.style.color = kind === 'bad' ? 'var(--color-risk)' : 'var(--color-text)';
   clearTimeout(toast.t);
   toast.t = setTimeout(() => { t.style.opacity = '0'; }, 4000);
+}
+
+function debounce(fn, ms){
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+/* El estado del guardado automático: nada de toasts en cada cambio,
+   solo esta pastillita — un toast por tecla sería ruido, no aviso. */
+function estadoGuardado(estado){
+  const el = $('autosave');
+  if(!el) return;
+  el.dataset.estado = estado;
+  const t = {guardando:'Guardando…', error:'Sin guardar', guardado:'Guardado'}[estado] || 'Guardado';
+  el.querySelector('span:last-child').textContent = t;
 }
 
 /* ── la lista de la izquierda ───────────────────────────────── */
@@ -866,7 +1018,9 @@ function pintarLista(){
     let corte = '';
     if(!pasadas && s.date < hoy){ pasadas = true; corte = '<div class="corte">Ya pasadas</div>'; }
 
-    return corte + `<button class="ses-it" data-abrir="${s.id}"
+    const color = s.color || D.colores[s.kind] || D.colores.otro;
+
+    return corte + `<button class="ses-it" data-abrir="${s.id}" style="--acento:${color}"
               aria-current="${D.ses && D.ses.id === s.id}">
       <span class="ses-f">
         <b>${f.getDate()}</b>
@@ -875,7 +1029,7 @@ function pintarLista(){
       <span class="ses-cuerpo">
         <span class="ses-t">${esc(s.title) || TIPOS[s.kind] || 'Sesión'}</span>
         <span class="ses-m">
-          <span class="punto" style="background:${COLOR[s.kind] || 'var(--color-neutral-600)'}"></span>
+          <span class="punto" style="background:${color}"></span>
           ${s.md_label ? esc(s.md_label) + ' · ' : ''}${s.duration_min} min
           ${+s.bloques ? ' · ' + s.bloques + ' bloque' + (+s.bloques === 1 ? '' : 's')
                        : ' · <i style="font-style:normal;color:var(--color-warn)">sin montar</i>'}
@@ -891,14 +1045,18 @@ function pintarLista(){
 }
 
 /* ── los bloques ────────────────────────────────────────────────
-   Se pintan enteros solo al añadir, quitar o mover. Mientras se
-   escribe únicamente se recalculan los números: repintar dejaría el
-   cursor fuera del campo a cada tecla. */
+   Se pintan enteros solo al añadir, quitar, mover o tras añadir/quitar
+   un ejercicio. Mientras se escribe únicamente se recalculan los
+   números: repintar dejaría el cursor fuera del campo a cada tecla. */
 function leerBloques(){
-  return [...document.querySelectorAll('#bloques [data-bl]')].map(f => ({
-    name:      f.querySelector('[data-n]').value,
-    minutes:   Math.max(0, Math.min(240, +f.querySelector('[data-m]').value || 0)),
-    intensity: +f.querySelector('[data-i]').value || 0
+  return [...document.querySelectorAll('#bloques [data-bl]')].map((f, i) => ({
+    id:         +f.dataset.blId || 0,
+    name:       f.querySelector('[data-n]').value,
+    block_type: f.querySelector('[data-t]').value,
+    location:   f.querySelector('[data-l]').value,
+    minutes:    Math.max(0, Math.min(240, +f.querySelector('[data-m]').value || 0)),
+    intensity:  +f.querySelector('[data-i]').value || 0,
+    ejercicios: (D.bloques[i] && D.bloques[i].ejercicios) || []
   }));
 }
 
@@ -908,7 +1066,7 @@ function pintarBloques(){
 
   if(!D.bloques.length){
     caja.innerHTML = `
-      <div class="vacio" style="margin:4px 18px 16px;padding:30px 18px">
+      <div class="vacio" style="margin:4px 0 16px;padding:30px 18px">
         <h3>Esta sesión está sin montar</h3>
         <p>Un hueco en el calendario todavía no es una sesión. Añade los bloques y
            PlayLoad calculará solo lo que dura y lo que cuesta.</p>
@@ -923,33 +1081,117 @@ function pintarBloques(){
 
   const ultimo = D.bloques.length - 1;
 
-  caja.innerHTML = D.bloques.map((b, i) => `
-    <div class="bloque" data-bl="${i}">
-      <span class="bl-orden">
-        <button data-mover="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">▲</button>
-        <button data-mover="1" ${i === ultimo ? 'disabled' : ''} aria-label="Bajar">▼</button>
-      </span>
-      <span class="bl-nombre">
-        <input class="input" data-n value="${esc(b.name)}" placeholder="Nombre del bloque"
-               aria-label="Nombre del bloque ${i+1}">
-      </span>
-      <span class="bl-min">
-        <input class="input" data-m inputmode="numeric" value="${b.minutes || ''}"
-               placeholder="min" aria-label="Minutos del bloque ${i+1}">
-      </span>
-      <span class="bl-int">
-        <select class="input" data-i aria-label="Intensidad del bloque ${i+1}">
-          <option value="0"${!b.intensity ? ' selected' : ''}>—</option>
-          ${[1,2,3,4,5,6,7,8,9,10].map(n =>
-            `<option value="${n}"${+b.intensity === n ? ' selected' : ''}>${n}</option>`).join('')}
+  caja.innerHTML = D.bloques.map((b, i) => {
+    const tipo = BLOQUE_TIPOS[b.block_type] || BLOQUE_TIPOS.otro;
+    return `
+    <div class="bl-card" data-bl="${i}" data-bl-id="${b.id || 0}" style="--tipo:${tipo.color}">
+      <div class="bl-top">
+        <span class="bl-orden">
+          <button data-mover="-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir">▲</button>
+          <button data-mover="1" ${i === ultimo ? 'disabled' : ''} aria-label="Bajar">▼</button>
+        </span>
+        <span class="bl-tipo-ico" title="${tipo.label}">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"
+               stroke-linecap="round" stroke-linejoin="round"><path d="${tipo.icono}"/></svg>
+        </span>
+        <span class="bl-nombre">
+          <input class="input" data-n value="${esc(b.name)}" placeholder="Nombre del bloque"
+                 aria-label="Nombre del bloque ${i+1}">
+        </span>
+        <button class="bl-quitar" data-quitar aria-label="Quitar el bloque ${i+1}">✕</button>
+      </div>
+      <div class="bl-fila2">
+        <select class="input bl-tipo-sel" data-t aria-label="Tipo de bloque ${i+1}">
+          ${Object.entries(BLOQUE_TIPOS).map(([k,v]) =>
+            `<option value="${k}"${b.block_type === k ? ' selected' : ''}>${v.label}</option>`).join('')}
         </select>
-      </span>
-      <span class="bl-ua" data-ua>—</span>
-      <button class="bl-quitar" data-quitar aria-label="Quitar el bloque ${i+1}">✕</button>
-    </div>`).join('');
+        <select class="input bl-loc" data-l aria-label="Espacio del bloque ${i+1}">
+          ${Object.entries(ESPACIOS).map(([k,v]) =>
+            `<option value="${k}"${(b.location || '') === k ? ' selected' : ''}>${v}</option>`).join('')}
+        </select>
+        <span class="bl-min">
+          <input class="input" data-m inputmode="numeric" value="${b.minutes || ''}"
+                 placeholder="min" aria-label="Minutos del bloque ${i+1}">
+        </span>
+        <span class="bl-int">
+          <select class="input" data-i aria-label="Intensidad del bloque ${i+1}">
+            <option value="0"${!b.intensity ? ' selected' : ''}>—</option>
+            ${[1,2,3,4,5,6,7,8,9,10].map(n =>
+              `<option value="${n}"${+b.intensity === n ? ' selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </span>
+        <span class="bl-ua" data-ua>—</span>
+      </div>
+      <div class="bl-ejercicios">
+        ${(b.ejercicios || []).map(e => `
+          <div class="ej-chip">
+            <span class="ej-chip-n">${esc(e.name)}</span>
+            <button class="ej-quitar" data-quitar-ej="${e.id}" aria-label="Quitar ${esc(e.name)}">✕</button>
+          </div>`).join('')}
+      </div>
+      <button class="bl-add-ej" data-add-ej="${i}">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
+        Añadir ejercicio
+      </button>
+    </div>`;
+  }).join('');
 
   recalcular();
 }
+
+/* Guardado automático de la sesión, tras cada cambio. No repinta el
+   detalle al terminar: quien está escribiendo en un campo no puede
+   perder el cursor porque el guardado de fondo haya acabado. */
+async function guardarFicha(){
+  if(!D.ses || DEMO) return;
+
+  const payload = {
+    action:'editar_sesion', session_id:D.ses.id,
+    date:$('eFecha').value, time:$('eHora').value, title:$('eTitulo').value,
+    kind:$('eTipo').value, md_label:$('eMd').value, place:$('eLugar').value,
+    duration_min:D.ses.duration_min,
+  };
+  if(colorTocado) payload.color = $('eColor').value;
+
+  estadoGuardado('guardando');
+  const r = await post(payload);
+  if(!r.ok){ estadoGuardado('error'); toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
+
+  Object.assign(D.ses, {date:payload.date, time:payload.time, title:payload.title,
+    kind:payload.kind, md_label:payload.md_label, place:payload.place});
+  if(colorTocado){ D.ses.color = payload.color; colorTocado = false; }
+
+  estadoGuardado('guardado');
+  await cargarSesiones(true);
+}
+const guardarFichaDebounced = debounce(guardarFicha, 700);
+
+/* Igual, pero para los bloques: si alguno acaba de nacer, el id que
+   devuelve el servidor se apunta en el DOM y en D.bloques sin
+   repintar, porque hace falta para poder engancharle ejercicios. */
+async function guardarBloques(){
+  if(!D.ses || DEMO || !$('bloques')) return;
+
+  const bloques = leerBloques();
+  if(bloques.some(b => !b.name.trim())) return;   // aún incompleto: no hay nada que guardar
+
+  estadoGuardado('guardando');
+  const r = await post({action:'guardar_bloques', session_id:D.ses.id, bloques});
+  if(!r.ok){ estadoGuardado('error'); toast(r.error || 'No se han podido guardar los bloques.', 'bad'); return; }
+
+  document.querySelectorAll('#bloques [data-bl]').forEach((f, i) => {
+    const b = r.bloques[i];
+    if(!b) return;
+    f.dataset.blId = b.id;
+    if(D.bloques[i]) D.bloques[i].id = b.id;
+  });
+  D.ses.duration_min = r.minutos;
+
+  estadoGuardado('guardado');
+  await cargarSesiones(true);
+}
+const guardarBloquesDebounced = debounce(guardarBloques, 700);
 
 /* Los totales y la barra de perfil, al vuelo. La carga prevista de la
    sesión es la suma de minutos × intensidad de cada bloque. */
@@ -992,18 +1234,18 @@ function recalcular(){
       <span><span class="total-v">${min && ua ? (ua/min).toFixed(1).replace('.',',') : '—'}</span>
             <span class="total-l">RPE medio</span></span>
       ${cerrada ? `<span><span class="total-v" style="color:var(--color-accent)">${fmt(s.actual_load)}</span>
-            <span class="total-l">UA reales</span></span>` : ''}
-      <button class="btn btn-primary btn-sm" style="margin-left:auto" data-guardar-bloques>
-        Guardar bloques</button>`;
+            <span class="total-l">UA reales</span></span>` : ''}`;
   }
 }
 
 /* ── la sesión abierta ──────────────────────────────────────── */
 function pintarDetalle(){
   const caja = $('detalle');
+  const wrap = document.querySelector('.ses-wrap');
   const s = D.ses;
 
   if(!s){
+    if(wrap) wrap.classList.remove('abierta', 'forzar-lista');
     caja.innerHTML = `
       <div class="panel-body">
         <div class="vacio">
@@ -1014,13 +1256,21 @@ function pintarDetalle(){
     return;
   }
 
+  if(wrap){ wrap.classList.add('abierta'); wrap.classList.remove('forzar-lista'); }
+  colorTocado = false;
+
   const L = loc();
   const f = dia(s.date);
   const cerrada = s.status === 'realizada';
 
   caja.innerHTML = `
     <div class="det-head">
-      <div style="min-width:0">
+      <button class="btn btn-secondary btn-sm btn-volver" data-volver>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.4 5.4 8l4.6 4.6"/></svg>
+        Sesiones
+      </button>
+      <div style="min-width:0;flex:1">
         <h2>${esc(s.title) || TIPOS[s.kind] || 'Sesión'}</h2>
         <div class="det-meta">
           <span>${f.toLocaleDateString(L,{weekday:'long', day:'numeric', month:'long'})}</span>
@@ -1032,6 +1282,9 @@ function pintarDetalle(){
         </div>
       </div>
       <div class="det-acc">
+        <span class="autosave" id="autosave" data-estado="guardado">
+          <span class="pulse"></span><span>Guardado</span>
+        </span>
         <button class="btn btn-secondary btn-sm" data-duplicar>Duplicar</button>
         <button class="btn btn-secondary btn-sm" data-borrar>Borrar</button>
         ${cerrada ? '' : '<button class="btn btn-primary btn-sm" data-cerrar-ses>Cerrar sesión</button>'}
@@ -1044,10 +1297,15 @@ function pintarDetalle(){
       <div class="field"><label for="eHora">Hora</label>
         <input class="input" id="eHora" type="time" value="${s.time ? s.time.slice(0,5) : ''}"></div>
       <div class="field"><label for="eTipo">Tipo</label>
-        <select class="input" id="eTipo">
-          ${Object.entries(TIPOS).map(([k,v]) =>
-            `<option value="${k}"${s.kind === k ? ' selected' : ''}>${v}</option>`).join('')}
-        </select></div>
+        <div style="display:flex;gap:8px">
+          <select class="input" id="eTipo">
+            ${Object.entries(TIPOS).map(([k,v]) =>
+              `<option value="${k}"${s.kind === k ? ' selected' : ''}>${v}</option>`).join('')}
+          </select>
+          <input class="color-swatch" id="eColor" type="color" value="${s.color}"
+                 title="Color de esta sesión">
+        </div>
+      </div>
       <div class="field" style="grid-column:span 2"><label for="eTitulo">Título</label>
         <input class="input" id="eTitulo" value="${esc(s.title)}" placeholder="Alta intensidad"></div>
       <div class="field"><label for="eMd">Día del microciclo</label>
@@ -1056,8 +1314,8 @@ function pintarDetalle(){
         <input class="input" id="eLugar" value="${esc(s.place)}" placeholder="Ciudad deportiva"></div>
     </div>
     <div class="ficha-pie">
-      <button class="btn btn-secondary btn-sm" data-guardar-ficha>Guardar cambios</button>
-      <span class="p-sub">Los minutos y la carga no se escriben aquí: los ponen los bloques.</span>
+      <span class="p-sub">Los minutos y la carga no se escriben aquí: los ponen los bloques.
+        Al elegir un color aquí, se queda como el color por defecto de este tipo de sesión.</span>
     </div>
 
     <div class="card-head" style="border-top:1px solid var(--hair);padding-top:15px">
@@ -1069,14 +1327,6 @@ function pintarDetalle(){
     </div>
 
     <div class="perfil" id="perfil"></div>
-    ${D.bloques.length ? `<div class="bl-cab">
-      <span style="width:20px;flex:none"></span>
-      <span style="flex:1">Bloque</span>
-      <span style="width:64px">Min</span>
-      <span style="width:74px">Intens.</span>
-      <span style="width:62px;text-align:right">UA</span>
-      <span style="width:26px;flex:none"></span>
-    </div>` : ''}
     <div class="bloques" id="bloques"></div>
     <div class="totales" id="totales"></div>`;
 
@@ -1090,11 +1340,112 @@ async function abrir(id){
   if(!r || !r.ok){ toast((r && r.error) || 'No se ha podido abrir la sesión.', 'bad'); return; }
 
   D.ses        = r.sesion;
-  D.bloques    = (r.bloques || []).map(b => ({name:b.name, minutes:+b.minutes, intensity:+b.intensity || 0}));
+  D.bloques    = (r.bloques || []).map(b => ({
+    id: b.id, name: b.name, block_type: b.block_type, location: b.location,
+    minutes: +b.minutes, intensity: +b.intensity || 0, ejercicios: b.ejercicios || [],
+  }));
   D.respuestas = r.respuestas || 0;
 
   pintarDetalle();
   pintarLista();
+}
+
+/* ── biblioteca de ejercicios ───────────────────────────────────
+   Es de la cuenta, no del equipo: los mismos ejercicios sirven en
+   cualquiera de los equipos que se gestionen. */
+function tagsEjercicio(e){
+  const t = [];
+  if(e.duration_min) t.push(`<span class="tag tag-neutral">${e.duration_min}'</span>`);
+  if(e.intensity)     t.push(`<span class="tag tag-outline">Int. ${e.intensity}</span>`);
+  if(e.materials)     t.push(`<span class="tag tag-accent">${esc(e.materials)}</span>`);
+  return t.join('');
+}
+
+function pintarListaEjercicios(){
+  const caja = $('ejLista');
+  if(!caja) return;
+
+  if(!ejercicios.length){
+    caja.innerHTML = `<div class="ej-vacio">Todavía no hay ningún ejercicio
+      ${$('ejBuscar').value.trim() ? 'con ese nombre' : 'de este tipo'} en tu biblioteca.
+      Prueba a crear uno nuevo.</div>`;
+    return;
+  }
+
+  caja.innerHTML = ejercicios.map(e => `
+    <button class="ej-op" data-usar-ejercicio="${e.id}">
+      <span class="ej-op-n">
+        <span class="ej-op-t">${esc(e.name)}</span>
+        <span class="ej-op-tags">${tagsEjercicio(e)}</span>
+      </span>
+    </button>`).join('');
+}
+
+async function cargarEjercicios(){
+  if(DEMO || !D.equipo){ ejercicios = []; pintarListaEjercicios(); return; }
+
+  const bloque = D.bloques[ejBloqueActivo];
+  const tipo   = bloque ? bloque.block_type : '';
+  const q      = $('ejBuscar').value.trim();
+
+  const r = await get(`action=ejercicios&team_id=${D.equipo.id}` +
+    `&block_type=${encodeURIComponent(tipo)}&q=${encodeURIComponent(q)}`).catch(() => null);
+  ejercicios = (r && r.ok) ? r.ejercicios : [];
+  pintarListaEjercicios();
+}
+const cargarEjerciciosDebounced = debounce(cargarEjercicios, 300);
+
+/* Añadir el ejercicio (de la biblioteca o recién creado) al bloque
+   activo, en la sesión abierta. */
+async function engancharEjercicio(extra){
+  const b = D.bloques[ejBloqueActivo];
+  if(!b) return;
+
+  const r = await post({action:'anadir_ejercicio_bloque', block_id:b.id, team_id:D.equipo.id, ...extra});
+  if(!r.ok){ toast(r.error || 'No se ha podido añadir el ejercicio.', 'bad'); return; }
+
+  b.ejercicios = b.ejercicios || [];
+  b.ejercicios.push({id:r.id, exercise_id:r.exercise_id, name:r.name});
+  pintarBloques();
+  $('dlgEjercicio').classList.remove('open');
+  toast('Ejercicio añadido');
+}
+
+async function abrirDialogoEjercicio(i){
+  let b = D.bloques[i];
+  if(!b) return;
+
+  /* El bloque necesita un id real antes de poder engancharle nada: si
+     es nuevo, se guarda primero. */
+  if(!b.id){
+    await guardarBloques();
+    b = D.bloques[i];
+    if(!b || !b.id){ toast('Guarda antes el nombre del bloque.', 'bad'); return; }
+  }
+
+  ejBloqueActivo = i;
+  const tipo = BLOQUE_TIPOS[b.block_type] || BLOQUE_TIPOS.otro;
+  $('dlgEjercicioSub').textContent = `${tipo.label} · ${esc(b.name) || 'bloque sin nombre'}`;
+
+  document.querySelectorAll('[data-ej-tab]').forEach(btn =>
+    btn.setAttribute('aria-pressed', String(btn.dataset.ejTab === 'biblioteca')));
+  $('ejPanelBiblioteca').hidden = false;
+  $('ejPanelNuevo').hidden = true;
+  $('btnCrearEjercicio').hidden = true;
+
+  $('ejBuscar').value = '';
+  $('ejNombre').value = '';
+  $('ejMaterial').value = '';
+  $('ejDesc').value = '';
+  $('ejMin').value = '';
+  $('ejInt').value = '';
+  $('ejTipo').innerHTML = Object.entries(BLOQUE_TIPOS).map(([k,v]) =>
+    `<option value="${k}"${b.block_type === k ? ' selected' : ''}>${v.label}</option>`).join('');
+  $('ejEspacio').innerHTML = Object.entries(ESPACIOS).map(([k,v]) =>
+    `<option value="${k}"${(b.location || '') === k ? ' selected' : ''}>${v}</option>`).join('');
+
+  $('dlgEjercicio').classList.add('open');
+  await cargarEjercicios();
 }
 
 /* ── carga ──────────────────────────────────────────────────── */
@@ -1109,7 +1460,10 @@ async function cargarSesiones(mantener){
 
   const r = await get(`action=sesiones&team_id=${D.equipo.id}&desde=${desde}&hasta=${hasta}`)
               .catch(() => null);
-  if(r && r.ok) D.sesiones = r.sesiones || [];
+  if(r && r.ok){
+    D.sesiones = r.sesiones || [];
+    D.colores  = r.colores || {...COLOR_DEFECTO};
+  }
   if($('navSesiones')) $('navSesiones').textContent = D.sesiones.length || '';
 
   if(!mantener){ D.ses = null; D.bloques = []; pintarDetalle(); }
@@ -1227,6 +1581,11 @@ document.addEventListener('click', async e => {
   const abre = e.target.closest('[data-abrir]');
   if(abre){ await abrir(+abre.dataset.abrir); return; }
 
+  if(e.target.closest('[data-volver]')){
+    document.querySelector('.ses-wrap')?.classList.add('forzar-lista');
+    return;
+  }
+
   /* ── nueva sesión ── */
   if(e.target.closest('[data-nueva-sesion]')){
     if(DEMO){ toast('Sin servidor no se pueden crear sesiones: esta es la vista de diseño.'); return; }
@@ -1235,6 +1594,9 @@ document.addEventListener('click', async e => {
     $('dlgSesSub').textContent = D.equipo.name;
     $('sFecha').value = isoLocal(new Date());
     $('sTitulo').value = '';
+    $('sTipo').innerHTML = Object.entries(TIPOS).map(([k,v]) =>
+      `<option value="${k}">${v}</option>`).join('');
+    $('sColor').value = D.colores.entrenamiento || COLOR_DEFECTO.entrenamiento;
     $('dlgSes').classList.add('open');
     $('sTitulo').focus();
     return;
@@ -1246,7 +1608,7 @@ document.addEventListener('click', async e => {
     const r = await post({action:'crear_sesion', team_id:D.equipo.id,
       date:$('sFecha').value, time:$('sHora').value, title:$('sTitulo').value,
       kind:$('sTipo').value, md_label:$('sMd').value, place:$('sLugar').value,
-      duration_min:$('sMin').value});
+      duration_min:$('sMin').value, color:$('sColor').value});
     btn.disabled = false;
 
     if(!r.ok){ toast(r.error || 'No se ha podido crear.', 'bad'); return; }
@@ -1258,16 +1620,20 @@ document.addEventListener('click', async e => {
     return;
   }
 
-  /* ── bloques ── */
+  /* ── bloques: añadir, quitar y mover son gestos explícitos, así que
+     guardan de inmediato, sin esperar al debounce del autoguardado ── */
   if(e.target.closest('[data-esqueleto]')){
-    D.bloques = ESQUELETO.map(b => ({...b}));
+    D.bloques = ESQUELETO.map(b => ({...b, ejercicios:[]}));
     pintarDetalle();
+    await guardarBloques();
     return;
   }
 
   if(e.target.closest('[data-add-bloque]')){
-    D.bloques = (D.bloques.length ? leerBloques() : []).concat({name:'', minutes:10, intensity:0});
+    D.bloques = (D.bloques.length ? leerBloques() : [])
+      .concat({name:'', block_type:'otro', location:'', minutes:10, intensity:0, ejercicios:[]});
     pintarDetalle();
+    await guardarBloques();
     return;
   }
 
@@ -1276,6 +1642,7 @@ document.addEventListener('click', async e => {
     const i = +quita.closest('[data-bl]').dataset.bl;
     D.bloques = leerBloques().filter((_, n) => n !== i);
     pintarDetalle();
+    await guardarBloques();
     return;
   }
 
@@ -1288,46 +1655,45 @@ document.addEventListener('click', async e => {
     [bl[i], bl[j]] = [bl[j], bl[i]];
     D.bloques = bl;
     pintarBloques();
+    await guardarBloques();
     return;
   }
 
-  if(e.target.closest('[data-guardar-bloques]')){
-    const btn = e.target.closest('[data-guardar-bloques]');
-    const bloques = leerBloques();
+  /* ── ejercicios de un bloque ── */
+  const addEj = e.target.closest('[data-add-ej]');
+  if(addEj){ await abrirDialogoEjercicio(+addEj.dataset.addEj); return; }
 
-    if(bloques.some(b => !b.name.trim())){
-      toast('Cada bloque necesita un nombre.', 'bad'); return;
-    }
-
-    btn.disabled = true;
-    const r = await post({action:'guardar_bloques', session_id:D.ses.id, bloques});
-    btn.disabled = false;
-
-    if(!r.ok){ toast(r.error || 'No se han podido guardar.', 'bad'); return; }
-
-    await cargarSesiones(true);
-    await abrir(D.ses.id);
-    toast(r.bloques
-      ? `${r.bloques} bloque${r.bloques === 1 ? '' : 's'} · ${r.minutos} min · ${fmt(r.carga)} UA`
-      : 'Sesión sin bloques');
+  const quitaEj = e.target.closest('[data-quitar-ej]');
+  if(quitaEj){
+    const id = +quitaEj.dataset.quitarEj;
+    const r = await post({action:'quitar_ejercicio_bloque', id});
+    if(!r.ok){ toast(r.error || 'No se ha podido quitar el ejercicio.', 'bad'); return; }
+    D.bloques.forEach(b => { b.ejercicios = (b.ejercicios || []).filter(x => x.id !== id); });
+    pintarBloques();
     return;
   }
 
-  /* ── ficha ── */
-  if(e.target.closest('[data-guardar-ficha]')){
-    const btn = e.target.closest('[data-guardar-ficha]');
-    btn.disabled = true;
-    const r = await post({action:'editar_sesion', session_id:D.ses.id,
-      date:$('eFecha').value, time:$('eHora').value, title:$('eTitulo').value,
-      kind:$('eTipo').value, md_label:$('eMd').value, place:$('eLugar').value,
-      duration_min:D.ses.duration_min});
-    btn.disabled = false;
+  const tab = e.target.closest('[data-ej-tab]');
+  if(tab){
+    document.querySelectorAll('[data-ej-tab]').forEach(b => b.setAttribute('aria-pressed', String(b === tab)));
+    const esNuevo = tab.dataset.ejTab === 'nuevo';
+    $('ejPanelBiblioteca').hidden = esNuevo;
+    $('ejPanelNuevo').hidden = !esNuevo;
+    $('btnCrearEjercicio').hidden = !esNuevo;
+    return;
+  }
 
-    if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
+  const usar = e.target.closest('[data-usar-ejercicio]');
+  if(usar){ await engancharEjercicio({exercise_id:+usar.dataset.usarEjercicio}); return; }
 
-    await cargarSesiones(true);
-    await abrir(D.ses.id);
-    toast('Sesión guardada');
+  if(e.target.closest('#btnCrearEjercicio')){
+    const nombre = $('ejNombre').value.trim();
+    if(!nombre){ toast('El ejercicio necesita un nombre.', 'bad'); return; }
+    await engancharEjercicio({
+      name:nombre, block_type:$('ejTipo').value, space:$('ejEspacio').value,
+      duration_min:$('ejMin').value, intensity:$('ejInt').value,
+      materials:$('ejMaterial').value, description:$('ejDesc').value,
+    });
     return;
   }
 
@@ -1398,10 +1764,24 @@ document.addEventListener('click', async e => {
 });
 
 document.addEventListener('input', e => {
-  if(e.target.closest('#bloques')) recalcular();
+  if(e.target.closest('#bloques')){ recalcular(); guardarBloquesDebounced(); }
+  if(e.target.closest('.ficha')){
+    if(e.target.id === 'eColor') colorTocado = true;
+    guardarFichaDebounced();
+  }
+  if(e.target.id === 'ejBuscar') cargarEjerciciosDebounced();
 });
 document.addEventListener('change', e => {
-  if(e.target.closest('#bloques')) recalcular();
+  if(e.target.closest('#bloques')){ recalcular(); guardarBloquesDebounced(); }
+  if(e.target.closest('.ficha')){
+    if(e.target.id === 'eColor') colorTocado = true;
+    guardarFichaDebounced();
+  }
+  /* Al elegir el tipo en «nueva sesión», el color propone el que ya
+     tiene ese tipo por defecto — y se puede cambiar antes de crearla. */
+  if(e.target.id === 'sTipo'){
+    $('sColor').value = D.colores[e.target.value] || COLOR_DEFECTO[e.target.value] || COLOR_DEFECTO.otro;
+  }
 });
 document.addEventListener('keydown', e => {
   if(e.key === 'Escape') document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
