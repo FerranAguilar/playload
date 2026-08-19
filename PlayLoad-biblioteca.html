@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PlayLoad · Calendario</title>
+<title>PlayLoad · Biblioteca de tareas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -21,8 +21,8 @@
 <script src="js/cuentas.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   PlayLoad · calendario
-   Mismos tokens Nocturne que el panel y el gestor de equipos.
+   PlayLoad · biblioteca de tareas
+   Mismos tokens Nocturne que el resto de la app.
    ═══════════════════════════════════════════════════════════════ */
 :root{
   --color-bg:#161826;
@@ -105,6 +105,7 @@ svg{display:block}
 .btn-icon:hover{color:var(--color-text);background:color-mix(in srgb,var(--color-text) 7%,transparent)}
 .btn-sm{font-size:13px;padding:4px 10px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn[hidden]{display:none}
 
 /* — inputs — */
 .input{width:100%;min-height:36px;padding:6px 10px;font:inherit;font-size:14px;
@@ -113,6 +114,8 @@ svg{display:block}
 .input::placeholder{color:var(--muted-2)}
 .input:hover{border-color:color-mix(in srgb,var(--color-text) 45%,transparent)}
 .input:focus-visible{border-color:var(--color-accent);outline-offset:0}
+.input:disabled{opacity:.6;cursor:default;background:color-mix(in srgb,var(--color-text) 4%,transparent)}
+textarea.input{min-height:78px;resize:vertical;line-height:1.45}
 select.input{appearance:none;padding-right:28px;
   background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
   background-position:calc(100% - 15px) 16px,calc(100% - 10px) 16px;background-size:5px 5px;background-repeat:no-repeat}
@@ -196,141 +199,91 @@ a.rail-top:hover{color:var(--color-accent)}
 .crumbs{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-width:0}
 .crumbs b{font-weight:400;color:var(--color-text)}
 .crumbs span.sep{color:var(--muted-2)}
-.crumb-escudo{width:20px;height:20px;border-radius:5px;object-fit:contain;background:#fff;
-  flex:none;border:1px solid var(--line)}
 .search{position:relative;margin-left:auto;width:min(280px,26vw)}
 .search .input{padding-left:32px;height:34px;min-height:34px}
 .search svg{position:absolute;left:10px;top:9px;width:15px;height:15px;color:var(--muted-2)}
-.dot-alert{position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;
-  background:var(--color-risk);box-shadow:0 0 0 2px var(--color-bg)}
 
 /* — contenido — */
 .content{padding:26px 30px 56px;display:flex;flex-direction:column;gap:22px}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-8);flex-wrap:wrap}
 .page-head h1{font-size:31px;letter-spacing:-.022em;margin:0 0 6px}
 .head-meta{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted);flex-wrap:wrap}
-.head-right{display:flex;align-items:center;gap:10px}
 
-/* ═══════════════ CALENDARIO SEMANAL ═══════════════
-   Lo primero de la página: siete columnas, una por día, con las
-   sesiones dentro y la carga del día al pie. */
-.cal-bar{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap;
-  padding:13px 18px;border-bottom:1px solid var(--hair)}
-.nav-week{display:flex;align-items:center;gap:4px}
-.nav-week .btn-icon{width:30px;height:30px}
-.week-title{display:flex;flex-direction:column;gap:1px;min-width:0}
-/* capitalize mayusculiza cada palabra y deja «10 – 16 De Agosto»; con
-   ::first-letter sube solo la primera, que es lo que pide el castellano. */
-.week-range{font-family:var(--font-heading);font-weight:500;font-size:16px;letter-spacing:-.015em;
-  line-height:1.2}
-.week-range::first-letter{text-transform:uppercase}
-.week-sub{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
-.cal-right{margin-left:auto;display:flex;align-items:center;gap:var(--space-6);flex-wrap:wrap}
-.cal-total{display:flex;flex-direction:column;align-items:flex-end;gap:1px;line-height:1.15}
-.cal-total b{font-family:var(--font-heading);font-weight:500;font-size:19px;letter-spacing:-.02em}
-.cal-total span{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
+/* ═══════════════ BIBLIOTECA ═══════════════
+   Lista de tareas a la izquierda, ficha de la elegida a la derecha —
+   igual de la cuenta que el resto de la app, no de un equipo: los
+   mismos ejercicios sirven en cualquiera de los equipos que se
+   gestionen. */
+.bib-wrap{display:grid;gap:16px;align-items:start;
+  grid-template-columns:minmax(300px,380px) minmax(0,1fr)}
+@media (max-width:1180px){ .bib-wrap{grid-template-columns:minmax(0,1fr)} }
 
-/* la rejilla: los huecos de 1px hacen de línea entre columnas */
-.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--hair)}
-.wday{background:var(--color-surface);display:flex;flex-direction:column;min-width:0}
-.wday.finde{background:color-mix(in srgb,var(--color-text) 2.5%,var(--color-surface))}
-.wday.hoy{background:color-mix(in srgb,var(--color-accent) 8%,var(--color-surface))}
-.wday-h{display:flex;align-items:baseline;gap:7px;padding:11px 12px 9px}
-.wday-w{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-2)}
-.wday-d{font-family:var(--font-heading);font-weight:500;font-size:15px;letter-spacing:-.02em;
-  color:color-mix(in srgb,var(--color-text) 80%,transparent)}
-.wday.hoy .wday-w,.wday.hoy .wday-d{color:var(--color-accent)}
-.wday-md{margin-left:auto;font-size:10.5px;font-family:var(--font-heading);color:var(--muted-2);
-  letter-spacing:.02em}
-.wday-b{flex:1;display:flex;flex-direction:column;gap:7px;padding:0 9px 9px;min-height:158px}
-.wday-f{display:flex;align-items:center;justify-content:space-between;gap:6px;
-  padding:8px 12px;border-top:1px solid var(--hair);font-size:10.5px;
-  letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
-.wday-f b{font-family:var(--font-heading);font-weight:500;font-size:13px;letter-spacing:-.01em;
-  text-transform:none;color:var(--muted)}
-.wday-f b.real{color:var(--color-text)}
+.filtros{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:12px 14px;border-bottom:1px solid var(--hair)}
+.filtro{padding:5px 10px;border-radius:20px;font-size:12px;cursor:pointer;
+  border:1px solid var(--color-divider);background:transparent;
+  color:color-mix(in srgb,var(--color-text) 74%,transparent);display:inline-flex;
+  align-items:center;gap:5px}
+.filtro:hover{border-color:var(--color-accent);color:var(--color-accent)}
+.filtro[aria-pressed="true"]{border-color:var(--color-accent);color:var(--color-accent);
+  background:color-mix(in srgb,var(--color-accent) 14%,transparent)}
+.filtro-punto{width:7px;height:7px;border-radius:50%;flex:none}
 
-/* tarjeta de sesión: la barra de la izquierda dice de qué tipo es */
-.ses{--k:var(--color-accent);
-  position:relative;display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;
-  padding:8px 9px 8px 11px;border:0;border-left:2px solid var(--k);cursor:pointer;
-  border-radius:var(--radius-sm);color:inherit;font:inherit;
-  background:color-mix(in srgb,var(--k) 11%,transparent);
-  transition:background .14s ease,transform .14s ease}
-.ses:hover{background:color-mix(in srgb,var(--k) 20%,transparent)}
-.ses.k-partido{--k:var(--color-warn)}
-.ses.k-recuperacion{--k:var(--color-ok)}
-.ses.k-descanso{--k:var(--color-neutral-600)}
-.ses-top{display:flex;align-items:center;gap:6px}
-.ses-h{font-size:11px;font-family:var(--font-heading);font-weight:500;color:var(--k);
-  font-variant-numeric:tabular-nums}
-.ses-md{margin-left:auto;font-size:10px;letter-spacing:.04em;padding:1px 5px;border-radius:20px;
-  background:color-mix(in srgb,var(--k) 22%,transparent);color:var(--k)}
-.ses-t{font-size:12.5px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ses-m{font-size:10.5px;color:var(--muted-2);line-height:1.35;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ses-l{display:flex;align-items:center;gap:5px;margin-top:2px;font-size:10.5px;color:var(--muted)}
-.ses-l .num{font-size:12px;color:color-mix(in srgb,var(--color-text) 80%,transparent)}
-.ses.plan .ses-l .num{color:var(--muted)}
-.ses-ok{width:12px;height:12px;flex:none;color:var(--color-ok)}
+.lista-tareas{display:flex;flex-direction:column;max-height:calc(100vh - 230px);overflow:auto}
+.tarea-it{--tipo:var(--color-accent);display:flex;align-items:center;gap:11px;padding:11px 14px;
+  width:100%;background:transparent;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer;
+  position:relative}
+.tarea-it+.tarea-it{border-top:1px solid var(--hair)}
+.tarea-it:hover{background:color-mix(in srgb,var(--color-text) 4%,transparent)}
+.tarea-it[aria-current="true"]{background:color-mix(in srgb,var(--tipo) 14%,transparent);
+  box-shadow:inset 2px 0 0 var(--tipo)}
+.tarea-ico{width:30px;height:30px;border-radius:9px;flex:none;display:flex;align-items:center;
+  justify-content:center;background:color-mix(in srgb,var(--tipo) 22%,transparent);color:var(--tipo)}
+.tarea-ico svg{width:15px;height:15px}
+.tarea-cuerpo{min-width:0;flex:1}
+.tarea-t{font-size:13.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tarea-m{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px;
+  font-size:11px;color:var(--muted-2);letter-spacing:.03em}
+.tarea-pz{flex:none;color:var(--color-accent);opacity:.8}
+.tarea-pz svg{width:14px;height:14px}
 
-/* el hueco para añadir: discreto, y se enseña al pasar por la columna */
-.add-slot{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:5px;
-  padding:6px;border:1px dashed transparent;border-radius:var(--radius-sm);
-  background:transparent;color:var(--muted-2);font:inherit;font-size:11.5px;cursor:pointer;
-  opacity:0;transition:opacity .14s ease,border-color .14s ease,color .14s ease}
-.wday:hover .add-slot,.add-slot:focus-visible{opacity:1;border-color:var(--color-neutral-800)}
-.add-slot:hover{color:var(--color-accent);border-color:var(--color-accent)}
-.wday-vacio{margin:auto 0;text-align:center;font-size:11.5px;color:var(--muted-2);
-  padding:10px 4px;line-height:1.45}
+/* — ficha de la tarea — */
+.det-head{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;
+  padding:22px 26px;border-bottom:1px solid var(--hair)}
+.det-head h2{font-size:24px;letter-spacing:-.02em;margin:0 0 6px}
+.det-acc{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@keyframes plAbre{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+#detalle .det-head,#detalle .ficha-tarea{animation:plAbre .22s ease both}
 
-/* leyenda de tipos */
-.leyenda{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
-.leyenda span{display:inline-flex;align-items:center;gap:6px}
-.leyenda i{width:9px;height:9px;border-radius:2px;display:inline-block}
+.ficha-tarea{display:grid;gap:12px;grid-template-columns:repeat(3,minmax(0,1fr));padding:20px 26px}
+.ficha-tarea .field-desc{grid-column:1 / -1}
+.ficha-tarea .field-mat{grid-column:1 / -1}
 
-/* ═══════════════ SEGUNDA FILA ═══════════════ */
-.row{display:grid;gap:16px;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+.pizarra-bloque{margin:0 26px 22px;padding:16px;border-radius:var(--radius-lg);
+  border:1px dashed var(--color-divider);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.pizarra-vacia{color:var(--muted);font-size:13px;flex:1;min-width:180px}
+.pizarra-preview{width:120px;height:78px;border-radius:9px;overflow:hidden;flex:none;
+  border:1px solid var(--color-divider)}
+.pizarra-preview svg{width:100%;height:100%;display:block}
+.pizarra-acc{display:flex;gap:8px;flex-wrap:wrap}
 
-/* próximas sesiones */
-.prox{display:flex;flex-direction:column}
-.prox-it{display:flex;align-items:center;gap:12px;padding:11px 18px;width:100%;
-  background:transparent;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.prox-it+.prox-it{border-top:1px solid var(--hair)}
-.prox-it:hover{background:color-mix(in srgb,var(--color-text) 4%,transparent)}
-.prox-f{width:46px;flex:none;display:flex;flex-direction:column;align-items:center;gap:0;
-  line-height:1.1}
-.prox-f b{font-family:var(--font-heading);font-weight:500;font-size:16px;letter-spacing:-.02em}
-.prox-f span{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
-.prox-bar{width:2px;align-self:stretch;border-radius:2px;flex:none;background:var(--k,var(--color-accent))}
-.prox-b{min-width:0;flex:1}
-.prox-t{font-size:13.5px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.prox-s{font-size:11.5px;color:var(--muted-2);margin-top:1px}
-.prox-l{margin-left:auto;text-align:right;font-size:10.5px;color:var(--muted-2);white-space:nowrap}
-.prox-l b{display:block;font-family:var(--font-heading);font-weight:500;font-size:13.5px;
-  color:var(--muted);letter-spacing:-.01em}
-
-/* mes en miniatura */
-.mes-bar{display:flex;align-items:center;gap:8px;padding:14px 18px 6px}
-.mes-nom{font-family:var(--font-heading);font-weight:500;font-size:14px;display:inline-block}
-.mes-nom::first-letter{text-transform:uppercase}
-.mes-nav{margin-left:auto;display:flex;gap:3px}
-.mes-nav .btn-icon{width:26px;height:26px}
-.mes{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:6px 14px 16px}
-.mes-w{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-2);
-  text-align:center;padding-bottom:4px}
-.mes-d{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-  border:0;background:transparent;border-radius:var(--radius-sm);cursor:pointer;
-  font:inherit;font-size:12px;color:color-mix(in srgb,var(--color-text) 78%,transparent);
-  font-variant-numeric:tabular-nums}
-.mes-d.fuera{color:var(--muted-2);opacity:.5}
-.mes-d:hover{background:color-mix(in srgb,var(--color-text) 8%,transparent)}
-.mes-d.hoy{color:var(--color-accent);font-family:var(--font-heading);font-weight:500}
-.mes-d.activa{background:color-mix(in srgb,var(--color-accent) 18%,transparent);
-  color:var(--color-accent-300)}
-.mes-d i{position:absolute;bottom:3px;width:3px;height:3px;border-radius:50%;
-  background:var(--color-accent)}
-.mes-d i.partido{background:var(--color-warn)}
+/* — responsive — */
+@media (max-width:1080px){
+  :root{--rail:64px}
+  .rail-top span:last-child,.club-text,.nav-item span,.nav-count,.me-text{display:none}
+  .rail-top,.nav,.rail-foot{padding-left:8px;padding-right:8px}
+  .club{margin:0 8px 4px;justify-content:center;padding:8px}
+  .nav-item{justify-content:center;padding:9px 0}
+  .nav-item[aria-current="page"]::before{left:-8px}
+  .nav-group{text-align:center;padding:0;font-size:9px;overflow:hidden;text-overflow:clip;opacity:.5}
+  .me{justify-content:center}
+  .content,.topbar{padding-left:18px;padding-right:18px}
+}
+@media (max-width:760px){
+  .search{display:none}
+  .page-head h1{font-size:26px}
+  .ficha-tarea{grid-template-columns:1fr}
+}
 
 /* — estado vacío — */
 .vacio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;
@@ -355,37 +308,22 @@ a.rail-top:hover{color:var(--color-accent)}
 .field{display:flex;flex-direction:column;gap:6px}
 .field>label{font-size:13px;color:var(--muted)}
 .p-sub{font-size:12.5px;color:var(--muted-2);margin:0}
+.dialog-xl{width:min(980px,97vw);max-height:94vh}
 
-/* — responsive — */
-@media (max-width:1320px){
-  .row{grid-template-columns:minmax(0,1fr)}
-}
-@media (max-width:1080px){
-  :root{--rail:64px}
-  .rail-top span:last-child,.club-text,.nav-item span,.nav-count,.me-text{display:none}
-  .rail-top,.nav,.rail-foot{padding-left:8px;padding-right:8px}
-  .club{margin:0 8px 4px;justify-content:center;padding:8px}
-  .nav-item{justify-content:center;padding:9px 0}
-  .nav-item[aria-current="page"]::before{left:-8px}
-  .nav-group{text-align:center;padding:0;font-size:9px;overflow:hidden;text-overflow:clip;opacity:.5}
-  .me{justify-content:center}
-  .content,.topbar{padding-left:18px;padding-right:18px}
-}
-@media (max-width:900px){
-  /* siete columnas no caben: la semana pasa a ser una lista de días */
-  .week{grid-template-columns:minmax(0,1fr)}
-  .wday{flex-direction:row;align-items:stretch;flex-wrap:wrap}
-  .wday-h{width:96px;flex:none;flex-direction:column;align-items:flex-start;gap:0;padding:12px}
-  .wday-md{margin-left:0}
-  .wday-b{min-height:0;padding:10px 12px;min-width:0;flex:1 1 200px}
-  .wday-f{width:100%;border-top:1px dashed var(--hair)}
-  .add-slot{opacity:1;border-color:var(--color-neutral-800)}
-}
-@media (max-width:760px){
-  .search{display:none}
-  .page-head h1{font-size:26px}
-  .grid-2{grid-template-columns:1fr}
-}
+/* — editor de pizarra — */
+.pz-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pz-equipos{display:flex;gap:5px;align-items:center}
+.pz-lienzo{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--color-divider);
+  background:#3f8a4d;line-height:0}
+.pz-svg{width:100%;height:auto;display:block;touch-action:none;cursor:crosshair}
+.pz-svg[data-herramienta="mover"]{cursor:default}
+.pz-el{cursor:pointer}
+.pz-el.pz-sel{filter:drop-shadow(0 0 3px #fff) drop-shadow(0 0 5px var(--color-accent))}
+.pz-sel-panel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;
+  border-radius:var(--radius-md);background:color-mix(in srgb,var(--color-accent) 10%,transparent);
+  border:1px solid color-mix(in srgb,var(--color-accent) 30%,var(--color-divider))}
+.pz-sel-panel[hidden]{display:none}
+.pz-sel-panel .input{width:auto;min-height:30px;padding:4px 8px;font-size:13px}
 
 /* ═══════════ TEMA CLARO ═══════════ */
 :root{ --input-bg:#191b26; --rail-bg:#0f111a; --sombra:0 20px 50px rgba(0,0,0,.55); }
@@ -487,6 +425,7 @@ body{transition:background .18s ease,color .18s ease}
 
 <div class="app">
 
+
   <!-- ══════════ BARRA LATERAL ══════════ -->
   <aside class="rail">
     <a class="rail-top" href="PlayLoad-dashboard.html" title="Ir al panel">
@@ -514,7 +453,7 @@ body{transition:background .18s ease,color .18s ease}
         <span>Equipos</span>
         <span class="nav-count" id="navEquipos">0</span>
       </a>
-      <a class="nav-item" href="PlayLoad-calendario.html" aria-current="page">
+      <a class="nav-item" href="PlayLoad-calendario.html">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="3.2" width="12" height="11" rx="2"/><path d="M2 6.6h12M5.4 1.6v3M10.6 1.6v3"/></svg>
         <span>Calendario</span>
       </a>
@@ -532,14 +471,15 @@ body{transition:background .18s ease,color .18s ease}
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="3" y="3" width="10" height="11" rx="2"/><path d="M6 2h4v2.6H6z" fill="none"/><path d="M6 8.4h4M6 11h2.6"/></svg>
         <span>Sesiones</span>
       </a>
-      <a class="nav-item" href="PlayLoad-biblioteca.html">
+      <a class="nav-item" href="PlayLoad-biblioteca.html" aria-current="page">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="3" width="4.2" height="4.2" rx="1"/><rect x="2" y="9" width="4.2" height="4.2" rx="1"/><path d="M8.4 5.1H14M8.4 11.1H14"/></svg>
         <span>Biblioteca de tareas</span>
+        <span class="nav-count" id="navTareas"></span>
       </a>
 
       <div class="nav-group">Equipo</div>
       <a class="nav-item" href="PlayLoad-equipos.html">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="6" cy="5.4" r="2.5"/><path d="M1.8 13.4c0-2.2 1.9-3.6 4.2-3.6s4.2 1.4 4.2 3.6"/><path d="M11 6.3a2.2 2.2 0 0 0 0-3.5M12.4 13.4c0-1.6-.6-2.7-1.6-3.3"/></svg>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="6" cy="5.4" r="2.5"/><path d="M1.8 13.4c0-2.2 1.9-3.6 4.2-3.6s4.2 1.4 4.2 3.6"/><path d="M11 9.6c1.6.3 2.8 1.3 2.8 2.7v1.1"/><circle cx="11.6" cy="5.6" r="1.9"/></svg>
         <span>Plantilla</span>
         <span class="nav-count" id="navPlantilla">0</span>
       </a>
@@ -606,189 +546,149 @@ body{transition:background .18s ease,color .18s ease}
     </div>
   </aside>
 
+
   <!-- ══════════ PRINCIPAL ══════════ -->
   <div class="main">
 
     <header class="topbar">
       <div class="crumbs">
-        <img id="crumbEscudo" class="crumb-escudo" style="display:none" alt="">
-        <a href="PlayLoad-equipos.html" style="color:var(--color-text)" id="crumbTeam">Equipos</a>
+        <a href="PlayLoad-equipos.html" style="color:var(--color-text)">Equipos</a>
         <span class="sep">/</span>
-        <b>Calendario</b>
+        <b>Biblioteca de tareas</b>
       </div>
 
       <div class="search">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7.2" cy="7.2" r="4.4"/><path d="m10.6 10.6 3 3"/></svg>
-        <input class="input" type="search" placeholder="Buscar sesión o partido…">
+        <input class="input" type="search" id="buscar" placeholder="Buscar tarea por nombre…">
       </div>
 
-      <button class="btn btn-icon" title="Avisos">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M4 6.6a4 4 0 0 1 8 0c0 3 .9 4.2 1.4 4.7H2.6C3.1 10.8 4 9.6 4 6.6z"/><path d="M6.6 13.2a1.6 1.6 0 0 0 2.8 0" stroke-linecap="round"/></svg>
-        <span class="dot-alert"></span>
-      </button>
-      <button class="btn btn-primary" data-nueva-sesion>
+      <button class="btn btn-primary" data-nueva-tarea>
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
-        Nueva sesión
+        Nueva tarea
       </button>
     </header>
 
     <main class="content">
 
-      <!-- encabezado -->
       <div class="page-head">
         <div>
-          <h1>Calendario</h1>
+          <h1>Biblioteca de tareas</h1>
           <div class="head-meta">
-            <span class="tag tag-outline"><span class="pulse"></span><span id="calEquipo">Sin equipo</span></span>
-            <span id="calSub">La semana de trabajo, día a día</span>
+            <span class="tag tag-outline"><span class="pulse"></span>De tu cuenta, para todos tus equipos</span>
+            <span id="bibCont"></span>
           </div>
-        </div>
-        <div class="head-right">
-          <select class="input" id="selEquipo" style="width:auto;min-width:170px" aria-label="Equipo"></select>
         </div>
       </div>
 
-      <!-- ═══ SEMANA · lo primero de la página ═══ -->
-      <section class="panel">
-        <div class="cal-bar">
-          <div class="nav-week">
-            <button class="btn btn-icon" data-semana="-1" title="Semana anterior" aria-label="Semana anterior">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.8 3.4 5.2 8l4.6 4.6"/></svg>
-            </button>
-            <button class="btn btn-secondary btn-sm" data-semana="0">Hoy</button>
-            <button class="btn btn-icon" data-semana="1" title="Semana siguiente" aria-label="Semana siguiente">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.4 10.8 8l-4.6 4.6"/></svg>
-            </button>
-          </div>
+      <section class="bib-wrap">
 
-          <div class="week-title">
-            <div class="week-range" id="weekRange">—</div>
-            <div class="week-sub" id="weekSub"></div>
-          </div>
-
-          <div class="cal-right">
-            <div class="leyenda">
-              <span><i style="background:var(--color-accent)"></i>Entrenamiento</span>
-              <span><i style="background:var(--color-warn)"></i>Partido</span>
-              <span><i style="background:var(--color-ok)"></i>Recuperación</span>
-              <span><i style="background:var(--color-neutral-600)"></i>Descanso</span>
-            </div>
-            <div class="cal-total">
-              <b class="num" id="weekLoad">—</b>
-              <span id="weekLoadPie">UA de la semana</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="week" id="week"></div>
-      </section>
-
-      <!-- ═══ segunda fila: lo que viene y el mes ═══ -->
-      <section class="row">
+        <!-- ─── izquierda: todas las tareas ─── -->
         <div class="panel">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Lo que viene después</div>
-              <div class="eyebrow" style="margin-top:4px">Próximas sesiones fuera de esta semana</div>
-            </div>
-          </div>
-          <div class="panel-body" id="proxBody" style="padding:0">
-            <div class="vacio" style="margin:18px;padding:34px 20px">
-              <h3>Nada programado todavía</h3>
-              <p>Lo que planifiques más allá de esta semana aparecerá aquí.</p>
+          <div class="filtros" id="filtrosTipo"></div>
+          <div class="lista-tareas" id="listaTareas"></div>
+        </div>
+
+        <!-- ─── derecha: la tarea elegida ─── -->
+        <div class="panel" id="detalle">
+          <div class="panel-body">
+            <div class="vacio">
+              <div class="vacio-ico">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M9 3h6v3H9zM9 12h6M9 16h4"/></svg>
+              </div>
+              <h3>Elige una tarea o crea una nueva</h3>
+              <p>Aquí se guardan las tareas que luego eliges dentro de una sesión, con su tipo,
+                 su duración y — si es de campo — su dibujo en la pizarra.</p>
+              <button class="btn btn-primary btn-sm" data-nueva-tarea>Nueva tarea</button>
             </div>
           </div>
         </div>
 
-        <div class="panel">
-          <div class="mes-bar">
-            <span class="mes-nom" id="mesNom">—</span>
-            <div class="mes-nav">
-              <button class="btn btn-icon" data-mes="-1" title="Mes anterior" aria-label="Mes anterior">
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.8 3.4 5.2 8l4.6 4.6"/></svg>
-              </button>
-              <button class="btn btn-icon" data-mes="1" title="Mes siguiente" aria-label="Mes siguiente">
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.4 10.8 8l-4.6 4.6"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="mes" id="mes"></div>
-          <div style="padding:0 18px 16px;font-size:11.5px;color:var(--muted-2)">
-            Pulsa un día para llevar la semana hasta ahí.
-          </div>
-        </div>
       </section>
 
     </main>
   </div>
 </div>
 
-<!-- ══════════ DIÁLOGOS ══════════ -->
-<div class="dialog-backdrop" id="dlgSes">
-  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgSesT">
+<!-- ══════════ DIÁLOGO: EDITOR DE PIZARRA ══════════ -->
+<div class="dialog-backdrop" id="dlgPizarra">
+  <div class="dialog dialog-xl" role="dialog" aria-modal="true" aria-labelledby="dlgPizarraT">
     <div>
-      <h2 id="dlgSesT">Nueva sesión</h2>
-      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgSesSub"></p>
+      <h2 id="dlgPizarraT">Editor de pizarra</h2>
+      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgPizarraSub"></p>
     </div>
-    <div class="grid-2">
-      <div class="field"><label for="sFecha">Fecha</label>
-        <input class="input" id="sFecha" type="date"></div>
-      <div class="field"><label for="sHora">Hora</label>
-        <input class="input" id="sHora" type="time" value="18:30"></div>
+
+    <div class="pz-tools">
+      <button class="filtro pz-tool" data-tool="mover" aria-pressed="true">↖ Mover</button>
+      <button class="filtro pz-tool" data-tool="cono" aria-pressed="false">▲ Cono</button>
+      <button class="filtro pz-tool" data-tool="pica" aria-pressed="false">▮ Pica</button>
+      <button class="filtro pz-tool" data-tool="jugador" aria-pressed="false">● Jugador</button>
+      <button class="filtro pz-tool" data-tool="balon" aria-pressed="false">○ Balón</button>
+      <button class="filtro pz-tool" data-tool="porteria" aria-pressed="false">▭ Portería</button>
+      <button class="filtro pz-tool" data-tool="flecha_mov" aria-pressed="false">→ Movimiento</button>
+      <button class="filtro pz-tool" data-tool="flecha_pase" aria-pressed="false">⇢ Pase</button>
+      <button class="filtro pz-tool" data-tool="zona" aria-pressed="false">▢ Zona</button>
+      <button class="filtro pz-tool" data-tool="texto" aria-pressed="false">Aa Texto</button>
+      <span class="pz-equipos" style="margin-left:auto">
+        <span class="eyebrow">Próximo jugador</span>
+        <button class="filtro pz-equipo" data-equipo="a" aria-pressed="true">Equipo A</button>
+        <button class="filtro pz-equipo" data-equipo="b" aria-pressed="false">Equipo B</button>
+        <button class="filtro pz-equipo" data-equipo="portero" aria-pressed="false">Portero</button>
+      </span>
+      <button class="btn btn-secondary btn-sm" id="pzVaciar">Vaciar pizarra</button>
     </div>
-    <div class="field"><label for="sTitulo">Título</label>
-      <input class="input" id="sTitulo" placeholder="Alta intensidad"></div>
-    <div class="grid-2">
-      <div class="field"><label for="sTipo">Tipo</label>
-        <select class="input" id="sTipo">
-          <option value="entrenamiento">Entrenamiento</option>
-          <option value="partido">Partido</option>
-          <option value="recuperacion">Recuperación</option>
-          <option value="descanso">Descanso</option>
-        </select></div>
-      <div class="field"><label for="sMd">Día del microciclo</label>
-        <input class="input" id="sMd" placeholder="MD-3"></div>
+
+    <div class="pz-sel-panel" id="pzSelPanel" hidden>
+      <span class="eyebrow" id="pzSelLabel"></span>
+      <span id="pzSelJugador" hidden style="display:flex;gap:6px;align-items:center">
+        <input class="input" id="pzSelNum" inputmode="numeric" style="width:56px" aria-label="Número del jugador">
+        <select class="input" id="pzSelEquipo" aria-label="Equipo del jugador">
+          <option value="a">Equipo A</option><option value="b">Equipo B</option><option value="portero">Portero</option>
+        </select>
+      </span>
+      <input class="input" id="pzSelTexto" hidden style="width:220px" aria-label="Texto de la etiqueta">
+      <button class="btn btn-secondary btn-sm" style="margin-left:auto" id="pzBorrarSel">Eliminar</button>
     </div>
-    <div class="grid-2">
-      <div class="field"><label for="sLugar">Lugar</label>
-        <input class="input" id="sLugar" placeholder="Ciudad deportiva"></div>
-      <div class="field"><label for="sMin">Duración (min)</label>
-        <input class="input" id="sMin" inputmode="numeric" value="90"></div>
+
+    <div class="pz-lienzo">
+      <svg id="pzCampo" class="pz-svg" viewBox="0 0 700 450" data-herramienta="mover">
+        <defs>
+          <marker id="pzFlecha" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#161822"/>
+          </marker>
+        </defs>
+        <rect x="0" y="0" width="700" height="450" fill="#4c9a5c"/>
+        <rect x="10" y="10" width="680" height="430" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+        <line x1="350" y1="10" x2="350" y2="440" stroke="#eaf5ea" stroke-width="2"/>
+        <circle cx="350" cy="225" r="55" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+        <circle cx="350" cy="225" r="2.5" fill="#eaf5ea"/>
+        <rect x="10" y="120" width="90" height="210" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+        <rect x="10" y="170" width="35" height="110" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+        <rect x="-4" y="195" width="14" height="60" fill="none" stroke="#eaf5ea" stroke-width="2.5"/>
+        <rect x="600" y="120" width="90" height="210" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+        <rect x="655" y="170" width="35" height="110" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+        <rect x="690" y="195" width="14" height="60" fill="none" stroke="#eaf5ea" stroke-width="2.5"/>
+        <g id="pzElems"></g>
+      </svg>
     </div>
-    <div class="field"><label for="sRpe">RPE previsto (1–10)</label>
-      <input class="input" id="sRpe" inputmode="numeric" placeholder="7"></div>
-    <p class="p-sub" id="sCarga"></p>
+
     <div class="dialog-actions">
       <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
-      <button class="btn btn-primary" data-crear-sesion>Crear sesión</button>
+      <button class="btn btn-primary" id="btnGuardarPizarra">Guardar diagrama</button>
     </div>
   </div>
 </div>
 
-<div class="dialog-backdrop" id="dlgCierre">
-  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgCierreT">
-    <div>
-      <h2 id="dlgCierreT">Cerrar la sesión</h2>
-      <p style="margin:8px 0 0;font-size:14px;color:var(--muted)" id="dlgCierreSub"></p>
-    </div>
-    <div class="grid-2">
-      <div class="field"><label for="cRpe">RPE medio del grupo (1–10)</label>
-        <input class="input" id="cRpe" inputmode="decimal" placeholder="7"></div>
-      <div class="field"><label for="cMin">Duración real (min)</label>
-        <input class="input" id="cMin" inputmode="numeric"></div>
-    </div>
-    <p class="p-sub" id="cCarga"></p>
-    <div class="dialog-actions">
-      <button class="btn btn-secondary" data-cerrar-dlg>Cancelar</button>
-      <button class="btn btn-primary" data-guardar-cierre>Guardar carga</button>
-    </div>
-  </div>
-</div>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════
-   Calendario · lee de api/app.php. Abierto con doble clic, sin
-   servidor, enseña la semana vacía: la vista de diseño.
+   Biblioteca de tareas · las tareas reutilizables con las que se
+   montan los bloques de una sesión, y el editor de pizarra con el
+   que se dibujan las de campo (conos, picas, jugadores, balones,
+   porterías, flechas y zonas).
+
+   Es de la cuenta, no de un equipo: el mismo entrenador con varios
+   equipos ve y reutiliza las mismas tareas en todos.
    ═══════════════════════════════════════════════════════════════ */
 const API  = 'api/';
 const DEMO = !/^https?:$/.test(location.protocol);
@@ -796,53 +696,34 @@ const DEMO = !/^https?:$/.test(location.protocol);
 const $   = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const ini = n => (n||'').trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || '··';
-const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 
-/* Fecha AAAA-MM-DD con la hora LOCAL. toISOString() pasa a UTC, y en
-   España eso devuelve el día anterior a partir de medianoche: colocaría
-   cada sesión un día antes en el calendario. */
-const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const dia      = s => new Date(s + 'T00:00:00');
-const suma     = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+/* El tipo de bloque tiene un color fijo, de la app: el mismo catálogo
+   que usa PlayLoad-sesiones.html, para que una tarea se vea igual
+   aquí y dentro de una sesión. */
+const BLOQUE_TIPOS = {
+  activacion:   {label:'Activación',   color:'#e0b168', icono:'M8 2.4v3M8 10.6v3M2.4 8h3M10.6 8h3M4.3 4.3l2 2M9.7 9.7l2 2M11.7 4.3l-2 2M6.3 9.7l-2 2'},
+  fisico:       {label:'Físico',       color:'#dd7a7a', icono:'M2.6 8h1.8l1.2-3.4L7.4 11 8.6 5l1.6 3h3.2'},
+  tecnico:      {label:'Técnico',      color:'#6ba3dd', icono:'M8 2.6a5.4 5.4 0 1 0 0 10.8A5.4 5.4 0 0 0 8 2.6ZM8 5.4v2.6l1.8 1.8'},
+  tactico:      {label:'Táctico',      color:'#8a7cd6', icono:'M2.6 12.4 8 3.6l5.4 8.8ZM8 3.6v8.8'},
+  posesion:     {label:'Posesión',     color:'#5cb8ac', icono:'M8 2.6a5.4 5.4 0 1 0 0 10.8A5.4 5.4 0 0 0 8 2.6ZM3 8h10M8 3v10'},
+  estrategia:   {label:'Estrategia',   color:'#d67bb0', icono:'M3 13.4V8.6L8 3l5 5.6v4.8ZM8 3v10.4'},
+  competicion:  {label:'Competición',  color:'#dd9a52', icono:'M4 2.6h8v3.2a4 4 0 0 1-8 0zM6 12.4h4M8 9.8v2.6M2.4 3.4h1.6v2.6a2 2 0 0 1-1.6-2ZM13.6 3.4H12v2.6a2 2 0 0 0 1.6-2Z'},
+  charla:       {label:'Charla / vídeo', color:'#7191c9', icono:'M2.6 3.4h10.8v6.6H6.2L3.4 12.4V10H2.6Z'},
+  vuelta_calma: {label:'Vuelta a la calma', color:'#6fbf82', icono:'M8 13.4S2.2 10 2.2 6.3A3.1 3.1 0 0 1 8 4.7a3.1 3.1 0 0 1 5.8 1.6c0 3.7-5.8 7.1-5.8 7.1z'},
+  otro:         {label:'Otro',         color:'#9397ab', icono:'M4 8h.01M8 8h.01M12 8h.01'},
+};
+const ESPACIOS = {'':'Sin definir', campo:'Campo', gimnasio:'Gimnasio', sala:'Sala',
+                   piscina:'Piscina', exterior:'Exterior', otro:'Otro'};
 
-/* El lunes de la semana de una fecha. getDay() cuenta desde el domingo;
-   aquí la semana empieza en lunes, como el microciclo. */
-const lunesDe = d => suma(d, -((d.getDay() + 6) % 7));
+let D = {teams:[], user:null, club:null, ejercicios:[], activo:null};
+let filtroTipo = 'todos';
+let busca = '';
 
-/* Semana ISO: la que se usa para numerar microciclos. */
-function semanaISO(d){
-  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  x.setDate(x.getDate() + 3 - ((x.getDay() + 6) % 7));
-  const enero4 = new Date(x.getFullYear(), 0, 4);
-  return 1 + Math.round(((x - enero4) / 86400000 - 3 + ((enero4.getDay() + 6) % 7)) / 7);
-}
-
-/* El idioma de la cuenta manda en cómo se escriben los días y los meses. */
-const LOC = {es:'es-ES', ca:'ca-ES', en:'en-GB'};
-function loc(){
-  let v = 'es';
-  try { v = localStorage.getItem('pl-locale') || 'es'; } catch(e){}
-  return LOC[v] || 'es-ES';
-}
-
-const TIPOS = {entrenamiento:'Entrenamiento', partido:'Partido',
-               recuperacion:'Recuperación', descanso:'Descanso'};
-
-let D = {teams:[], equipo:null, user:null, club:null, sesiones:[]};
-let ancla = lunesDe(new Date());   // lunes de la semana en pantalla
-let mesVista = new Date();         // mes del calendario en miniatura
-
-/* El `ok` de fetch dice que la respuesta llegó, no que la diera el API:
-   si PHP no llega a ejecutarse, o el hosting mete su propia página de
-   error, lo que baja es un 200 con algo que no es JSON. Solo vale como
-   buena una respuesta que traiga su propio `ok`; si no, la pantalla
-   acabaría leyendo `r.user` de un undefined y se quedaría en blanco. */
 function respuesta(status, b){
   return (b && typeof b.ok !== 'undefined')
     ? {status, ...b}
     : {status, ok:false, error:'El servidor no ha contestado como se esperaba.'};
 }
-
 async function get(qs){
   const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
   let b = null; try { b = await r.json(); } catch(e){}
@@ -873,195 +754,520 @@ function toast(msg, kind){
   toast.t = setTimeout(() => { t.style.opacity = '0'; }, 4000);
 }
 
-/* ── la semana ──────────────────────────────────────────────────
-   Siete columnas, una por día. Cada una lleva sus sesiones y, al
-   pie, la carga: prevista mientras no esté cerrada, real después. */
-function pintarSemana(){
-  const hoy = isoLocal(new Date());
-  const fin = suma(ancla, 6);
-  const L   = loc();
-
-  $('weekRange').textContent = rango(ancla, fin, L);
-  $('weekSub').textContent   = `Semana ${semanaISO(ancla)} · ${ancla.getFullYear()}`;
-
-  /* La carga del día y la de la semana cuentan lo real donde la sesión ya
-     está cerrada y lo previsto donde todavía no: media semana cerrada no
-     puede enseñar un total que se deja fuera lo que aún falta por hacer. */
-  let total = 0, cerradas = 0, cuantas = 0;
-
-  $('week').innerHTML = Array.from({length:7}, (_, i) => {
-    const d    = suma(ancla, i);
-    const f    = isoLocal(d);
-    const ses  = D.sesiones.filter(s => s.date === f);
-    const finde = i > 4;
-
-    let carga = 0, cerradasDia = 0;
-    ses.forEach(s => {
-      const hecha = s.status === 'realizada';
-      carga += (+(hecha ? s.actual_load : s.planned_load)) || 0;
-      if(hecha) cerradasDia++;
-    });
-    total += carga; cuantas += ses.length; cerradas += cerradasDia;
-    const todoCerrado = ses.length > 0 && cerradasDia === ses.length;
-
-    const md = ses.map(s => s.md_label).find(Boolean) || '';
-
-    return `<div class="wday ${f === hoy ? 'hoy' : ''} ${finde ? 'finde' : ''}">
-      <div class="wday-h">
-        <span class="wday-w">${d.toLocaleDateString(L, {weekday:'short'}).replace('.','')}</span>
-        <span class="wday-d">${d.getDate()}</span>
-        ${md ? `<span class="wday-md">${esc(md)}</span>` : ''}
-      </div>
-      <div class="wday-b">
-        ${ses.length ? ses.map(tarjeta).join('')
-                     : `<div class="wday-vacio">Sin sesión</div>`}
-        <button class="add-slot" data-nueva-sesion data-fecha="${f}"
-                title="Añadir sesión el ${d.toLocaleDateString(L,{day:'numeric',month:'long'})}">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
-          Añadir
-        </button>
-      </div>
-      <div class="wday-f">
-        <span>UA</span>
-        <b class="num ${todoCerrado ? 'real' : ''}">${carga ? fmt(carga) : '—'}</b>
-      </div>
-    </div>`;
-  }).join('');
-
-  const plural = `${cuantas} sesion${cuantas===1?'':'es'}`;
-  $('weekLoad').textContent = total ? fmt(total) : '—';
-  $('weekLoadPie').textContent =
-      !cuantas             ? 'Semana sin planificar'
-    : cerradas === cuantas ? `UA reales · ${plural}`
-    : cerradas             ? `UA · ${cerradas} de ${cuantas} cerradas`
-    :                        `UA previstas · ${plural}`;
+/* ── la lista de la izquierda ───────────────────────────────── */
+function tagsTarea(e){
+  const t = [];
+  if(e.duration_min) t.push(`<span>${e.duration_min}'</span>`);
+  if(e.intensity)     t.push(`<span>RPE ${e.intensity}</span>`);
+  if(e.space)          t.push(`<span>${esc(ESPACIOS[e.space] || e.space)}</span>`);
+  return t.join(' · ');
 }
 
-/* «11 – 17 de agosto» y, si la semana cambia de mes, «28 de julio – 3 de agosto» */
-function rango(a, b, L){
-  const mismoMes = a.getMonth() === b.getMonth();
-  const ini = a.toLocaleDateString(L, mismoMes ? {day:'numeric'} : {day:'numeric', month:'long'});
-  const fin = b.toLocaleDateString(L, {day:'numeric', month:'long'});
-  return `${ini} – ${fin}`;
+function coincide(e){
+  if(filtroTipo !== 'todos' && e.block_type !== filtroTipo) return false;
+  if(!busca) return true;
+  return e.name.toLowerCase().includes(busca);
 }
 
-function tarjeta(s){
-  const cerrada = s.status === 'realizada';
-  const carga   = cerrada ? s.actual_load : s.planned_load;
-  const pie     = [s.place, s.duration_min ? s.duration_min + ' min' : ''].filter(Boolean).join(' · ');
+function pintarFiltros(){
+  const caja = $('filtrosTipo');
+  const chip = (val, label, color) => `<button class="filtro" data-filtro-tipo="${val}"
+      aria-pressed="${filtroTipo === val}">${color ? `<span class="filtro-punto" style="background:${color}"></span>` : ''}${label}</button>`;
 
-  return `<button class="ses k-${esc(s.kind)} ${cerrada ? '' : 'plan'}"
-      data-sesion='${esc(JSON.stringify({id:s.id, min:s.duration_min, t:s.title, st:s.status}))}'>
-    <div class="ses-top">
-      <span class="ses-h">${s.time ? s.time.slice(0,5) : TIPOS[s.kind] || 'Sesión'}</span>
-      ${cerrada ? `<svg class="ses-ok" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 8.4 6.4 11.4 12.6 5"/></svg>` : ''}
-      ${s.md_label ? `<span class="ses-md">${esc(s.md_label)}</span>` : ''}
-    </div>
-    <div class="ses-t">${esc(s.title) || TIPOS[s.kind] || 'Sesión'}</div>
-    ${pie ? `<div class="ses-m">${esc(pie)}</div>` : ''}
-    ${carga ? `<div class="ses-l"><span class="num">${fmt(carga)}</span>
-        UA ${cerrada ? 'reales' : 'previstas'}</div>` : ''}
-  </button>`;
+  caja.innerHTML = chip('todos', 'Todos') +
+    Object.entries(BLOQUE_TIPOS).map(([k,v]) => chip(k, v.label, v.color)).join('');
 }
 
-/* ── lo que viene después de esta semana ────────────────────── */
-function pintarProximas(){
-  const L    = loc();
-  const fin  = isoLocal(suma(ancla, 6));
-  const lista = D.sesiones.filter(s => s.date > fin).slice(0, 6);
+function pintarLista(){
+  const caja = $('listaTareas');
+  const vis  = D.ejercicios.filter(coincide).sort((a,b) => a.name.localeCompare(b.name, 'es'));
 
-  if(!lista.length){
-    $('proxBody').innerHTML = `
-      <div class="vacio" style="margin:18px;padding:34px 20px">
-        <h3>Nada programado todavía</h3>
-        <p>Lo que planifiques más allá de esta semana aparecerá aquí.</p>
-        <button class="btn btn-secondary btn-sm" data-nueva-sesion>Planificar</button>
+  $('bibCont').textContent = D.ejercicios.length
+    ? `${vis.length} de ${D.ejercicios.length} tarea${D.ejercicios.length===1?'':'s'}` : '';
+  if($('navTareas')) $('navTareas').textContent = D.ejercicios.length || '';
+
+  if(!vis.length){
+    caja.innerHTML = `
+      <div class="vacio" style="margin:16px;padding:30px 18px">
+        <h3>${D.ejercicios.length ? 'Nada con ese filtro' : 'Ninguna tarea todavía'}</h3>
+        <p>${D.ejercicios.length
+             ? 'Prueba con otro tipo o borra la búsqueda.'
+             : 'Crea la primera tarea de tu biblioteca.'}</p>
+        ${D.ejercicios.length ? '' : '<button class="btn btn-primary btn-sm" data-nueva-tarea>Nueva tarea</button>'}
       </div>`;
     return;
   }
 
-  const tinte = {entrenamiento:'var(--color-accent)', partido:'var(--color-warn)',
-                 recuperacion:'var(--color-ok)', descanso:'var(--color-neutral-600)'};
-
-  $('proxBody').innerHTML = `<div class="prox">${lista.map(s => {
-    const d = dia(s.date);
-    return `<button class="prox-it" data-ir="${s.date}">
-      <span class="prox-f">
-        <b>${d.getDate()}</b>
-        <span>${d.toLocaleDateString(L, {month:'short'}).replace('.','')}</span>
+  caja.innerHTML = vis.map(e => {
+    const tipo = BLOQUE_TIPOS[e.block_type] || BLOQUE_TIPOS.otro;
+    const tags = tagsTarea(e);
+    return `<button class="tarea-it" data-abrir="${e.id}" style="--tipo:${tipo.color}"
+              aria-current="${D.activo && D.activo.id === e.id}">
+      <span class="tarea-ico">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"
+             stroke-linecap="round" stroke-linejoin="round"><path d="${tipo.icono}"/></svg>
       </span>
-      <span class="prox-bar" style="--k:${tinte[s.kind] || 'var(--color-accent)'}"></span>
-      <span class="prox-b">
-        <span class="prox-t" style="display:block">${esc(s.title) || TIPOS[s.kind] || 'Sesión'}</span>
-        <span class="prox-s" style="display:block">${d.toLocaleDateString(L, {weekday:'long'})}
-          ${s.time ? '· ' + s.time.slice(0,5) : ''}${s.place ? ' · ' + esc(s.place) : ''}</span>
+      <span class="tarea-cuerpo">
+        <span class="tarea-t">${esc(e.name)}</span>
+        <span class="tarea-m">${esc(tipo.label)}${tags ? ' · ' + tags : ''}</span>
       </span>
-      <span class="prox-l">
-        <b>${s.planned_load ? fmt(s.planned_load) : '—'}</b>
-        UA previstas
-      </span>
-    </button>`;
-  }).join('')}</div>`;
-}
-
-/* ── el mes en miniatura ────────────────────────────────────── */
-function pintarMes(){
-  const L      = loc();
-  const primero = new Date(mesVista.getFullYear(), mesVista.getMonth(), 1);
-  const inicio  = lunesDe(primero);
-  const hoy     = isoLocal(new Date());
-  const desde   = isoLocal(ancla), hasta = isoLocal(suma(ancla, 6));
-
-  $('mesNom').textContent = primero.toLocaleDateString(L, {month:'long', year:'numeric'});
-
-  const cabecera = Array.from({length:7}, (_, i) =>
-    `<div class="mes-w">${suma(inicio, i).toLocaleDateString(L, {weekday:'narrow'})}</div>`).join('');
-
-  const celdas = Array.from({length:42}, (_, i) => {
-    const d = suma(inicio, i);
-    const f = isoLocal(d);
-    const ses = D.sesiones.filter(s => s.date === f);
-    const fuera = d.getMonth() !== primero.getMonth();
-    const activa = f >= desde && f <= hasta;
-
-    return `<button class="mes-d ${fuera ? 'fuera' : ''} ${f === hoy ? 'hoy' : ''} ${activa ? 'activa' : ''}"
-        data-ir="${f}" aria-label="${d.toLocaleDateString(L, {day:'numeric', month:'long'})}">
-      ${d.getDate()}
-      ${ses.length ? `<i class="${ses.some(s => s.kind === 'partido') ? 'partido' : ''}"></i>` : ''}
+      ${e.diagram ? `<span class="tarea-pz" title="Tiene dibujo en la pizarra">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"
+             stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.4"/><circle cx="6" cy="7.5" r="1.3"/><path d="M2 11.5 6 8l2.5 2 2-1.5L14 11"/></svg>
+      </span>` : ''}
     </button>`;
   }).join('');
-
-  $('mes').innerHTML = cabecera + celdas;
 }
 
-/* ── datos ──────────────────────────────────────────────────────
-   Se pide una ventana amplia alrededor de la semana en pantalla: con
-   una sola petición se pintan la semana, el mes y lo que viene. */
-async function cargarSesiones(){
-  D.sesiones = [];
-  if(DEMO || !D.equipo){ pintar(); return; }
-
-  const desde = isoLocal(suma(lunesDe(new Date(Math.min(ancla, mesVista))), -14));
-  const hasta = isoLocal(suma(lunesDe(new Date(Math.max(ancla, mesVista))), 70));
-
-  const r = await get(`action=sesiones&team_id=${D.equipo.id}&desde=${desde}&hasta=${hasta}`)
-              .catch(() => null);
-  if(r && r.ok) D.sesiones = r.sesiones || [];
-  pintar();
+async function cargarEjercicios(){
+  D.ejercicios = [];
+  if(DEMO){ pintarLista(); return; }
+  const r = await get('action=ejercicios').catch(() => null);
+  if(r && r.ok) D.ejercicios = r.ejercicios || [];
+  pintarLista();
 }
 
-function pintar(){ pintarSemana(); pintarProximas(); pintarMes(); }
+/* ── la ficha de la derecha ─────────────────────────────────── */
+function leerFicha(){
+  return {
+    name:        $('tName').value,
+    block_type:  $('tTipo').value,
+    space:       $('tEspacio').value,
+    duration_min:$('tMin').value,
+    intensity:   $('tInt').value,
+    materials:   $('tMaterial').value,
+    description: $('tDesc').value,
+  };
+}
 
+function pizarraPreviewSVG(diagramJSON){
+  let elementos = [];
+  try { elementos = JSON.parse(diagramJSON) || []; } catch(e){}
+  return `<svg viewBox="0 0 700 450">${pzFondoInterior()}${pzElementosSVG(elementos)}</svg>`;
+}
+
+function pintarFicha(){
+  const caja = $('detalle');
+  const e = D.activo;
+
+  if(!e){
+    caja.innerHTML = `
+      <div class="panel-body">
+        <div class="vacio">
+          <div class="vacio-ico">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M9 3h6v3H9zM9 12h6M9 16h4"/></svg>
+          </div>
+          <h3>Elige una tarea o crea una nueva</h3>
+          <p>Aquí se guardan las tareas que luego eliges dentro de una sesión, con su tipo,
+             su duración y — si es de campo — su dibujo en la pizarra.</p>
+          <button class="btn btn-primary btn-sm" data-nueva-tarea>Nueva tarea</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const nueva = !e.id;
+
+  caja.innerHTML = `
+    <div class="det-head">
+      <div style="min-width:0;flex:1">
+        <h2>${nueva ? 'Nueva tarea' : esc(e.name) || 'Tarea'}</h2>
+        <div class="eyebrow">${nueva ? 'Todavía sin guardar' : 'De tu biblioteca'}</div>
+      </div>
+      <div class="det-acc">
+        ${nueva ? '' : '<button class="btn btn-secondary btn-sm" data-borrar-tarea>Borrar</button>'}
+        <button class="btn btn-primary btn-sm" data-guardar-tarea>Guardar</button>
+      </div>
+    </div>
+
+    <div class="ficha-tarea">
+      <div class="field" style="grid-column:span 2"><label for="tName">Nombre</label>
+        <input class="input" id="tName" value="${esc(e.name)}" placeholder="Rondo 4v2"></div>
+      <div class="field"><label for="tTipo">Tipo de bloque</label>
+        <select class="input" id="tTipo">
+          ${Object.entries(BLOQUE_TIPOS).map(([k,v]) =>
+            `<option value="${k}"${e.block_type === k ? ' selected' : ''}>${v.label}</option>`).join('')}
+        </select></div>
+      <div class="field"><label for="tEspacio">Espacio</label>
+        <select class="input" id="tEspacio">
+          ${Object.entries(ESPACIOS).map(([k,v]) =>
+            `<option value="${k}"${(e.space || '') === k ? ' selected' : ''}>${v}</option>`).join('')}
+        </select></div>
+      <div class="field"><label for="tMin">Minutos</label>
+        <input class="input" id="tMin" inputmode="numeric" value="${e.duration_min || ''}" placeholder="10"></div>
+      <div class="field"><label for="tInt">Intensidad (1–10)</label>
+        <input class="input" id="tInt" inputmode="numeric" value="${e.intensity || ''}" placeholder="6"></div>
+      <div class="field field-mat"><label for="tMaterial">Material necesario</label>
+        <input class="input" id="tMaterial" value="${esc(e.materials)}" placeholder="Conos, petos, balones…"></div>
+      <div class="field field-desc"><label for="tDesc">Descripción</label>
+        <textarea class="input" id="tDesc" placeholder="Cómo se juega, qué se pide…">${esc(e.description)}</textarea></div>
+    </div>
+
+    <div class="pizarra-bloque">
+      ${nueva ? `
+        <span class="pizarra-vacia">Guarda la tarea primero para poder abrir el editor de pizarra.</span>
+        <button class="btn btn-secondary btn-sm" disabled>Abrir editor de pizarra</button>
+      ` : e.diagram ? `
+        <span class="pizarra-preview">${pizarraPreviewSVG(e.diagram)}</span>
+        <span class="pizarra-vacia">Esta tarea tiene un dibujo en la pizarra.</span>
+        <span class="pizarra-acc">
+          <button class="btn btn-secondary btn-sm" data-abrir-pizarra>Editar pizarra</button>
+          <button class="btn btn-secondary btn-sm" data-quitar-pizarra>Quitar pizarra</button>
+        </span>
+      ` : `
+        <span class="pizarra-vacia">Todavía no tiene dibujo. Con el editor de pizarra puedes
+           montar la tarea con conos, picas, jugadores, balones, porterías, flechas y zonas.</span>
+        <button class="btn btn-secondary btn-sm" data-abrir-pizarra>Abrir editor de pizarra</button>
+      `}
+    </div>`;
+}
+
+function nuevaFicha(){
+  D.activo = {id:0, name:'', block_type:'otro', space:'', duration_min:null,
+              intensity:null, materials:'', description:'', diagram:null};
+  pintarFicha();
+  pintarLista();
+  $('tName') && $('tName').focus();
+}
+
+function abrirFicha(id){
+  D.activo = D.ejercicios.find(e => e.id === id) || null;
+  pintarFicha();
+  pintarLista();
+}
+
+async function guardarFicha(){
+  if(!D.activo) return;
+  if(DEMO){ toast('Sin servidor no se pueden guardar cambios: esta es la vista de diseño.'); return; }
+  const datos = leerFicha();
+  if(!datos.name.trim()){ toast('La tarea necesita un nombre.', 'bad'); return; }
+
+  const payload = {...datos};
+  if(D.activo.id){
+    payload.action = 'editar_ejercicio';
+    payload.exercise_id = D.activo.id;
+    payload.diagram = D.activo.diagram || '';
+  } else {
+    payload.action = 'crear_ejercicio';
+    payload.team_id = D.teams[0] ? D.teams[0].id : 0;
+  }
+
+  const r = await post(payload);
+  if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
+
+  if(D.activo.id){
+    Object.assign(D.activo, datos);
+    const item = D.ejercicios.find(x => x.id === D.activo.id);
+    if(item) Object.assign(item, datos);
+  } else {
+    D.activo = r.ejercicio;
+    D.ejercicios.push(r.ejercicio);
+  }
+
+  toast('Tarea guardada');
+  pintarLista();
+  pintarFicha();
+}
+
+async function borrarFicha(){
+  if(!D.activo || !D.activo.id) return;
+  if(DEMO){ toast('Sin servidor no se pueden borrar tareas: esta es la vista de diseño.'); return; }
+  if(!confirm(`¿Borrar «${D.activo.name}»? Los bloques que ya la tengan enganchada conservan ` +
+              'su nombre, pero deja de estar en la biblioteca.')) return;
+
+  const r = await post({action:'borrar_ejercicio', exercise_id:D.activo.id});
+  if(!r.ok){ toast(r.error || 'No se ha podido borrar.', 'bad'); return; }
+
+  D.ejercicios = D.ejercicios.filter(x => x.id !== D.activo.id);
+  D.activo = null;
+  pintarLista();
+  pintarFicha();
+  toast('Tarea borrada');
+}
+
+/* ── editor de pizarra ──────────────────────────────────────────
+   Coordenadas en % del lienzo (viewBox 700×450), para que el dibujo
+   no dependa de la resolución de quien lo mira. Piezas de punto se
+   colocan con un click; flechas y zonas se trazan arrastrando; el
+   texto pide su contenido con un prompt, igual de directo que el
+   resto de la app. */
+const PZ_PUNTOS = ['cono', 'pica', 'jugador', 'balon', 'porteria'];
+const PZ_LINEAS = ['flecha_mov', 'flecha_pase'];
+const PZ_COLOR_EQUIPO = {a:'#6ba3dd', b:'#dd7a7a', portero:'#e0b168'};
+
+let pzElementos   = [];
+let pzHerramienta = 'mover';
+let pzEquipo      = 'a';
+let pzSeleccion   = null;
+let pzArrastrando = null;
+let pzTrazo       = null;
+
+function pzFondoInterior(){
+  return `<rect x="0" y="0" width="700" height="450" fill="#4c9a5c"/>
+    <rect x="10" y="10" width="680" height="430" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+    <line x1="350" y1="10" x2="350" y2="440" stroke="#eaf5ea" stroke-width="2"/>
+    <circle cx="350" cy="225" r="55" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+    <circle cx="350" cy="225" r="2.5" fill="#eaf5ea"/>
+    <rect x="10" y="120" width="90" height="210" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+    <rect x="10" y="170" width="35" height="110" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+    <rect x="600" y="120" width="90" height="210" fill="none" stroke="#eaf5ea" stroke-width="2"/>
+    <rect x="655" y="170" width="35" height="110" fill="none" stroke="#eaf5ea" stroke-width="2"/>`;
+}
+
+function pzElementoSVG(el, i, sel){
+  const cls = 'pz-el' + (sel ? ' pz-sel' : '');
+  if(el.type === 'zona'){
+    const x = el.x/100*700, y = el.y/100*450, w = el.w/100*700, h = el.h/100*450;
+    return `<rect class="${cls}" data-i="${i}" x="${x}" y="${y}" width="${w}" height="${h}"
+              fill="color-mix(in srgb,#9184d9 20%,transparent)" stroke="#9184d9" stroke-width="2" stroke-dasharray="5 4"/>`;
+  }
+  if(el.type === 'flecha_mov' || el.type === 'flecha_pase'){
+    const x1=el.x1/100*700, y1=el.y1/100*450, x2=el.x2/100*700, y2=el.y2/100*450;
+    const dash = el.type === 'flecha_pase' ? ' stroke-dasharray="7 5"' : '';
+    return `<line class="${cls}" data-i="${i}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+              stroke="#161822" stroke-width="3" marker-end="url(#pzFlecha)"${dash}/>`;
+  }
+
+  const x = el.x/100*700, y = el.y/100*450;
+  if(el.type === 'cono'){
+    return `<g class="${cls}" data-i="${i}" transform="translate(${x},${y})">
+      <polygon points="-8,8 8,8 0,-10" fill="#e0863f" stroke="#7a3f14" stroke-width="1"/></g>`;
+  }
+  if(el.type === 'pica'){
+    return `<g class="${cls}" data-i="${i}" transform="translate(${x},${y})">
+      <rect x="-2.2" y="-20" width="4.4" height="20" fill="#d9b354"/>
+      <circle cy="-20" r="4.5" fill="#d9b354"/></g>`;
+  }
+  if(el.type === 'balon'){
+    return `<g class="${cls}" data-i="${i}" transform="translate(${x},${y})">
+      <circle r="7.5" fill="#f4f1e8" stroke="#333" stroke-width="1.2"/>
+      <path d="M0,-7.5 3.8,-2.2 2,4 -2,4 -3.8,-2.2Z" fill="none" stroke="#333" stroke-width=".9"/></g>`;
+  }
+  if(el.type === 'porteria'){
+    return `<g class="${cls}" data-i="${i}" transform="translate(${x},${y})">
+      <rect x="-15" y="-9" width="30" height="18" fill="none" stroke="#f3f5fe" stroke-width="3"/>
+      <path d="M-15,-9 -15,9 M15,-9 15,9" stroke="#f3f5fe" stroke-width="1.5" opacity=".6"/></g>`;
+  }
+  if(el.type === 'jugador'){
+    const col = PZ_COLOR_EQUIPO[el.equipo] || PZ_COLOR_EQUIPO.a;
+    return `<g class="${cls}" data-i="${i}" transform="translate(${x},${y})">
+      <circle r="12" fill="${col}" stroke="#161822" stroke-width="1.4"/>
+      <text text-anchor="middle" dominant-baseline="central" font-size="11.5" fill="#161822"
+            font-family="Inter,sans-serif" font-weight="700">${esc(el.num ?? '')}</text></g>`;
+  }
+  if(el.type === 'texto'){
+    return `<g class="${cls}" data-i="${i}" transform="translate(${x},${y})">
+      <text font-size="15" fill="#161822" font-family="Inter,sans-serif" font-weight="600"
+            style="paint-order:stroke;stroke:#f4f1e8;stroke-width:4px;stroke-linejoin:round">${esc(el.text)}</text></g>`;
+  }
+  return '';
+}
+
+function pzElementosSVG(elementos){
+  return (elementos || []).map((el, i) => pzElementoSVG(el, i, false)).join('');
+}
+
+function pzSiguienteNumero(equipo){
+  const usados = pzElementos.filter(e => e.type === 'jugador' && e.equipo === equipo).map(e => +e.num || 0);
+  return (usados.length ? Math.max(...usados) : 0) + 1;
+}
+
+function pzRenderSeleccion(){
+  const panel = $('pzSelPanel');
+  const el = pzSeleccion !== null ? pzElementos[pzSeleccion] : null;
+
+  $('pzSelJugador').hidden = !el || el.type !== 'jugador';
+  $('pzSelTexto').hidden   = !el || el.type !== 'texto';
+
+  if(!el){ panel.hidden = true; return; }
+  panel.hidden = false;
+
+  const etiquetas = {cono:'Cono', pica:'Pica', jugador:'Jugador', balon:'Balón',
+    porteria:'Portería', flecha_mov:'Flecha de movimiento', flecha_pase:'Flecha de pase',
+    zona:'Zona', texto:'Texto'};
+  $('pzSelLabel').textContent = etiquetas[el.type] || el.type;
+
+  if(el.type === 'jugador'){
+    $('pzSelNum').value = el.num ?? '';
+    $('pzSelEquipo').value = el.equipo || 'a';
+  }
+  if(el.type === 'texto'){
+    $('pzSelTexto').value = el.text || '';
+  }
+}
+
+function pzRender(){
+  $('pzElems').innerHTML = pzElementos.map((el, i) =>
+    pzElementoSVG(el, i, i === pzSeleccion)).join('');
+  pzRenderSeleccion();
+}
+
+/* Punto del click/touch en coordenadas del viewBox (0–700 × 0–450),
+   pase lo que pase con el tamaño real en pantalla del SVG. */
+function pzPunto(evt){
+  const svg = $('pzCampo');
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return {x: Math.max(0, Math.min(100, p.x / 700 * 100)), y: Math.max(0, Math.min(100, p.y / 450 * 100))};
+}
+
+function pzAbrir(){
+  if(!D.activo || !D.activo.id){ toast('Guarda la tarea antes de abrir la pizarra.', 'bad'); return; }
+
+  pzElementos = [];
+  if(D.activo.diagram){ try { pzElementos = JSON.parse(D.activo.diagram) || []; } catch(e){} }
+  pzHerramienta = 'mover';
+  pzEquipo = 'a';
+  pzSeleccion = null;
+  pzArrastrando = null;
+  pzTrazo = null;
+
+  document.querySelectorAll('.pz-tool').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.tool === 'mover')));
+  document.querySelectorAll('.pz-equipo').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.equipo === 'a')));
+  $('pzCampo').dataset.herramienta = 'mover';
+
+  $('dlgPizarraSub').textContent = D.activo.name || 'Tarea';
+  pzRender();
+  $('dlgPizarra').classList.add('open');
+}
+
+async function pzGuardar(){
+  if(!D.activo || !D.activo.id) return;
+  if(DEMO){ toast('Sin servidor no se puede guardar la pizarra: esta es la vista de diseño.'); return; }
+  const btn = $('btnGuardarPizarra');
+  btn.disabled = true;
+
+  const datos = leerFicha();
+  const r = await post({action:'editar_ejercicio', exercise_id:D.activo.id, ...datos,
+    diagram: JSON.stringify(pzElementos)});
+  btn.disabled = false;
+
+  if(!r.ok){ toast(r.error || 'No se ha podido guardar el dibujo.', 'bad'); return; }
+
+  const diagramJSON = JSON.stringify(pzElementos);
+  Object.assign(D.activo, datos, {diagram: diagramJSON});
+  const item = D.ejercicios.find(x => x.id === D.activo.id);
+  if(item) Object.assign(item, datos, {diagram: diagramJSON});
+
+  $('dlgPizarra').classList.remove('open');
+  pintarLista();
+  pintarFicha();
+  toast('Pizarra guardada');
+}
+
+async function pzQuitar(){
+  if(!D.activo || !D.activo.id) return;
+  if(DEMO){ toast('Sin servidor no se puede quitar la pizarra: esta es la vista de diseño.'); return; }
+  if(!confirm('¿Quitar el dibujo de la pizarra de esta tarea?')) return;
+
+  const datos = leerFicha();
+  const r = await post({action:'editar_ejercicio', exercise_id:D.activo.id, ...datos, diagram:''});
+  if(!r.ok){ toast(r.error || 'No se ha podido quitar.', 'bad'); return; }
+
+  Object.assign(D.activo, datos, {diagram:null});
+  const item = D.ejercicios.find(x => x.id === D.activo.id);
+  if(item) Object.assign(item, datos, {diagram:null});
+  pintarLista();
+  pintarFicha();
+  toast('Pizarra quitada');
+}
+
+$('pzCampo').addEventListener('pointerdown', e => {
+  const p = pzPunto(e);
+  const grupo = e.target.closest('.pz-el');
+
+  if(pzHerramienta === 'mover'){
+    pzSeleccion = grupo ? +grupo.dataset.i : null;
+    pzArrastrando = grupo && (pzElementos[+grupo.dataset.i].type !== 'zona'
+      && !PZ_LINEAS.includes(pzElementos[+grupo.dataset.i].type)) ? +grupo.dataset.i : null;
+    pzRender();
+    return;
+  }
+
+  if(PZ_PUNTOS.includes(pzHerramienta)){
+    const el = {type: pzHerramienta, x:p.x, y:p.y};
+    if(pzHerramienta === 'jugador'){ el.equipo = pzEquipo; el.num = pzSiguienteNumero(pzEquipo); }
+    pzElementos.push(el);
+    pzSeleccion = pzElementos.length - 1;
+    pzRender();
+    return;
+  }
+
+  if(pzHerramienta === 'texto'){
+    const texto = prompt('Texto de la etiqueta:');
+    if(texto && texto.trim()){
+      pzElementos.push({type:'texto', x:p.x, y:p.y, text:texto.trim().slice(0, 60)});
+      pzSeleccion = pzElementos.length - 1;
+      pzRender();
+    }
+    return;
+  }
+
+  // flecha_mov, flecha_pase, zona: se trazan arrastrando
+  pzTrazo = {type: pzHerramienta, x1:p.x, y1:p.y, x2:p.x, y2:p.y};
+});
+
+$('pzCampo').addEventListener('pointermove', e => {
+  if(pzArrastrando !== null){
+    const p = pzPunto(e);
+    pzElementos[pzArrastrando].x = p.x;
+    pzElementos[pzArrastrando].y = p.y;
+    pzRender();
+    return;
+  }
+  if(pzTrazo){
+    const p = pzPunto(e);
+    pzTrazo.x2 = p.x; pzTrazo.y2 = p.y;
+    $('pzElems').innerHTML = pzElementos.map((el, i) => pzElementoSVG(el, i, i === pzSeleccion)).join('') +
+      pzElementoSVG(pzTrazo.type === 'zona'
+        ? {type:'zona', x:Math.min(pzTrazo.x1,pzTrazo.x2), y:Math.min(pzTrazo.y1,pzTrazo.y2),
+           w:Math.abs(pzTrazo.x2-pzTrazo.x1), h:Math.abs(pzTrazo.y2-pzTrazo.y1)}
+        : pzTrazo, -1, false);
+  }
+});
+
+$('pzCampo').addEventListener('pointerup', () => {
+  if(pzArrastrando !== null){ pzArrastrando = null; return; }
+  if(!pzTrazo) return;
+
+  const t = pzTrazo; pzTrazo = null;
+  const dist = Math.hypot(t.x2 - t.x1, t.y2 - t.y1);
+  if(dist < 1.5){ pzRender(); return; }   // trazo demasiado corto: no cuenta
+
+  if(t.type === 'zona'){
+    pzElementos.push({type:'zona', x:Math.min(t.x1,t.x2), y:Math.min(t.y1,t.y2),
+      w:Math.abs(t.x2-t.x1), h:Math.abs(t.y2-t.y1)});
+  } else {
+    pzElementos.push({type:t.type, x1:t.x1, y1:t.y1, x2:t.x2, y2:t.y2});
+  }
+  pzSeleccion = pzElementos.length - 1;
+  pzRender();
+});
+
+document.addEventListener('keydown', e => {
+  if((e.key === 'Delete' || e.key === 'Backspace') && pzSeleccion !== null &&
+     $('dlgPizarra').classList.contains('open') &&
+     document.activeElement && !['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)){
+    e.preventDefault();
+    pzElementos.splice(pzSeleccion, 1);
+    pzSeleccion = null;
+    pzRender();
+  }
+});
+
+/* ── carga ──────────────────────────────────────────────────── */
 async function cargar(){
-  /* La semana se dibuja siempre, antes de saber nada de la cuenta: aunque
-     el servidor no conteste, el calendario está ahí y se puede navegar. */
-  pintar();
+  pintarFiltros();
+  pintarLista();
 
   if(DEMO){
     $('clubName').textContent = 'Tu cuenta';
     $('clubSub').textContent  = 'Vista sin servidor';
     $('meName').textContent   = 'Invitado';
-    $('selEquipo').innerHTML  = '<option>Sin equipos</option>';
     return;
   }
 
@@ -1069,21 +1275,13 @@ async function cargar(){
   if(!r){ window.plCuenta && plCuenta.mostrar(); return; }
   if(r.status === 401){ location.href = 'acceso.html'; return; }
 
-  /* `ok` puede venir de fetch y no del API: si la respuesta no es el JSON
-     que se espera, se sigue con el calendario vacío en vez de romperse. */
-  if(!r.ok || !r.user){
-    window.plCuenta && plCuenta.mostrar();
-    $('calSub').textContent = 'No se ha podido leer la cuenta';
-    return;
-  }
+  if(!r.ok || !r.user){ window.plCuenta && plCuenta.mostrar(); return; }
 
-  /* El calendario del club está en su propia pantalla, y de solo lectura. */
   if(window.plCuenta) plCuenta.marcar(r.user.type);
   if(r.user.type === 'club') return;
 
   D.user = r.user; D.club = r.club; D.teams = r.teams || [];
 
-  /* el tema y el idioma guardados en la cuenta mandan sobre los del navegador */
   if(window.plSyncPrefs) window.plSyncPrefs(r.user.theme, r.user.locale);
 
   const jugadores = D.teams.reduce((a,t) => a + t.players, 0);
@@ -1095,193 +1293,94 @@ async function cargar(){
     ? `<img src="${esc(r.club.badge_url)}?v=${Date.now()}" alt="Escudo de ${esc(r.club.name)}">`
     : esc(ini(r.club ? r.club.name : r.user.name));
   $('meName').textContent    = r.user.name || r.user.email;
-  $('meRole').textContent    = r.user.role || (r.user.type === 'club' ? 'Club' : 'Profesional');
-  $('meAvatar').textContent  = ini(r.user.name || r.user.email);
-  $('navEquipos').textContent   = D.teams.length;
-  $('navPlantilla').textContent = jugadores;
+  $('meRole').textContent    = r.user.role || 'Profesional';
+  if($('meAvatar'))     $('meAvatar').textContent     = ini(r.user.name || r.user.email);
+  if($('navPlantilla')) $('navPlantilla').textContent = jugadores;
 
-  if(!D.teams.length){
-    $('selEquipo').innerHTML = '<option>Sin equipos</option>';
-    $('calEquipo').textContent = 'Sin equipo';
-    $('calSub').textContent = 'Crea un equipo y su semana se dibujará aquí';
-    pintar();
-    return;
-  }
-
-  $('selEquipo').innerHTML = D.teams.map(t =>
-    `<option value="${t.id}">${esc(t.name)}</option>`).join('');
-
-  D.equipo = D.teams[0];
-  $('selEquipo').value = D.equipo.id;
-  $('crumbTeam').textContent = D.equipo.name;
-  $('calEquipo').textContent = D.equipo.name;
-  $('calSub').textContent    = `${D.equipo.category || 'Equipo'} · ${D.equipo.players} jugador${D.equipo.players===1?'':'es'}`;
-  pintarCrumbEscudo();
-
-  await cargarSesiones();
-}
-
-/* El escudo del club del equipo seleccionado, no el de la cuenta: un
-   entrenador de staff ve el del club aunque no sea el suyo. */
-function pintarCrumbEscudo(){
-  const crumb = $('crumbEscudo');
-  if(D.equipo.club_badge_url){
-    crumb.src = `${D.equipo.club_badge_url}?v=${Date.now()}`;
-    crumb.alt = `Escudo de ${D.equipo.club_name || 'el club'}`;
-    crumb.style.display = '';
-  } else {
-    crumb.style.display = 'none';
-  }
+  await cargarEjercicios();
 }
 
 /* ── interacción ────────────────────────────────────────────── */
-$('selEquipo').addEventListener('change', async e => {
-  D.equipo = D.teams.find(t => String(t.id) === e.target.value) || D.equipo;
-  if(!D.equipo) return;
-  $('crumbTeam').textContent = D.equipo.name;
-  $('calEquipo').textContent = D.equipo.name;
-  $('calSub').textContent    = `${D.equipo.category || 'Equipo'} · ${D.equipo.players} jugador${D.equipo.players===1?'':'es'}`;
-  pintarCrumbEscudo();
-  await cargarSesiones();
-});
+$('buscar').addEventListener('input', e => { busca = e.target.value.trim().toLowerCase(); pintarLista(); });
 
 document.addEventListener('click', async e => {
 
-  /* navegación por semanas */
-  const sem = e.target.closest('[data-semana]');
-  if(sem){
-    const p = +sem.dataset.semana;
-    ancla = p ? suma(ancla, p * 7) : lunesDe(new Date());
-    mesVista = new Date(ancla.getFullYear(), ancla.getMonth(), 1);
-    await cargarSesiones();
-    return;
-  }
-
-  /* navegación por meses en la miniatura */
-  const mes = e.target.closest('[data-mes]');
-  if(mes){
-    mesVista = new Date(mesVista.getFullYear(), mesVista.getMonth() + (+mes.dataset.mes), 1);
-    await cargarSesiones();
-    return;
-  }
-
-  /* saltar a la semana de un día concreto */
-  const ir = e.target.closest('[data-ir]');
-  if(ir){
-    ancla = lunesDe(dia(ir.dataset.ir));
-    mesVista = new Date(ancla.getFullYear(), ancla.getMonth(), 1);
-    await cargarSesiones();
-    return;
-  }
-
-  /* nueva sesión — desde la barra o desde el hueco de un día */
-  const nueva = e.target.closest('[data-nueva-sesion]');
-  if(nueva){
-    if(DEMO){ toast('Sin servidor no se pueden crear sesiones: esta es la vista de diseño.'); return; }
-    if(!D.equipo){ toast('Primero crea un equipo.', 'bad'); return; }
-
-    $('dlgSesSub').textContent = D.equipo.name;
-    $('sFecha').value = nueva.dataset.fecha || isoLocal(new Date());
-    $('dlgSes').classList.add('open');
-    $('sTitulo').focus();
-    calcularCarga();
-    return;
-  }
-
-  if(e.target.closest('[data-cerrar-dlg]') || e.target.id === 'dlgSes' || e.target.id === 'dlgCierre'){
+  if(e.target.closest('[data-cerrar-dlg]') || e.target.classList.contains('dialog-backdrop')){
     document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
     return;
   }
 
-  if(e.target.closest('[data-crear-sesion]')){
-    const btn = e.target.closest('[data-crear-sesion]');
-    btn.disabled = true;
-    const r = await post({action:'crear_sesion', team_id:D.equipo.id,
-      date:$('sFecha').value, time:$('sHora').value, title:$('sTitulo').value,
-      kind:$('sTipo').value, md_label:$('sMd').value, place:$('sLugar').value,
-      duration_min:$('sMin').value, planned_rpe:$('sRpe').value});
-    btn.disabled = false;
+  const filt = e.target.closest('[data-filtro-tipo]');
+  if(filt){ filtroTipo = filt.dataset.filtroTipo; pintarFiltros(); pintarLista(); return; }
 
-    if(r.ok){
-      $('dlgSes').classList.remove('open');
-      $('sTitulo').value = ''; $('sMd').value = ''; $('sLugar').value = '';
-      /* la semana salta a donde se ha creado, para verla al momento */
-      ancla = lunesDe(dia($('sFecha').value));
-      await cargarSesiones();
-      toast('Sesión creada');
-    } else toast(r.error || 'No se ha podido crear.', 'bad');
+  const abre = e.target.closest('[data-abrir]');
+  if(abre){ abrirFicha(+abre.dataset.abrir); return; }
+
+  if(e.target.closest('[data-nueva-tarea]')){
+    if(DEMO){ toast('Sin servidor no se pueden crear tareas: esta es la vista de diseño.'); return; }
+    nuevaFicha();
     return;
   }
 
-  /* una sesión planificada se cierra con el RPE del grupo; una ya
-     cerrada no tiene nada que cerrar, así que se abre su ficha, que es
-     donde se ve por dentro y se puede volver a usar */
-  const card = e.target.closest('[data-sesion]');
-  if(card){
-    const s = JSON.parse(card.dataset.sesion);
-    if(s.st === 'realizada'){ location.href = 'PlayLoad-sesiones.html?sesion=' + s.id; return; }
+  if(e.target.closest('[data-guardar-tarea]')){ await guardarFicha(); return; }
+  if(e.target.closest('[data-borrar-tarea]')){ await borrarFicha(); return; }
+  if(e.target.closest('[data-abrir-pizarra]')){ pzAbrir(); return; }
+  if(e.target.closest('[data-quitar-pizarra]')){ await pzQuitar(); return; }
+  if(e.target.closest('#btnGuardarPizarra')){ await pzGuardar(); return; }
 
-    $('dlgCierre').dataset.id = s.id;
-    $('dlgCierreSub').textContent = s.t || 'Sesión';
-    $('cMin').value = s.min;
-    $('cRpe').value = '';
-    $('cCarga').textContent = '';
-    $('dlgCierre').classList.add('open');
-    $('cRpe').focus();
+  const tool = e.target.closest('.pz-tool');
+  if(tool){
+    pzHerramienta = tool.dataset.tool;
+    document.querySelectorAll('.pz-tool').forEach(b => b.setAttribute('aria-pressed', String(b === tool)));
+    $('pzCampo').dataset.herramienta = pzHerramienta;
     return;
   }
 
-  if(e.target.closest('[data-guardar-cierre]')){
-    const btn = e.target.closest('[data-guardar-cierre]');
-    btn.disabled = true;
-    const r = await post({action:'cerrar_sesion', session_id:+$('dlgCierre').dataset.id,
-      actual_rpe:$('cRpe').value, duration_min:$('cMin').value});
-    btn.disabled = false;
+  const equipoBtn = e.target.closest('.pz-equipo');
+  if(equipoBtn){
+    pzEquipo = equipoBtn.dataset.equipo;
+    document.querySelectorAll('.pz-equipo').forEach(b => b.setAttribute('aria-pressed', String(b === equipoBtn)));
+    return;
+  }
 
-    if(r.ok){
-      $('dlgCierre').classList.remove('open');
-      await cargarSesiones();
-      toast('Carga registrada: ' + fmt(r.carga) + ' UA');
-    } else toast(r.error || 'No se ha podido guardar.', 'bad');
+  if(e.target.closest('#pzVaciar')){
+    if(pzElementos.length && !confirm('¿Vaciar toda la pizarra?')) return;
+    pzElementos = [];
+    pzSeleccion = null;
+    pzRender();
+    return;
+  }
+
+  if(e.target.closest('#pzBorrarSel')){
+    if(pzSeleccion === null) return;
+    pzElementos.splice(pzSeleccion, 1);
+    pzSeleccion = null;
+    pzRender();
   }
 });
 
-/* la carga estimada se ve mientras se escribe: enseña la fórmula */
-function calcularCarga(){
-  const min = +$('sMin').value || 0, rpe = +$('sRpe').value || 0;
-  $('sCarga').textContent = (min && rpe)
-    ? `Carga prevista: ${fmt(min * rpe)} UA  (${rpe} de RPE × ${min} min)`
-    : 'Escribe duración y RPE para ver la carga prevista.';
-}
 document.addEventListener('input', e => {
-  if(e.target.id === 'sMin' || e.target.id === 'sRpe') calcularCarga();
-  if(e.target.id === 'cMin' || e.target.id === 'cRpe'){
-    const min = +$('cMin').value || 0, rpe = parseFloat(($('cRpe').value||'').replace(',','.')) || 0;
-    $('cCarga').textContent = (min && rpe) ? `Carga real: ${fmt(min * rpe)} UA` : '';
+  if(e.target.id === 'pzSelNum' && pzSeleccion !== null){
+    pzElementos[pzSeleccion].num = e.target.value;
+    pzRender();
+  }
+  if(e.target.id === 'pzSelTexto' && pzSeleccion !== null){
+    pzElementos[pzSeleccion].text = e.target.value;
+    pzRender();
+  }
+});
+document.addEventListener('change', e => {
+  if(e.target.id === 'pzSelEquipo' && pzSeleccion !== null){
+    pzElementos[pzSeleccion].equipo = e.target.value;
+    pzRender();
   }
 });
 
-/* las flechas mueven la semana, como en cualquier calendario */
-document.addEventListener('keydown', async e => {
-  if(e.key === 'Escape'){
-    document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
-    return;
-  }
-  if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
-  if(document.querySelector('.dialog-backdrop.open')) return;
-
-  if(e.key === 'ArrowLeft' || e.key === 'ArrowRight'){
-    ancla = suma(ancla, e.key === 'ArrowLeft' ? -7 : 7);
-    mesVista = new Date(ancla.getFullYear(), ancla.getMonth(), 1);
-    await cargarSesiones();
-  }
-});
-
-/* si cambia el idioma desde el menú de la cuenta, se repinta */
-document.addEventListener('pl-prefs', pintar);
+document.addEventListener('pl-prefs', () => { pintarLista(); if(D.activo) pintarFicha(); });
 
 cargar();
 </script>
+
 
 <script>
 /* ═══════════════════════════════════════════════════════════════

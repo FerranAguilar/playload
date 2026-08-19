@@ -1245,7 +1245,7 @@ switch ($action) {
         $q    = trim((string) ($_GET['q'] ?? ''));
 
         $sql  = 'SELECT id, name, block_type, description, materials,
-                        duration_min, intensity, space
+                        duration_min, intensity, space, diagram
                    FROM exercises WHERE owner_user_id = ?';
         $args = [$userId];
 
@@ -1294,13 +1294,19 @@ switch ($action) {
         $int  = body()['intensity'] ?? null;
         $int  = ($int === '' || $int === null) ? null : max(1, min(10, (int) $int));
 
+        // El dibujo de la pizarra: JSON tal cual lo manda el cliente, o
+        // NULL si viene vacío o no es JSON válido — un ejercicio sin
+        // dibujo válido es lo mismo que uno sin dibujar, no un error.
+        $dibujoRaw = param('diagram');
+        $dibujo    = ($dibujoRaw !== '' && json_decode($dibujoRaw) !== null) ? $dibujoRaw : null;
+
         $up = db()->prepare(
             'UPDATE exercises SET name = ?, block_type = ?, description = ?, materials = ?,
-                    duration_min = ?, intensity = ?, space = ? WHERE id = ?'
+                    duration_min = ?, intensity = ?, space = ?, diagram = ? WHERE id = ?'
         );
         $up->execute([
             $nombre, $tipo, mb_substr(param('description'), 0, 400),
-            mb_substr(param('materials'), 0, 200), $dur, $int, $esp, $id,
+            mb_substr(param('materials'), 0, 200), $dur, $int, $esp, $dibujo, $id,
         ]);
 
         json_out(['ok' => true]);
@@ -2301,7 +2307,7 @@ function insertar_ejercicio(int $userId, string $nombre, string $tipoPorDefecto 
     return [
         'id' => (int) db()->lastInsertId(), 'name' => $nombre, 'block_type' => $tipo,
         'description' => param('description'), 'materials' => param('materials'),
-        'duration_min' => $dur, 'intensity' => $int, 'space' => $esp,
+        'duration_min' => $dur, 'intensity' => $int, 'space' => $esp, 'diagram' => null,
     ];
 }
 
