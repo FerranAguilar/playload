@@ -606,7 +606,8 @@ body{transition:background .18s ease,color .18s ease}
    MOCKUP visual — sin conexión a la API todavía. Datos de ejemplo
    en memoria, solo para revisar el diseño de la pantalla.
    ═══════════════════════════════════════════════════════════════ */
-const DEMO = true;
+const DEMO = !/^https?:$/.test(location.protocol);
+const API  = 'api/';
 
 const $   = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
@@ -630,6 +631,24 @@ function rango(a, b){
 const TIPOS = {entrenamiento:'Entrenamiento', partido:'Partido',
                recuperacion:'Recuperación', descanso:'Descanso'};
 
+function respuesta(status, b){
+  return (b && typeof b.ok !== 'undefined')
+    ? {status, ...b}
+    : {status, ok:false, error:'El servidor no ha contestado como se esperaba.'};
+}
+async function get(qs){
+  const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
+}
+async function post(data){
+  const r = await fetch(API + 'app.php', {method:'POST',
+    headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body:JSON.stringify(data)});
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
+}
+
 function toast(msg, kind){
   let t = $('toast');
   if(!t){
@@ -647,95 +666,36 @@ function toast(msg, kind){
   toast.t = setTimeout(() => { t.style.opacity = '0'; }, 4000);
 }
 
-/* ── datos de ejemplo ──────────────────────────────────────────
-   El lunes de esta semana marca "hoy" dentro de la muestra, para
-   que se vea cómo se resalta el microciclo en curso. */
+let D = {teams:[], equipo:null, user:null, club:null, microciclos:[]};
 const HOY = new Date();
-function lunesDe(d){ return suma(d, -((d.getDay() + 6) % 7)); }
-const L0 = lunesDe(HOY);
-
-let MC = [
-  {
-    id:4, nombre:'Microciclo 3', inicio: isoLocal(suma(L0,-14)), fin: isoLocal(suma(L0,-8)),
-    nota:'Volumen alto de pretemporada: doble sesión martes y jueves.',
-    dias:[
-      {kind:'entrenamiento', t:'Fuerza + aeróbico', real:610},
-      {kind:'entrenamiento', t:'Técnica individual', real:480},
-      null,
-      {kind:'entrenamiento', t:'Rondos + posesión', real:560},
-      {kind:'recuperacion', t:'Piscina + movilidad', real:210},
-      {kind:'partido', t:'Amistoso vs. CD Norte', real:720},
-      null,
-    ],
-  },
-  {
-    id:5, nombre:'Microciclo 4', inicio: isoLocal(suma(L0,-7)), fin: isoLocal(suma(L0,-1)),
-    nota:'Última semana de pretemporada antes del primer partido de liga.',
-    dias:[
-      {kind:'entrenamiento', t:'Activación táctica', real:520},
-      {kind:'entrenamiento', t:'Transiciones', real:540},
-      {kind:'recuperacion', t:'Recuperación activa', real:180},
-      {kind:'entrenamiento', t:'Estrategia a balón parado', real:460},
-      {kind:'entrenamiento', t:'Ensayo XI inicial', real:410},
-      null,
-      {kind:'descanso', t:'Descanso', real:0},
-    ],
-  },
-  {
-    id:6, nombre:'Microciclo 5', inicio: isoLocal(L0), fin: isoLocal(suma(L0,6)),
-    nota:'MD-3 con volumen, MD-1 activación corta antes del debut liguero.',
-    dias:[
-      {kind:'entrenamiento', t:'MD-4 · Fuerza', plan:540},
-      {kind:'entrenamiento', t:'MD-3 · Rondos', plan:580},
-      null,
-      {kind:'entrenamiento', t:'MD-2 · Táctica', plan:420},
-      {kind:'entrenamiento', t:'MD-1 · Activación', plan:260},
-      {kind:'partido', t:'CF Juvenil A vs. Atlètic Riu', plan:700},
-      {kind:'descanso', t:'Descanso', plan:0},
-    ],
-  },
-  {
-    id:7, nombre:'Microciclo 6', inicio: isoLocal(suma(L0,7)), fin: isoLocal(suma(L0,13)),
-    nota:'',
-    dias:[
-      {kind:'entrenamiento', t:'MD-4 · Volumen', plan:560},
-      {kind:'entrenamiento', t:'MD-3 · Rondos', plan:580},
-      null,
-      {kind:'entrenamiento', t:'MD-2 · Táctica', plan:420},
-      {kind:'entrenamiento', t:'MD-1 · Activación', plan:250},
-      {kind:'partido', t:'Vs. UE Muntanya (fuera)', plan:700},
-      {kind:'descanso', t:'Descanso', plan:0},
-    ],
-  },
-];
-
-const EQUIPOS = [
-  {id:1, name:'Juvenil A', category:'Juvenil · 1ª Regional', players:19},
-  {id:2, name:'Cadete B',  category:'Cadete · Preferente',   players:17},
-];
+const nombreMc = m => m.name || `Microciclo ${m.number}`;
 
 /* ── pintado ────────────────────────────────────────────────── */
 function pintarResumen(){
-  const enCurso = MC.find(m => isoLocal(L0) === m.inicio);
-  const totalSesiones = MC.reduce((a,m) => a + m.dias.filter(Boolean).length, 0);
-  const cargaReal = MC.reduce((a,m) => a + m.dias.filter(Boolean).reduce((s,d) => s + (d.real||0), 0), 0);
-  const cargaPlan = MC.reduce((a,m) => a + m.dias.filter(Boolean).reduce((s,d) => s + (d.plan||0), 0), 0);
+  const hoyIso = isoLocal(HOY);
+  const enCurso = D.microciclos.find(m => hoyIso >= m.start_date && hoyIso <= m.end_date);
+  const cargaReal = D.microciclos.reduce((a,m) =>
+    a + m.sesiones.reduce((s,x) => s + (+x.actual_load || 0), 0), 0);
+  const cargaPlan = D.microciclos.reduce((a,m) =>
+    a + m.sesiones.filter(x => !x.actual_load).reduce((s,x) => s + (+x.planned_load || 0), 0), 0);
 
   $('mcResumen').innerHTML = `
-    <div class="mc-stat"><b>${MC.length}</b><span>Microciclos planificados</span></div>
-    <div class="mc-stat"><b>${enCurso ? esc(enCurso.nombre) : '—'}</b><span>Semana en curso</span></div>
+    <div class="mc-stat"><b>${D.microciclos.length}</b><span>Microciclos planificados</span></div>
+    <div class="mc-stat"><b>${enCurso ? esc(nombreMc(enCurso)) : '—'}</b><span>Semana en curso</span></div>
     <div class="mc-stat"><b>${fmt(cargaReal)} UA</b><span>Carga real acumulada</span></div>
     <div class="mc-stat"><b>${fmt(cargaPlan)} UA</b><span>Carga planificada por venir</span></div>
   `;
 }
 
 function pintarDias(mc){
-  const inicio = dia(mc.inicio);
-  return mc.dias.map((d, i) => {
-    const fecha = suma(inicio, i);
-    const esHoy = isoLocal(fecha) === isoLocal(HOY);
-    const pill = d
-      ? `<div class="mc-pill k-${d.kind}" title="${esc(d.t)}">${esc(d.t)}</div>`
+  const inicio = dia(mc.start_date);
+  return Array.from({length:7}, (_, i) => {
+    const fecha    = suma(inicio, i);
+    const fechaIso = isoLocal(fecha);
+    const esHoy    = fechaIso === isoLocal(HOY);
+    const s = mc.sesiones.find(x => x.date === fechaIso);
+    const pill = s
+      ? `<div class="mc-pill k-${s.kind}" title="${esc(s.title || TIPOS[s.kind] || s.kind)}">${esc(s.title || TIPOS[s.kind] || s.kind)}</div>`
       : `<div class="mc-dia-vacio">—</div>`;
     return `<div class="mc-dia${esHoy ? ' hoy' : ''}">
       <div class="mc-dia-h"><span class="mc-dia-w">${DIAS_SEM[i]}</span><span class="mc-dia-n">${fecha.getDate()}</span></div>
@@ -745,7 +705,7 @@ function pintarDias(mc){
 }
 
 function pintarLista(){
-  if(!MC.length){
+  if(!D.microciclos.length){
     $('mcList').innerHTML = `<div class="vacio">
       <div class="vacio-ico"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M8 2.2 14 5.6 8 9 2 5.6z"/><path d="M2 10.4 8 13.8l6-3.4"/></svg></div>
       <h3>Todavía no hay microciclos</h3>
@@ -755,18 +715,18 @@ function pintarLista(){
     return;
   }
 
-  $('mcList').innerHTML = MC.map(mc => {
-    const enCurso = isoLocal(L0) === mc.inicio;
-    const sesiones = mc.dias.filter(Boolean);
-    const cargaReal = sesiones.reduce((s,d) => s + (d.real||0), 0);
-    const cargaPlan = sesiones.reduce((s,d) => s + (d.plan||0), 0);
-    const esFutura = mc.dias.every(d => !d || d.real === undefined);
+  const hoyIso = isoLocal(HOY);
+
+  $('mcList').innerHTML = D.microciclos.map(mc => {
+    const enCurso = hoyIso >= mc.start_date && hoyIso <= mc.end_date;
+    const cargaReal = mc.sesiones.reduce((s,x) => s + (+x.actual_load || 0), 0);
+    const cargaPlan = mc.sesiones.filter(x => !x.actual_load).reduce((s,x) => s + (+x.planned_load || 0), 0);
 
     return `<section class="panel mc-card${enCurso ? ' actual' : ''}" data-mc="${mc.id}">
       <div class="mc-top">
         <div class="mc-titulo">
-          <h3>${esc(mc.nombre)}</h3>
-          <span class="mc-rango">${rango(dia(mc.inicio), dia(mc.fin))}</span>
+          <h3>${esc(nombreMc(mc))}</h3>
+          <span class="mc-rango">${rango(dia(mc.start_date), dia(mc.end_date))}</span>
           ${enCurso ? '<span class="tag tag-accent">En curso</span>' : ''}
         </div>
         <div class="mc-acc">
@@ -779,10 +739,10 @@ function pintarLista(){
         </div>
       </div>
 
-      ${mc.nota ? `<p class="mc-nota">${esc(mc.nota)}</p>` : ''}
+      ${mc.note ? `<p class="mc-nota">${esc(mc.note)}</p>` : ''}
 
       <div class="mc-stats-row">
-        <span><b>${sesiones.length}</b> sesion${sesiones.length===1?'':'es'}</span>
+        <span><b>${mc.sesiones.length}</b> sesion${mc.sesiones.length===1?'':'es'}</span>
         ${cargaReal ? `<span>Carga real: <b>${fmt(cargaReal)} UA</b></span>` : ''}
         ${cargaPlan ? `<span>Carga planificada: <b>${fmt(cargaPlan)} UA</b></span>` : ''}
       </div>
@@ -797,38 +757,95 @@ function pintar(){
   pintarLista();
 }
 
-/* ── carga (vista de diseño) ───────────────────────────────── */
-async function cargar(){
-  $('clubName').textContent = "CF Vall d'Horta";
-  $('clubSub').textContent  = 'Club · 2 equipos';
-  $('clubBadge').textContent = ini("CF Vall d'Horta");
-  $('meName').textContent   = 'Marc Soler';
-  $('meRole').textContent   = 'Entrenador principal';
-  $('meAvatar').textContent = ini('Marc Soler');
-  $('navEquipos').textContent = EQUIPOS.length;
-  $('navPlantilla').textContent = EQUIPOS.reduce((a,t) => a + t.players, 0);
+/* El escudo del club del equipo seleccionado, no el de la cuenta. */
+function pintarCrumbEscudo(){
+  const crumb = $('crumbEscudo');
+  if(D.equipo && D.equipo.club_badge_url){
+    crumb.src = `${D.equipo.club_badge_url}?v=${Date.now()}`;
+    crumb.alt = `Escudo de ${D.equipo.club_name || 'el club'}`;
+    crumb.style.display = '';
+  } else {
+    crumb.style.display = 'none';
+  }
+}
 
-  $('selEquipo').innerHTML = EQUIPOS.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
-  const equipo = EQUIPOS[0];
-  $('selEquipo').value = equipo.id;
-  $('crumbTeam').textContent = equipo.name;
-  $('mcEquipo').textContent  = equipo.name;
-  $('mcSub').textContent     = `${equipo.category} · ${equipo.players} jugadores`;
-
+async function cargarMicrociclos(){
+  if(!D.equipo){ D.microciclos = []; pintar(); return; }
+  const r = await get(`action=microciclos&team_id=${D.equipo.id}`);
+  D.microciclos = r.ok ? (r.microciclos || []) : [];
+  if(!r.ok) toast(r.error || 'No se han podido cargar los microciclos.', 'bad');
   pintar();
 }
 
+/* ── carga ──────────────────────────────────────────────────── */
+async function cargar(){
+  if(DEMO){
+    $('clubName').textContent = 'Tu cuenta';
+    $('clubSub').textContent  = 'Vista sin servidor';
+    $('meName').textContent   = 'Invitado';
+    $('selEquipo').innerHTML  = '<option>Sin equipos</option>';
+    pintarLista();
+    return;
+  }
+
+  const r = await get('action=estado').catch(() => null);
+  if(!r){ window.plCuenta && plCuenta.mostrar(); return; }
+  if(r.status === 401){ location.href = 'acceso.html'; return; }
+  if(!r.ok || !r.user){ window.plCuenta && plCuenta.mostrar(); return; }
+
+  if(window.plCuenta) plCuenta.marcar(r.user.type);
+  if(r.user.type === 'club') return;
+
+  D.user = r.user; D.club = r.club; D.teams = r.teams || [];
+  if(window.plSyncPrefs) window.plSyncPrefs(r.user.theme, r.user.locale);
+
+  const jugadores = D.teams.reduce((a,t) => a + t.players, 0);
+
+  $('clubName').textContent  = r.club ? r.club.name : (r.user.name || 'Mi cuenta');
+  $('clubSub').textContent   = r.club ? `Club · ${D.teams.length} ${D.teams.length===1?'equipo':'equipos'}`
+                                      : 'Cuenta profesional';
+  $('clubBadge').innerHTML = (r.club && r.club.badge_url)
+    ? `<img src="${esc(r.club.badge_url)}?v=${Date.now()}" alt="Escudo de ${esc(r.club.name)}">`
+    : esc(ini(r.club ? r.club.name : r.user.name));
+  $('meName').textContent    = r.user.name || r.user.email;
+  $('meRole').textContent    = r.user.role || 'Profesional';
+  $('meAvatar').textContent  = ini(r.user.name || r.user.email);
+  $('navEquipos').textContent   = D.teams.length;
+  $('navPlantilla').textContent = jugadores;
+
+  if(!D.teams.length){
+    $('selEquipo').innerHTML = '<option>Sin equipos</option>';
+    $('mcEquipo').textContent = 'Sin equipo';
+    $('mcSub').textContent = 'Crea un equipo para planificar sus microciclos';
+    pintarLista();
+    return;
+  }
+
+  $('selEquipo').innerHTML = D.teams.map(t =>
+    `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+
+  D.equipo = D.teams[0];
+  $('selEquipo').value = D.equipo.id;
+  $('crumbTeam').textContent = D.equipo.name;
+  $('mcEquipo').textContent  = D.equipo.name;
+  $('mcSub').textContent     = `${D.equipo.category || 'Equipo'} · ${D.equipo.players} jugador${D.equipo.players===1?'':'es'}`;
+  pintarCrumbEscudo();
+
+  await cargarMicrociclos();
+}
+
 /* ── interacción ────────────────────────────────────────────── */
-$('selEquipo').addEventListener('change', e => {
-  const equipo = EQUIPOS.find(t => String(t.id) === e.target.value);
-  if(!equipo) return;
-  $('crumbTeam').textContent = equipo.name;
-  $('mcEquipo').textContent  = equipo.name;
-  $('mcSub').textContent     = `${equipo.category} · ${equipo.players} jugadores`;
-  toast('Vista de diseño: los microciclos no cambian todavía por equipo.');
+$('selEquipo').addEventListener('change', async e => {
+  D.equipo = D.teams.find(t => String(t.id) === e.target.value) || D.equipo;
+  if(!D.equipo) return;
+  $('crumbTeam').textContent = D.equipo.name;
+  $('mcEquipo').textContent  = D.equipo.name;
+  $('mcSub').textContent     = `${D.equipo.category || 'Equipo'} · ${D.equipo.players} jugador${D.equipo.players===1?'':'es'}`;
+  pintarCrumbEscudo();
+  await cargarMicrociclos();
 });
 
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
 
   if(e.target.closest('[data-cerrar-dlg]') || e.target.classList.contains('dialog-backdrop')){
     document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
@@ -836,10 +853,15 @@ document.addEventListener('click', e => {
   }
 
   if(e.target.closest('[data-nuevo-mc]')){
+    if(DEMO){ toast('Sin servidor no se pueden crear microciclos: esta es la vista de diseño.'); return; }
+    if(!D.equipo){ toast('Primero crea un equipo.', 'bad'); return; }
     $('dlgMcT').textContent = 'Nuevo microciclo';
-    $('dlgMcSub').textContent = $('mcEquipo').textContent;
-    $('mcNombre').value = `Microciclo ${MC.length + 3}`;
-    const proxInicio = MC.length ? suma(dia(MC[MC.length-1].fin), 1) : L0;
+    $('dlgMcSub').textContent = D.equipo.name;
+    $('mcNombre').value = '';
+    const ultimo = D.microciclos[D.microciclos.length - 1];
+    const proxInicio = ultimo ? suma(dia(ultimo.end_date), 1) : (() => {
+      const d = new Date(); return suma(d, -((d.getDay() + 6) % 7));
+    })();
     $('mcInicio').value = isoLocal(proxInicio);
     $('mcFin').value = isoLocal(suma(proxInicio, 6));
     $('mcNota').value = '';
@@ -851,14 +873,14 @@ document.addEventListener('click', e => {
 
   const editar = e.target.closest('[data-editar-mc]');
   if(editar){
-    const mc = MC.find(m => m.id === +editar.dataset.editarMc);
+    const mc = D.microciclos.find(m => m.id === +editar.dataset.editarMc);
     if(!mc) return;
     $('dlgMcT').textContent = 'Editar microciclo';
-    $('dlgMcSub').textContent = $('mcEquipo').textContent;
-    $('mcNombre').value = mc.nombre;
-    $('mcInicio').value = mc.inicio;
-    $('mcFin').value = mc.fin;
-    $('mcNota').value = mc.nota || '';
+    $('dlgMcSub').textContent = D.equipo.name;
+    $('mcNombre').value = mc.name || '';
+    $('mcInicio').value = mc.start_date;
+    $('mcFin').value = mc.end_date;
+    $('mcNota').value = mc.note || '';
     $('btnGuardarMc').dataset.editar = mc.id;
     $('dlgMc').classList.add('open');
     $('mcNombre').focus();
@@ -868,29 +890,33 @@ document.addEventListener('click', e => {
   const borrar = e.target.closest('[data-borrar-mc]');
   if(borrar){
     if(!confirm('¿Eliminar este microciclo? Las sesiones que tenga asignadas quedarán sin semana.')) return;
-    MC = MC.filter(m => m.id !== +borrar.dataset.borrarMc);
-    pintar();
+    const r = await post({action:'borrar_microciclo', microcycle_id:+borrar.dataset.borrarMc});
+    if(!r.ok){ toast(r.error || 'No se ha podido eliminar.', 'bad'); return; }
     toast('Microciclo eliminado');
+    await cargarMicrociclos();
     return;
   }
 
   if(e.target.closest('#btnGuardarMc')){
-    const idEditar = +e.target.closest('#btnGuardarMc').dataset.editar || null;
+    const btn = e.target.closest('#btnGuardarMc');
+    const idEditar = +btn.dataset.editar || null;
     const nombre = $('mcNombre').value.trim();
     const inicio = $('mcInicio').value;
     const fin = $('mcFin').value;
-    if(!nombre || !inicio || !fin){ toast('Completa nombre y fechas.', 'bad'); return; }
+    if(!inicio || !fin){ toast('Completa las fechas.', 'bad'); return; }
 
-    if(idEditar){
-      const mc = MC.find(m => m.id === idEditar);
-      Object.assign(mc, {nombre, inicio, fin, nota: $('mcNota').value.trim()});
-    } else {
-      MC.push({id: Date.now(), nombre, inicio, fin, nota: $('mcNota').value.trim(), dias: Array(7).fill(null)});
-      MC.sort((a,b) => a.inicio.localeCompare(b.inicio));
-    }
+    btn.disabled = true;
+    const r = idEditar
+      ? await post({action:'editar_microciclo', microcycle_id:idEditar,
+          name:nombre, start_date:inicio, end_date:fin, note:$('mcNota').value.trim()})
+      : await post({action:'crear_microciclo', team_id:D.equipo.id,
+          name:nombre, start_date:inicio, end_date:fin, note:$('mcNota').value.trim()});
+    btn.disabled = false;
+
+    if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
     $('dlgMc').classList.remove('open');
-    pintar();
     toast('Microciclo guardado');
+    await cargarMicrociclos();
   }
 });
 

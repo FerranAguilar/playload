@@ -580,11 +580,19 @@ body{transition:background .18s ease,color .18s ease}
         </div>
       </div>
 
+      <!-- estado vacío: el equipo todavía no tiene temporada creada -->
+      <div class="vacio" id="tVacio" style="display:none">
+        <div class="vacio-ico"><svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 13V8.5M8 13V3.5M13 13V6.5"/></svg></div>
+        <h3>Todavía no hay ninguna temporada</h3>
+        <p>Crea la temporada del equipo y luego añade sus periodos para ver la línea de tiempo completa.</p>
+        <button class="btn btn-primary" type="button" data-nueva-temp>Nueva temporada</button>
+      </div>
+
       <!-- resumen -->
       <div class="temp-resumen" id="tResumen"></div>
 
       <!-- línea de tiempo -->
-      <section class="panel">
+      <section class="panel" id="tlPanel">
         <div class="tl-wrap">
           <div class="tl-head">
             <span class="tl-titulo" id="tlTitulo">—</span>
@@ -597,7 +605,7 @@ body{transition:background .18s ease,color .18s ease}
       </section>
 
       <!-- periodos -->
-      <section>
+      <section id="periodosSeccion">
         <div class="card-head" style="padding:0 0 12px">
           <div>
             <div class="card-title">Periodos de la temporada</div>
@@ -662,7 +670,8 @@ body{transition:background .18s ease,color .18s ease}
    MOCKUP visual — sin conexión a la API todavía. Datos de ejemplo
    en memoria, solo para revisar el diseño de la pantalla.
    ═══════════════════════════════════════════════════════════════ */
-const DEMO = true;
+const DEMO = !/^https?:$/.test(location.protocol);
+const API  = 'api/';
 
 const $   = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
@@ -675,6 +684,24 @@ const suma     = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); 
 const diasEntre = (a, b) => Math.round((dia(b) - dia(a)) / 86400000);
 const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const fechaCorta = d => `${d.getDate()} ${MES[d.getMonth()]}`;
+
+function respuesta(status, b){
+  return (b && typeof b.ok !== 'undefined')
+    ? {status, ...b}
+    : {status, ok:false, error:'El servidor no ha contestado como se esperaba.'};
+}
+async function get(qs){
+  const r = await fetch(API + 'app.php?' + qs, {credentials:'same-origin'});
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
+}
+async function post(data){
+  const r = await fetch(API + 'app.php', {method:'POST',
+    headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body:JSON.stringify(data)});
+  let b = null; try { b = await r.json(); } catch(e){}
+  return respuesta(r.status, b);
+}
 
 function toast(msg, kind){
   let t = $('toast');
@@ -694,98 +721,66 @@ function toast(msg, kind){
 }
 
 const P_COLORES = ['#9184d9','#d9a184','#84b6d9','#9fd984','#d9848d','#d9c884'];
-
-/* ── datos de ejemplo ──────────────────────────────────────────
-   Temporada 2025/2026 con sus mesociclos y los microciclos (las
-   mismas semanas de la pantalla de Microciclos) encajados dentro. */
 const HOY = new Date();
 
-const TEMPORADAS = [
-  {
-    id:1, nombre:'2025/2026', inicio:'2025-07-01', fin:'2026-06-30',
-    periodos:[
-      {id:1, nombre:'Pretemporada', inicio:'2025-07-01', fin:'2025-08-24', color:P_COLORES[0], semanas:8, semanasHechas:8},
-      {id:2, nombre:'Liga · 1ª vuelta', inicio:'2025-08-25', fin:'2025-12-21', color:P_COLORES[1], semanas:17, semanasHechas:5},
-      {id:3, nombre:'Liga · 2ª vuelta', inicio:'2026-01-04', fin:'2026-05-03', color:P_COLORES[2], semanas:17, semanasHechas:0},
-      {id:4, nombre:'Playoffs', inicio:'2026-05-04', fin:'2026-06-07', color:P_COLORES[4], semanas:5, semanasHechas:0},
-      {id:5, nombre:'Descanso', inicio:'2026-06-08', fin:'2026-06-30', color:P_COLORES[5], semanas:3, semanasHechas:0},
-    ],
-  },
-  {
-    id:2, nombre:'2024/2025', inicio:'2024-07-01', fin:'2025-06-30',
-    periodos:[
-      {id:6, nombre:'Pretemporada', inicio:'2024-07-01', fin:'2024-08-25', color:P_COLORES[0], semanas:8, semanasHechas:8},
-      {id:7, nombre:'Liga', inicio:'2024-08-26', fin:'2025-05-11', color:P_COLORES[1], semanas:37, semanasHechas:37},
-      {id:8, nombre:'Playoffs', inicio:'2025-05-12', fin:'2025-06-08', color:P_COLORES[4], semanas:4, semanasHechas:4},
-      {id:9, nombre:'Descanso', inicio:'2025-06-09', fin:'2025-06-30', color:P_COLORES[5], semanas:3, semanasHechas:3},
-    ],
-  },
-];
-
-/* microciclos de muestra (mismos que en la pantalla de Microciclos)
-   para poder marcarlos como muescas en la línea de tiempo. */
-function lunesDe(d){ return suma(d, -((d.getDay() + 6) % 7)); }
-const L0 = lunesDe(HOY);
-const SEMANAS = Array.from({length:42}, (_, i) => isoLocal(suma(dia('2025-07-01'), i * 7)));
-
-const EQUIPOS = [
-  {id:1, name:'Juvenil A', category:'Juvenil · 1ª Regional', players:19},
-  {id:2, name:'Cadete B',  category:'Cadete · Preferente',   players:17},
-];
-
-let temporadaActiva = TEMPORADAS[0];
+let D = {teams:[], equipo:null, user:null, club:null, temporadas:[], microciclos:[]};
+let temporadaActiva = null;
 
 /* ── pintado ────────────────────────────────────────────────── */
 function pintarResumen(t){
-  const total = diasEntre(t.inicio, t.fin) + 1;
+  const total = diasEntre(t.start_date, t.end_date) + 1;
   const semanas = Math.round(total / 7);
-  const hechas = t.periodos.reduce((a,p) => a + p.semanasHechas, 0);
-  const hoyDentro = isoLocal(HOY) >= t.inicio && isoLocal(HOY) <= t.fin;
-  const actual = hoyDentro ? t.periodos.find(p => isoLocal(HOY) >= p.inicio && isoLocal(HOY) <= p.fin) : null;
+  const hechas = t.periodos.reduce((a,p) => a + p.semanas_hechas, 0);
+  const hoyDentro = isoLocal(HOY) >= t.start_date && isoLocal(HOY) <= t.end_date;
+  const actual = hoyDentro
+    ? t.periodos.find(p => isoLocal(HOY) >= p.start_date && isoLocal(HOY) <= p.end_date)
+    : null;
 
   $('tResumen').innerHTML = `
     <div class="temp-stat"><b>${semanas}</b><span>Semanas de temporada</span></div>
     <div class="temp-stat"><b>${t.periodos.length}</b><span>Periodos planificados</span></div>
-    <div class="temp-stat"><b>${hechas}/${semanas}</b><span>Microciclos completados</span></div>
-    <div class="temp-stat"><b>${actual ? esc(actual.nombre) : '—'}</b><span>Periodo en curso</span></div>
+    <div class="temp-stat"><b>${hechas}/${D.microciclos.length}</b><span>Microciclos completados</span></div>
+    <div class="temp-stat"><b>${actual ? esc(actual.name) : '—'}</b><span>Periodo en curso</span></div>
   `;
 }
 
 function pintarTimeline(t){
-  const total = diasEntre(t.inicio, t.fin) + 1;
-  $('tlTitulo').textContent = `Temporada ${t.nombre}`;
-  $('tlFechas').textContent = `${fechaCorta(dia(t.inicio))} — ${fechaCorta(dia(t.fin))}`;
+  const total = diasEntre(t.start_date, t.end_date) + 1;
+  $('tlTitulo').textContent = `Temporada ${t.name}`;
+  $('tlFechas').textContent = `${fechaCorta(dia(t.start_date))} — ${fechaCorta(dia(t.end_date))}`;
 
   $('tlTrack').innerHTML = t.periodos.map(p => {
-    const dias = diasEntre(p.inicio, p.fin) + 1;
+    const dias = diasEntre(p.start_date, p.end_date) + 1;
     const w = (dias / total * 100).toFixed(2);
-    return `<div class="tl-periodo" style="width:${w}%;background:${p.color}" data-periodo="${p.id}" title="${esc(p.nombre)}">
-      <span>${esc(p.nombre)}</span>
+    return `<div class="tl-periodo" style="width:${w}%;background:${p.color}" data-periodo="${p.id}" title="${esc(p.name)}">
+      <span>${esc(p.name)}</span>
     </div>`;
-  }).join('') + (isoLocal(HOY) >= t.inicio && isoLocal(HOY) <= t.fin
-    ? `<div class="tl-hoy" style="left:${(diasEntre(t.inicio, isoLocal(HOY)) / total * 100).toFixed(2)}%"></div>`
+  }).join('') + (isoLocal(HOY) >= t.start_date && isoLocal(HOY) <= t.end_date
+    ? `<div class="tl-hoy" style="left:${(diasEntre(t.start_date, isoLocal(HOY)) / total * 100).toFixed(2)}%"></div>`
     : '');
 
-  $('tlSemanas').innerHTML = SEMANAS
-    .filter(s => s >= t.inicio && s <= t.fin)
-    .map(s => {
-      const off = diasEntre(t.inicio, s) / total * 100;
-      const esActual = s === isoLocal(L0);
-      return `<div class="tl-semana${esActual ? ' actual' : ''}" style="left:${off.toFixed(2)}%" title="Semana del ${fechaCorta(dia(s))}"></div>`;
+  $('tlSemanas').innerHTML = D.microciclos
+    .filter(m => m.start_date >= t.start_date && m.start_date <= t.end_date)
+    .map(m => {
+      const off = diasEntre(t.start_date, m.start_date) / total * 100;
+      const esActual = isoLocal(HOY) >= m.start_date && isoLocal(HOY) <= m.end_date;
+      const nombreM = m.name || `Microciclo ${m.number}`;
+      return `<div class="tl-semana${esActual ? ' actual' : ''}" style="left:${off.toFixed(2)}%"
+        title="${esc(nombreM)} · ${fechaCorta(dia(m.start_date))}"></div>`;
     }).join('');
 
   $('tlLeyenda').innerHTML = t.periodos.map(p =>
-    `<span><i style="background:${p.color}"></i>${esc(p.nombre)}</span>`).join('')
+    `<span><i style="background:${p.color}"></i>${esc(p.name)}</span>`).join('')
     + '<span><i style="background:var(--color-text)"></i>Microciclo</span>';
 }
 
 function pintarPeriodos(t){
   $('periodos').innerHTML = t.periodos.map(p => {
-    const pct = p.semanas ? Math.round(p.semanasHechas / p.semanas * 100) : 0;
+    const pct = p.semanas ? Math.round(p.semanas_hechas / p.semanas * 100) : 0;
     return `<div class="periodo-card" style="--p:${p.color}" data-periodo-card="${p.id}">
       <div class="periodo-top">
         <span class="periodo-dot"></span>
-        <span class="periodo-nombre">${esc(p.nombre)}</span>
+        <span class="periodo-nombre">${esc(p.name)}</span>
         <div class="periodo-acc">
           <button class="btn btn-icon" title="Editar" data-editar-periodo="${p.id}">
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.7 2.5 13.5 5.3 5.3 13.5 2 14l.5-3.3z"/></svg>
@@ -795,10 +790,10 @@ function pintarPeriodos(t){
           </button>
         </div>
       </div>
-      <span class="periodo-fechas">${fechaCorta(dia(p.inicio))} — ${fechaCorta(dia(p.fin))} · ${p.semanas} semanas</span>
+      <span class="periodo-fechas">${fechaCorta(dia(p.start_date))} — ${fechaCorta(dia(p.end_date))}</span>
       <div class="periodo-bar"><i style="width:${pct}%"></i></div>
       <div class="periodo-foot">
-        <span>${p.semanasHechas}/${p.semanas} microciclos</span>
+        <span>${p.semanas_hechas}/${p.semanas} microciclos</span>
         <a class="periodo-link" href="PlayLoad-microciclos.html">Ver microciclos →</a>
       </div>
     </div>`;
@@ -809,55 +804,132 @@ function pintarPeriodos(t){
 }
 
 function pintar(){
-  const t = temporadaActiva;
-  pintarResumen(t);
-  pintarTimeline(t);
-  pintarPeriodos(t);
+  // display, no hidden: .panel y .vacio fijan su propio display en el
+  // CSS y ganarían al [hidden] del user-agent por origen de cascada.
+  const vacio = !temporadaActiva;
+  $('tVacio').style.display = vacio ? '' : 'none';
+  $('tResumen').style.display = vacio ? 'none' : '';
+  $('tlPanel').style.display = vacio ? 'none' : '';
+  $('periodosSeccion').style.display = vacio ? 'none' : '';
+  if(vacio) return;
+
+  pintarResumen(temporadaActiva);
+  pintarTimeline(temporadaActiva);
+  pintarPeriodos(temporadaActiva);
 }
 
-/* ── carga (vista de diseño) ───────────────────────────────── */
+/* El escudo del club del equipo seleccionado, no el de la cuenta. */
+function pintarCrumbEscudo(){
+  const crumb = $('crumbEscudo');
+  if(D.equipo && D.equipo.club_badge_url){
+    crumb.src = `${D.equipo.club_badge_url}?v=${Date.now()}`;
+    crumb.alt = `Escudo de ${D.equipo.club_name || 'el club'}`;
+    crumb.style.display = '';
+  } else {
+    crumb.style.display = 'none';
+  }
+}
+
+async function cargarTemporada(){
+  if(!D.equipo){ D.temporadas = []; D.microciclos = []; temporadaActiva = null; pintar(); return; }
+
+  const [rt, rm] = await Promise.all([
+    get(`action=temporadas&team_id=${D.equipo.id}`),
+    get(`action=microciclos&team_id=${D.equipo.id}`),
+  ]);
+
+  D.temporadas  = rt.ok ? (rt.temporadas || []) : [];
+  D.microciclos = rm.ok ? (rm.microciclos || []) : [];
+  if(!rt.ok) toast(rt.error || 'No se han podido cargar las temporadas.', 'bad');
+
+  $('selTemp').innerHTML = D.temporadas.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('')
+    || '<option>Sin temporadas</option>';
+
+  temporadaActiva = D.temporadas[0] || null;
+  if(temporadaActiva) $('selTemp').value = temporadaActiva.id;
+
+  pintar();
+}
+
+/* ── carga ──────────────────────────────────────────────────── */
 async function cargar(){
-  $('clubName').textContent = "CF Vall d'Horta";
-  $('clubSub').textContent  = 'Club · 2 equipos';
-  $('clubBadge').textContent = ini("CF Vall d'Horta");
-  $('meName').textContent   = 'Marc Soler';
-  $('meRole').textContent   = 'Entrenador principal';
-  $('meAvatar').textContent = ini('Marc Soler');
-  $('navEquipos').textContent = EQUIPOS.length;
-  $('navPlantilla').textContent = EQUIPOS.reduce((a,t) => a + t.players, 0);
-
-  $('selEquipo').innerHTML = EQUIPOS.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
-  const equipo = EQUIPOS[0];
-  $('selEquipo').value = equipo.id;
-  $('crumbTeam').textContent = equipo.name;
-  $('tEquipo').textContent  = equipo.name;
-  $('tSub').textContent     = `${equipo.category} · ${equipo.players} jugadores`;
-
-  $('selTemp').innerHTML = TEMPORADAS.map(t => `<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
-  $('selTemp').value = temporadaActiva.id;
-
   $('pColores').innerHTML = P_COLORES.map((c,i) => `<button type="button" class="color-swatch"
     data-color="${c}" style="background:${c}" aria-pressed="${i===0}" aria-label="Color"></button>`).join('');
 
-  pintar();
+  if(DEMO){
+    $('clubName').textContent = 'Tu cuenta';
+    $('clubSub').textContent  = 'Vista sin servidor';
+    $('meName').textContent   = 'Invitado';
+    $('selEquipo').innerHTML  = '<option>Sin equipos</option>';
+    $('selTemp').innerHTML    = '<option>Sin temporadas</option>';
+    pintar();
+    return;
+  }
+
+  const r = await get('action=estado').catch(() => null);
+  if(!r){ window.plCuenta && plCuenta.mostrar(); return; }
+  if(r.status === 401){ location.href = 'acceso.html'; return; }
+  if(!r.ok || !r.user){ window.plCuenta && plCuenta.mostrar(); return; }
+
+  if(window.plCuenta) plCuenta.marcar(r.user.type);
+  if(r.user.type === 'club') return;
+
+  D.user = r.user; D.club = r.club; D.teams = r.teams || [];
+  if(window.plSyncPrefs) window.plSyncPrefs(r.user.theme, r.user.locale);
+
+  const jugadores = D.teams.reduce((a,t) => a + t.players, 0);
+
+  $('clubName').textContent  = r.club ? r.club.name : (r.user.name || 'Mi cuenta');
+  $('clubSub').textContent   = r.club ? `Club · ${D.teams.length} ${D.teams.length===1?'equipo':'equipos'}`
+                                      : 'Cuenta profesional';
+  $('clubBadge').innerHTML = (r.club && r.club.badge_url)
+    ? `<img src="${esc(r.club.badge_url)}?v=${Date.now()}" alt="Escudo de ${esc(r.club.name)}">`
+    : esc(ini(r.club ? r.club.name : r.user.name));
+  $('meName').textContent    = r.user.name || r.user.email;
+  $('meRole').textContent    = r.user.role || 'Profesional';
+  $('meAvatar').textContent  = ini(r.user.name || r.user.email);
+  $('navEquipos').textContent   = D.teams.length;
+  $('navPlantilla').textContent = jugadores;
+
+  if(!D.teams.length){
+    $('selEquipo').innerHTML = '<option>Sin equipos</option>';
+    $('selTemp').innerHTML   = '<option>Sin temporadas</option>';
+    $('tEquipo').textContent = 'Sin equipo';
+    $('tSub').textContent    = 'Crea un equipo para planificar su temporada';
+    pintar();
+    return;
+  }
+
+  $('selEquipo').innerHTML = D.teams.map(t =>
+    `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+
+  D.equipo = D.teams[0];
+  $('selEquipo').value = D.equipo.id;
+  $('crumbTeam').textContent = D.equipo.name;
+  $('tEquipo').textContent  = D.equipo.name;
+  $('tSub').textContent     = `${D.equipo.category || 'Equipo'} · ${D.equipo.players} jugador${D.equipo.players===1?'':'es'}`;
+  pintarCrumbEscudo();
+
+  await cargarTemporada();
 }
 
 /* ── interacción ────────────────────────────────────────────── */
-$('selEquipo').addEventListener('change', e => {
-  const equipo = EQUIPOS.find(t => String(t.id) === e.target.value);
-  if(!equipo) return;
-  $('crumbTeam').textContent = equipo.name;
-  $('tEquipo').textContent  = equipo.name;
-  $('tSub').textContent     = `${equipo.category} · ${equipo.players} jugadores`;
-  toast('Vista de diseño: la temporada no cambia todavía por equipo.');
+$('selEquipo').addEventListener('change', async e => {
+  D.equipo = D.teams.find(t => String(t.id) === e.target.value) || D.equipo;
+  if(!D.equipo) return;
+  $('crumbTeam').textContent = D.equipo.name;
+  $('tEquipo').textContent  = D.equipo.name;
+  $('tSub').textContent     = `${D.equipo.category || 'Equipo'} · ${D.equipo.players} jugador${D.equipo.players===1?'':'es'}`;
+  pintarCrumbEscudo();
+  await cargarTemporada();
 });
 
 $('selTemp').addEventListener('change', e => {
-  temporadaActiva = TEMPORADAS.find(t => String(t.id) === e.target.value) || temporadaActiva;
+  temporadaActiva = D.temporadas.find(t => String(t.id) === e.target.value) || temporadaActiva;
   pintar();
 });
 
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
 
   if(e.target.closest('[data-cerrar-dlg]') || e.target.classList.contains('dialog-backdrop')){
     document.querySelectorAll('.dialog-backdrop').forEach(d => d.classList.remove('open'));
@@ -865,7 +937,9 @@ document.addEventListener('click', e => {
   }
 
   if(e.target.closest('[data-nueva-temp]')){
-    $('dlgTempSub').textContent = $('tEquipo').textContent;
+    if(DEMO){ toast('Sin servidor no se pueden crear temporadas: esta es la vista de diseño.'); return; }
+    if(!D.equipo){ toast('Primero crea un equipo.', 'bad'); return; }
+    $('dlgTempSub').textContent = D.equipo.name;
     $('tNombre').value = '';
     $('tInicio').value = '';
     $('tFin').value = '';
@@ -875,23 +949,27 @@ document.addEventListener('click', e => {
   }
 
   if(e.target.closest('#btnGuardarTemp')){
+    const btn = e.target.closest('#btnGuardarTemp');
     const nombre = $('tNombre').value.trim();
     const inicio = $('tInicio').value, fin = $('tFin').value;
     if(!nombre || !inicio || !fin){ toast('Completa nombre y fechas.', 'bad'); return; }
-    const nueva = {id: Date.now(), nombre, inicio, fin, periodos:[]};
-    TEMPORADAS.unshift(nueva);
-    temporadaActiva = nueva;
-    $('selTemp').innerHTML = TEMPORADAS.map(t => `<option value="${t.id}">${esc(t.nombre)}</option>`).join('');
-    $('selTemp').value = nueva.id;
+
+    btn.disabled = true;
+    const r = await post({action:'crear_temporada', team_id:D.equipo.id,
+      name:nombre, start_date:inicio, end_date:fin});
+    btn.disabled = false;
+
+    if(!r.ok){ toast(r.error || 'No se ha podido crear la temporada.', 'bad'); return; }
     $('dlgTemp').classList.remove('open');
-    pintar();
     toast('Temporada creada. Añade sus periodos para completar la línea de tiempo.');
+    await cargarTemporada();
     return;
   }
 
   if(e.target.closest('[data-nuevo-periodo]')){
+    if(DEMO){ toast('Sin servidor no se pueden crear periodos: esta es la vista de diseño.'); return; }
     $('dlgPeriodoT').textContent = 'Nuevo periodo';
-    $('dlgPeriodoSub').textContent = `Temporada ${temporadaActiva.nombre}`;
+    $('dlgPeriodoSub').textContent = `Temporada ${temporadaActiva.name}`;
     $('pNombre').value = '';
     $('pInicio').value = '';
     $('pFin').value = '';
@@ -907,10 +985,10 @@ document.addEventListener('click', e => {
     const p = temporadaActiva.periodos.find(x => x.id === +editarP.dataset.editarPeriodo);
     if(!p) return;
     $('dlgPeriodoT').textContent = 'Editar periodo';
-    $('dlgPeriodoSub').textContent = `Temporada ${temporadaActiva.nombre}`;
-    $('pNombre').value = p.nombre;
-    $('pInicio').value = p.inicio;
-    $('pFin').value = p.fin;
+    $('dlgPeriodoSub').textContent = `Temporada ${temporadaActiva.name}`;
+    $('pNombre').value = p.name;
+    $('pInicio').value = p.start_date;
+    $('pFin').value = p.end_date;
     document.querySelectorAll('#pColores .color-swatch').forEach(b =>
       b.setAttribute('aria-pressed', String(b.dataset.color === p.color)));
     $('btnGuardarPeriodo').dataset.editar = p.id;
@@ -922,9 +1000,10 @@ document.addEventListener('click', e => {
   const borrarP = e.target.closest('[data-borrar-periodo]');
   if(borrarP){
     if(!confirm('¿Eliminar este periodo de la temporada?')) return;
-    temporadaActiva.periodos = temporadaActiva.periodos.filter(p => p.id !== +borrarP.dataset.borrarPeriodo);
-    pintar();
+    const r = await post({action:'borrar_periodo', period_id:+borrarP.dataset.borrarPeriodo});
+    if(!r.ok){ toast(r.error || 'No se ha podido eliminar.', 'bad'); return; }
     toast('Periodo eliminado');
+    await cargarTemporada();
     return;
   }
 
@@ -935,23 +1014,25 @@ document.addEventListener('click', e => {
   }
 
   if(e.target.closest('#btnGuardarPeriodo')){
-    const idEditar = +e.target.closest('#btnGuardarPeriodo').dataset.editar || null;
+    const btn = e.target.closest('#btnGuardarPeriodo');
+    const idEditar = +btn.dataset.editar || null;
     const nombre = $('pNombre').value.trim();
     const inicio = $('pInicio').value, fin = $('pFin').value;
     const color = document.querySelector('#pColores .color-swatch[aria-pressed="true"]')?.dataset.color || P_COLORES[0];
     if(!nombre || !inicio || !fin){ toast('Completa nombre y fechas.', 'bad'); return; }
-    const semanas = Math.max(1, Math.round((diasEntre(inicio, fin) + 1) / 7));
 
-    if(idEditar){
-      const p = temporadaActiva.periodos.find(x => x.id === idEditar);
-      Object.assign(p, {nombre, inicio, fin, color, semanas});
-    } else {
-      temporadaActiva.periodos.push({id: Date.now(), nombre, inicio, fin, color, semanas, semanasHechas:0});
-      temporadaActiva.periodos.sort((a,b) => a.inicio.localeCompare(b.inicio));
-    }
+    btn.disabled = true;
+    const r = idEditar
+      ? await post({action:'editar_periodo', period_id:idEditar,
+          name:nombre, start_date:inicio, end_date:fin, color})
+      : await post({action:'crear_periodo', season_id:temporadaActiva.id,
+          name:nombre, start_date:inicio, end_date:fin, color});
+    btn.disabled = false;
+
+    if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
     $('dlgPeriodo').classList.remove('open');
-    pintar();
     toast('Periodo guardado');
+    await cargarTemporada();
   }
 });
 

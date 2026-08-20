@@ -1230,6 +1230,234 @@ switch ($action) {
             'minutos' => $min, 'carga' => $carga,
         ]);
 
+    // ── Microciclos: la semana de trabajo ─────────────────────────────
+    case 'microciclos':
+        $teamId = (int) ($_GET['team_id'] ?? 0);
+        if (!es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        $st = db()->prepare(
+            'SELECT id, number, name, start_date, end_date, note
+               FROM microcycles WHERE team_id = ?
+              ORDER BY start_date'
+        );
+        $st->execute([$teamId]);
+        $microciclos = $st->fetchAll();
+
+        // Las sesiones de todos los microciclos, de una vez, y luego se
+        // reparten por microciclo: igual que los bloques de una sesión.
+        $porMicro = [];
+        if ($microciclos) {
+            $ids = array_map(static fn ($m) => (int) $m['id'], $microciclos);
+            $ph  = implode(',', array_fill(0, count($ids), '?'));
+            $sq  = db()->prepare(
+                "SELECT id, microcycle_id, date, kind, title, planned_load, actual_load, status
+                   FROM sessions WHERE microcycle_id IN ($ph)
+                  ORDER BY date"
+            );
+            $sq->execute($ids);
+            foreach ($sq->fetchAll() as $s) {
+                $porMicro[(int) $s['microcycle_id']][] = $s;
+            }
+        }
+        foreach ($microciclos as &$m) {
+            $m['id']       = (int) $m['id'];
+            $m['number']   = (int) $m['number'];
+            $m['sesiones'] = $porMicro[$m['id']] ?? [];
+        }
+        unset($m);
+
+        json_out(['ok' => true, 'microciclos' => $microciclos]);
+
+    // ── Crear un microciclo ────────────────────────────────────────────
+    case 'crear_microciclo':
+        $teamId = (int) (body()['team_id'] ?? 0);
+        exige_acceso($teamId, $userId, ['propietario', 'staff']);
+
+        [$inicio, $fin] = rango_valido(param('start_date'), param('end_date'));
+
+        // El número lo lleva la app, no quien planifica: es correlativo
+        // por equipo y decide el orden cuando dos microciclos no tienen
+        // nombre propio con el que distinguirse.
+        $st = db()->prepare('SELECT COALESCE(MAX(number), 0) AS n FROM microcycles WHERE team_id = ?');
+        $st->execute([$teamId]);
+        $numero = ((int) ($st->fetch()['n'] ?? 0)) + 1;
+
+        try {
+            $ins = db()->prepare(
+                'INSERT INTO microcycles (team_id, number, name, start_date, end_date, note)
+                 VALUES (?, ?, ?, ?, ?, ?)'
+            );
+            $ins->execute([
+                $teamId, $numero, mb_substr(param('name'), 0, 60),
+                $inicio, $fin, mb_substr(param('note'), 0, 300),
+            ]);
+        } catch (Throwable $e) {
+            fail('Ya hay un microciclo que empieza ese día.', 409);
+        }
+
+        json_out(['ok' => true, 'id' => (int) db()->lastInsertId(), 'number' => $numero], 201);
+
+    // ── Editar un microciclo ───────────────────────────────────────────
+    case 'editar_microciclo':
+        $id    = (int) (body()['microcycle_id'] ?? 0);
+        $micro = microciclo_propio($id, $userId);
+
+        [$inicio, $fin] = rango_valido(param('start_date'), param('end_date'));
+
+        try {
+            $up = db()->prepare(
+                'UPDATE microcycles SET name = ?, start_date = ?, end_date = ?, note = ? WHERE id = ?'
+            );
+            $up->execute([
+                mb_substr(param('name'), 0, 60), $inicio, $fin,
+                mb_substr(param('note'), 0, 300), $id,
+            ]);
+        } catch (Throwable $e) {
+            fail('Ya hay un microciclo que empieza ese día.', 409);
+        }
+
+        json_out(['ok' => true]);
+
+    // ── Borrar un microciclo ───────────────────────────────────────────
+    case 'borrar_microciclo':
+        $id = (int) (body()['microcycle_id'] ?? 0);
+        microciclo_propio($id, $userId);
+
+        // Las sesiones que tenía asignadas no se van con él: solo pierden
+        // la semana, microcycle_id vuelve a NULL por la clave foránea.
+        db()->prepare('DELETE FROM microcycles WHERE id = ?')->execute([$id]);
+
+        json_out(['ok' => true]);
+
+    // ── Temporadas de un equipo, con sus periodos ──────────────────────
+    case 'temporadas':
+        $teamId = (int) ($_GET['team_id'] ?? 0);
+        if (!es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        $st = db()->prepare(
+            'SELECT id, name, start_date, end_date FROM seasons
+              WHERE team_id = ? ORDER BY start_date DESC'
+        );
+        $st->execute([$teamId]);
+        $temporadas = $st->fetchAll();
+
+        if ($temporadas) {
+            $ids = array_map(static fn ($t) => (int) $t['id'], $temporadas);
+            $ph  = implode(',', array_fill(0, count($ids), '?'));
+            $pq  = db()->prepare(
+                "SELECT id, season_id, name, start_date, end_date, color, sort
+                   FROM season_periods WHERE season_id IN ($ph)
+                  ORDER BY sort, start_date"
+            );
+            $pq->execute($ids);
+            $porTemporada = [];
+            foreach ($pq->fetchAll() as $p) {
+                $porTemporada[(int) $p['season_id']][] = $p;
+            }
+
+            // Cuántos microciclos reales caen en cada periodo, y cuántos
+            // ya han pasado: la barra de progreso cuenta lo planificado
+            // de verdad, no una estimación a partir de las fechas.
+            $mq = db()->prepare('SELECT start_date, end_date FROM microcycles WHERE team_id = ?');
+            $mq->execute([$teamId]);
+            $micros = $mq->fetchAll();
+            $hoy    = date('Y-m-d');
+
+            foreach ($temporadas as &$t) {
+                $t['id']  = (int) $t['id'];
+                $periodos = $porTemporada[(int) $t['id']] ?? [];
+                foreach ($periodos as &$p) {
+                    $p['id']   = (int) $p['id'];
+                    $p['sort'] = (int) $p['sort'];
+                    $en = array_filter($micros, static fn ($m) =>
+                        $m['start_date'] >= $p['start_date'] && $m['start_date'] <= $p['end_date']);
+                    $p['semanas']        = count($en);
+                    $p['semanas_hechas'] = count(array_filter(
+                        $en, static fn ($m) => $m['end_date'] < $hoy
+                    ));
+                }
+                unset($p);
+                $t['periodos'] = array_values($periodos);
+            }
+            unset($t);
+        }
+
+        json_out(['ok' => true, 'temporadas' => $temporadas]);
+
+    // ── Crear una temporada ────────────────────────────────────────────
+    case 'crear_temporada':
+        $teamId = (int) (body()['team_id'] ?? 0);
+        exige_acceso($teamId, $userId, ['propietario', 'staff']);
+
+        $nombre = trim(mb_substr(param('name'), 0, 40));
+        if ($nombre === '') {
+            fail('La temporada necesita un nombre.');
+        }
+        [$inicio, $fin] = rango_valido(param('start_date'), param('end_date'));
+
+        $ins = db()->prepare(
+            'INSERT INTO seasons (team_id, name, start_date, end_date) VALUES (?, ?, ?, ?)'
+        );
+        $ins->execute([$teamId, $nombre, $inicio, $fin]);
+
+        json_out(['ok' => true, 'id' => (int) db()->lastInsertId()], 201);
+
+    // ── Añadir un periodo a una temporada ──────────────────────────────
+    case 'crear_periodo':
+        $seasonId = (int) (body()['season_id'] ?? 0);
+        temporada_propia($seasonId, $userId);
+
+        $nombre = trim(mb_substr(param('name'), 0, 60));
+        if ($nombre === '') {
+            fail('El periodo necesita un nombre.');
+        }
+        [$inicio, $fin] = rango_valido(param('start_date'), param('end_date'));
+        $color = color_valido(param('color')) ?? '#9184d9';
+
+        $st = db()->prepare('SELECT COALESCE(MAX(sort), -1) AS n FROM season_periods WHERE season_id = ?');
+        $st->execute([$seasonId]);
+        $sort = ((int) ($st->fetch()['n'] ?? -1)) + 1;
+
+        $ins = db()->prepare(
+            'INSERT INTO season_periods (season_id, name, start_date, end_date, color, sort)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        $ins->execute([$seasonId, $nombre, $inicio, $fin, $color, $sort]);
+
+        json_out(['ok' => true, 'id' => (int) db()->lastInsertId()], 201);
+
+    // ── Editar un periodo ───────────────────────────────────────────────
+    case 'editar_periodo':
+        $id = (int) (body()['period_id'] ?? 0);
+        periodo_propio($id, $userId);
+
+        $nombre = trim(mb_substr(param('name'), 0, 60));
+        if ($nombre === '') {
+            fail('El periodo necesita un nombre.');
+        }
+        [$inicio, $fin] = rango_valido(param('start_date'), param('end_date'));
+        $color = color_valido(param('color')) ?? '#9184d9';
+
+        $up = db()->prepare(
+            'UPDATE season_periods SET name = ?, start_date = ?, end_date = ?, color = ? WHERE id = ?'
+        );
+        $up->execute([$nombre, $inicio, $fin, $color, $id]);
+
+        json_out(['ok' => true]);
+
+    // ── Borrar un periodo ────────────────────────────────────────────────
+    case 'borrar_periodo':
+        $id = (int) (body()['period_id'] ?? 0);
+        periodo_propio($id, $userId);
+
+        db()->prepare('DELETE FROM season_periods WHERE id = ?')->execute([$id]);
+
+        json_out(['ok' => true]);
+
     // ── Biblioteca de ejercicios ─────────────────────────────────────
     // Es de la cuenta, no del equipo: un mismo entrenador con varios
     // equipos ve y reutiliza los mismos ejercicios en todos. `team_id`
@@ -2319,6 +2547,68 @@ function exige_ejercicio_propio(int $id, int $userId): void
     if (!$st->fetch()) {
         fail('Ese ejercicio no está en tu biblioteca.', 403);
     }
+}
+
+/** Un rango de fechas AAAA-MM-DD con el fin en o después del inicio.
+ *  Lo usan microciclos, temporadas y periodos por igual. */
+function rango_valido(string $inicio, string $fin): array
+{
+    $dia = '/^\d{4}-\d{2}-\d{2}$/';
+    if (!preg_match($dia, $inicio) || !preg_match($dia, $fin)) {
+        fail('Las fechas deben ser AAAA-MM-DD.');
+    }
+    if ($fin < $inicio) {
+        fail('La fecha de fin no puede ser antes que la de inicio.');
+    }
+    return [$inicio, $fin];
+}
+
+/** El microciclo, si es de un equipo de esta cuenta con nivel para
+ *  planificar; si no, corta la petición aquí mismo. */
+function microciclo_propio(int $id, int $userId): array
+{
+    $st = db()->prepare('SELECT id, team_id FROM microcycles WHERE id = ?');
+    $st->execute([$id]);
+    $m = $st->fetch();
+
+    if (!$m) {
+        fail('Ese microciclo no es tuyo.', 403);
+    }
+    exige_acceso((int) $m['team_id'], $userId, ['propietario', 'staff']);
+    return $m;
+}
+
+/** La temporada, si es de un equipo de esta cuenta con nivel para
+ *  planificar; si no, corta la petición aquí mismo. */
+function temporada_propia(int $id, int $userId): array
+{
+    $st = db()->prepare('SELECT id, team_id FROM seasons WHERE id = ?');
+    $st->execute([$id]);
+    $t = $st->fetch();
+
+    if (!$t) {
+        fail('Esa temporada no es tuya.', 403);
+    }
+    exige_acceso((int) $t['team_id'], $userId, ['propietario', 'staff']);
+    return $t;
+}
+
+/** El periodo, por su temporada y el equipo de esa temporada; si no
+ *  es de esta cuenta con nivel para planificar, corta la petición. */
+function periodo_propio(int $id, int $userId): array
+{
+    $st = db()->prepare(
+        'SELECT p.id, p.season_id, s.team_id FROM season_periods p
+           JOIN seasons s ON s.id = p.season_id WHERE p.id = ?'
+    );
+    $st->execute([$id]);
+    $p = $st->fetch();
+
+    if (!$p) {
+        fail('Ese periodo no es tuyo.', 403);
+    }
+    exige_acceso((int) $p['team_id'], $userId, ['propietario', 'staff']);
+    return $p;
 }
 
 /** El bloque, si es de un equipo de esta cuenta con nivel para

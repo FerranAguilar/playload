@@ -548,9 +548,6 @@ desde cero.
 - **El calendario cierra las sesiones con el RPE del grupo**, sin la
   lista jugador a jugador que sí tiene el panel. Mientras tanto, desde el
   panel se puede abrir cualquier sesión de la semana.
-- **No hay biblioteca de tareas.** Los bloques se escriben cada vez; lo
-  natural es poder guardarlos y arrastrarlos a la sesión. Es el enlace
-  que sigue muerto en la barra lateral, y la tabla que falta.
 - La verificación en dos pasos viene apagada (`two_factor = 0`). Para
   probarla, pon a 1 esa columna en tu usuario.
 - No hay confirmación del correo en el alta: la cuenta entra directa.
