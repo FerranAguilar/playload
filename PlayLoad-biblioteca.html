@@ -381,7 +381,7 @@ a.rail-top:hover{color:var(--color-accent)}
 .pz-sel-panel .input{width:auto;min-height:30px;padding:4px 8px;font-size:13px}
 
 .pz-lienzo{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
-  padding:14px;background:var(--color-bg);overflow:auto}
+  padding:14px;background:var(--color-bg);overflow:auto;position:relative}
 .pz-marco{width:100%;max-width:calc((96vh - 260px) * 700 / 450);border-radius:var(--radius-lg);
   overflow:hidden;border:1px solid var(--color-divider);line-height:0;
   box-shadow:0 10px 30px rgba(0,0,0,.28)}
@@ -393,6 +393,21 @@ a.rail-top:hover{color:var(--color-accent)}
 .pz-el{cursor:pointer}
 .pz-el.pz-sel{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px var(--color-accent))}
 .pz-handle{cursor:grab;fill:#fff;stroke:var(--color-accent);stroke-width:2.5}
+.pz-handle[data-handle="esc"]{cursor:nwse-resize}
+.pz-handle[data-handle="rot"]{cursor:grab}
+.pz-handle-tallo{stroke:var(--color-accent);stroke-width:1.4;stroke-dasharray:3 3;opacity:.7}
+
+/* menú flotante que aparece sobre el objeto seleccionado */
+.pz-flotante{position:absolute;top:0;left:0;z-index:5;display:flex;gap:2px;padding:3px;
+  border-radius:20px;background:var(--color-surface);border:1px solid var(--color-divider);
+  box-shadow:0 6px 18px rgba(0,0,0,.28);transform:translate(-50%,-100%)}
+.pz-flotante[hidden]{display:none}
+.pz-flotante.pz-flot-abajo{transform:translate(-50%,0)}
+.pz-flot-btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:0;background:transparent;color:var(--color-text);cursor:pointer;padding:0}
+.pz-flot-btn svg{width:16px;height:16px;pointer-events:none}
+.pz-flot-btn:hover{background:color-mix(in srgb,var(--color-accent) 18%,transparent);color:var(--color-accent)}
+.pz-flot-borrar:hover{background:color-mix(in srgb,#e2483f 20%,transparent);color:#e2483f}
 
 .pz-pie{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px;
   border-top:1px solid var(--line);flex:none}
@@ -749,13 +764,9 @@ body{transition:background .18s ease,color .18s ease}
           <input class="input" id="pzSelTexto" hidden style="width:240px" placeholder="Escribe el texto…"
                  aria-label="Texto de la etiqueta">
           <span class="pz-grupo" id="pzSelColor" hidden></span>
-          <span class="pz-grupo" style="margin-left:auto">
-            <button class="btn btn-secondary btn-sm" type="button" id="pzDuplicar">Duplicar</button>
-            <button class="btn btn-secondary btn-sm" type="button" id="pzBorrarSel">Eliminar</button>
-          </span>
         </div>
 
-        <div class="pz-lienzo">
+        <div class="pz-lienzo" id="pzLienzo">
           <div class="pz-marco" id="pzMarco">
             <svg id="pzCampo" class="pz-svg" viewBox="0 0 700 450" data-herramienta="mover">
               <defs id="pzDefs"></defs>
@@ -763,6 +774,22 @@ body{transition:background .18s ease,color .18s ease}
               <g id="pzElems"></g>
               <g id="pzTiradores"></g>
             </svg>
+          </div>
+          <div class="pz-flotante" id="pzFlotante" hidden>
+            <button type="button" class="pz-flot-btn" data-flot-dup title="Duplicar" aria-label="Duplicar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3.6" y="3.6" width="12" height="12" rx="2.2"/>
+                <path d="M8.4 15.6v2.8a2.2 2.2 0 0 0 2.2 2.2h7.8a2.2 2.2 0 0 0 2.2-2.2v-7.8a2.2 2.2 0 0 0-2.2-2.2h-2.8"/>
+              </svg>
+            </button>
+            <button type="button" class="pz-flot-btn pz-flot-borrar" data-flot-del title="Eliminar" aria-label="Eliminar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4.5 7h15"/>
+                <path d="M9.5 7V4.8a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1V7"/>
+                <path d="M6.5 7l1 12.2a2 2 0 0 0 2 1.8h5a2 2 0 0 0 2-1.8L17.5 7"/>
+                <path d="M10.3 11v6M13.7 11v6"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -1101,6 +1128,7 @@ const PZ_COLOR_EQUIPO = {a:'#4f8fe0', b:'#e2685f', portero:'#e5a12b'};
 const PZ_PUNTOS = ['cono','pica','jugador','balon','porteria','escalera'];
 const PZ_LINEAS = ['linea','flecha_mov','flecha_pase','flecha_cond'];
 const PZ_CAJAS  = ['zona','elipse'];
+const PZ_ICONOS = [...PZ_PUNTOS, 'texto'];
 
 const PZ_HERRAMIENTAS = [
   {id:'mover', label:'Seleccionar y mover', tecla:'V',
@@ -1322,7 +1350,9 @@ function pzElementoSVG(el, i, sel){
   }
 
   const x = el.x / 100 * PZ_W, y = el.y / 100 * PZ_H;
-  const abre = `<g class="${cls}"${dato} transform="translate(${x.toFixed(1)},${y.toFixed(1)})">`;
+  const rot = el.rot ? ` rotate(${(+el.rot).toFixed(2)})` : '';
+  const gro2 = el.scale && el.scale !== 1 ? ` scale(${(+el.scale).toFixed(3)})` : '';
+  const abre = `<g class="${cls}"${dato} transform="translate(${x.toFixed(1)},${y.toFixed(1)})${rot}${gro2}">`;
 
   if(el.type === 'cono'){
     return abre + `<ellipse cy="9" rx="11" ry="3.2" fill="#c96f2c"/>
@@ -1504,7 +1534,36 @@ function pzTiradores(){
     cx="${(x / 100 * PZ_W).toFixed(1)}" cy="${(y / 100 * PZ_H).toFixed(1)}" r="7"/>`;
   if(PZ_LINEAS.includes(el.type)) return p(el.x1, el.y1, 'a') + p(el.x2, el.y2, 'b');
   if(PZ_CAJAS.includes(el.type))  return p(el.x, el.y, 'tl') + p(el.x + el.w, el.y + el.h, 'br');
+  if(PZ_ICONOS.includes(el.type)) return pzTiradoresIcono(el);
   return '';
+}
+
+/* tiradores de rotar/redimensionar para iconos: se apoyan en la caja
+   local del propio dibujo (getBBox, que no incluye su transform) para
+   colocar el asa de la esquina y el asa de rotación por encima. */
+function pzBBoxLocal(){
+  const nodo = document.querySelector(`#pzElems [data-i="${pzSeleccion}"]`);
+  if(!nodo) return null;
+  try { return nodo.getBBox(); } catch(err){ return null; }
+}
+function pzTiradoresIcono(el){
+  const bbox = pzBBoxLocal();
+  if(!bbox) return '';
+  const tx = el.x / 100 * PZ_W, ty = el.y / 100 * PZ_H;
+  const rot = (el.rot || 0) * Math.PI / 180, esc = el.scale || 1;
+  const punto = (lx, ly) => {
+    const sx = lx * esc, sy = ly * esc;
+    return {x: tx + sx * Math.cos(rot) - sy * Math.sin(rot),
+            y: ty + sx * Math.sin(rot) + sy * Math.cos(rot)};
+  };
+  const midX = bbox.x + bbox.width / 2;
+  const borde = punto(midX, bbox.y);
+  const cima  = punto(midX, bbox.y - 18);
+  const esq   = punto(bbox.x + bbox.width, bbox.y + bbox.height);
+  return `<line class="pz-handle-tallo" x1="${borde.x.toFixed(1)}" y1="${borde.y.toFixed(1)}"
+            x2="${cima.x.toFixed(1)}" y2="${cima.y.toFixed(1)}"/>
+    <circle class="pz-handle" data-handle="rot" cx="${cima.x.toFixed(1)}" cy="${cima.y.toFixed(1)}" r="7"/>
+    <circle class="pz-handle" data-handle="esc" cx="${esq.x.toFixed(1)}" cy="${esq.y.toFixed(1)}" r="7"/>`;
 }
 
 function pzRenderFondo(){
@@ -1515,6 +1574,25 @@ function pzRender(){
   $('pzElems').innerHTML = pzElementos.map((el, i) => pzElementoSVG(el, i, i === pzSeleccion)).join('');
   $('pzTiradores').innerHTML = pzTiradores();
   pzRenderSeleccion();
+  pzActualizarFlotante();
+}
+
+/* menú flotante (duplicar/eliminar) sobre el objeto seleccionado */
+function pzActualizarFlotante(){
+  const flot = $('pzFlotante');
+  if(!flot) return;
+  if(pzSeleccion === null || pzArrastre){ flot.hidden = true; return; }
+  const nodo = document.querySelector(`#pzElems [data-i="${pzSeleccion}"]`);
+  const cont = $('pzLienzo');
+  if(!nodo || !cont){ flot.hidden = true; return; }
+  const nb = nodo.getBoundingClientRect();
+  const cb = cont.getBoundingClientRect();
+  if(!nb.width && !nb.height){ flot.hidden = true; return; }
+  const arriba = (nb.top - cb.top) > 50;
+  flot.style.left = (nb.left + nb.width / 2 - cb.left) + 'px';
+  flot.style.top  = (arriba ? nb.top - cb.top - 10 : nb.bottom - cb.top + 10) + 'px';
+  flot.classList.toggle('pz-flot-abajo', !arriba);
+  flot.hidden = false;
 }
 
 /* Punto del click/touch en % del viewBox, pase lo que pase con el
@@ -1645,7 +1723,16 @@ $('pzCampo').addEventListener('pointerdown', e => {
   if(pzHerramienta === 'mover'){
     const h = e.target.closest('[data-handle]');
     if(h && pzSeleccion !== null){
-      pzArrastre = {modo:'tirador', i:pzSeleccion, cual:h.dataset.handle, prev:p, movido:false};
+      const cual = h.dataset.handle;
+      if(cual === 'rot' || cual === 'esc'){
+        const el = pzElementos[pzSeleccion];
+        const bbox = pzBBoxLocal();
+        if(!bbox) return;
+        pzArrastre = {modo:cual, i:pzSeleccion, bbox,
+          tx: el.x / 100 * PZ_W, ty: el.y / 100 * PZ_H, movido:false};
+        return;
+      }
+      pzArrastre = {modo:'tirador', i:pzSeleccion, cual, prev:p, movido:false};
       return;
     }
     const g = e.target.closest('.pz-el');
@@ -1688,6 +1775,29 @@ $('pzCampo').addEventListener('pointermove', e => {
     const p = pzPunto(e);
     const el = pzElementos[pzArrastre.i];
     if(!el) return;
+
+    if(pzArrastre.modo === 'rot' || pzArrastre.modo === 'esc'){
+      const px = p.x / 100 * PZ_W, py = p.y / 100 * PZ_H;
+      const dxA = px - pzArrastre.tx, dyA = py - pzArrastre.ty;
+      if(Math.hypot(dxA, dyA) > 0.4) pzArrastre.movido = true;
+
+      if(pzArrastre.modo === 'rot'){
+        const angulo = Math.atan2(dyA, dxA) * 180 / Math.PI;
+        const midX = pzArrastre.bbox.x + pzArrastre.bbox.width / 2, midY = pzArrastre.bbox.y - 18;
+        const anguloBase = Math.atan2(midY, midX) * 180 / Math.PI;
+        el.rot = angulo - anguloBase;
+      } else {
+        const rot0 = -(el.rot || 0) * Math.PI / 180;
+        const ux = dxA * Math.cos(rot0) - dyA * Math.sin(rot0);
+        const uy = dxA * Math.sin(rot0) + dyA * Math.cos(rot0);
+        const base = Math.hypot(pzArrastre.bbox.x + pzArrastre.bbox.width,
+                                 pzArrastre.bbox.y + pzArrastre.bbox.height) || 1;
+        el.scale = Math.max(0.35, Math.min(3.5, Math.hypot(ux, uy) / base));
+      }
+      pzRender();
+      return;
+    }
+
     const dx = p.x - pzArrastre.prev.x, dy = p.y - pzArrastre.prev.y;
     if(Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) pzArrastre.movido = true;
 
@@ -1733,6 +1843,7 @@ $('pzCampo').addEventListener('pointerup', e => {
     const movido = pzArrastre.movido;
     pzArrastre = null;
     if(movido) pzGuardarPaso();
+    pzActualizarFlotante();
     return;
   }
   if(!pzTrazo) return;
@@ -1774,9 +1885,7 @@ document.addEventListener('keydown', e => {
 
   if((e.key === 'Delete' || e.key === 'Backspace') && pzSeleccion !== null){
     e.preventDefault();
-    pzElementos.splice(pzSeleccion, 1);
-    pzSeleccion = null;
-    pzRender(); pzGuardarPaso();
+    pzBorrarSeleccion();
     return;
   }
   if(e.key === 'Escape' && pzSeleccion !== null){
@@ -1834,22 +1943,25 @@ document.addEventListener('click', e => {
     return;
   }
 
-  if(e.target.closest('#pzDuplicar') && pzSeleccion !== null){
-    const copia = JSON.parse(JSON.stringify(pzElementos[pzSeleccion]));
-    pzMover(copia, 4, 4);
-    if(copia.type === 'jugador') copia.num = pzSiguienteNumero(copia.equipo);
-    pzElementos.push(copia);
-    pzSeleccion = pzElementos.length - 1;
-    pzRender(); pzGuardarPaso();
-    return;
-  }
-
-  if(e.target.closest('#pzBorrarSel') && pzSeleccion !== null){
-    pzElementos.splice(pzSeleccion, 1);
-    pzSeleccion = null;
-    pzRender(); pzGuardarPaso();
-  }
+  if(e.target.closest('[data-flot-dup]')){ pzDuplicarSeleccion(); return; }
+  if(e.target.closest('[data-flot-del]')){ pzBorrarSeleccion(); return; }
 });
+
+function pzDuplicarSeleccion(){
+  if(pzSeleccion === null) return;
+  const copia = JSON.parse(JSON.stringify(pzElementos[pzSeleccion]));
+  pzMover(copia, 4, 4);
+  if(copia.type === 'jugador') copia.num = pzSiguienteNumero(copia.equipo);
+  pzElementos.push(copia);
+  pzSeleccion = pzElementos.length - 1;
+  pzRender(); pzGuardarPaso();
+}
+function pzBorrarSeleccion(){
+  if(pzSeleccion === null) return;
+  pzElementos.splice(pzSeleccion, 1);
+  pzSeleccion = null;
+  pzRender(); pzGuardarPaso();
+}
 
 /* Mientras se escribe el dibujo se actualiza en el acto, pero el
    paso de historial se apunta al parar: así deshacer no borra letra
