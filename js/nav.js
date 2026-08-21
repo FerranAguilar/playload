@@ -17,15 +17,34 @@
    Qué página está activa se decide solo, comparando el nombre de
    archivo actual con el href de cada enlace — nadie tiene que marcar
    aria-current a mano nunca más.
+
+   El botón de contraer/expandir guarda su estado en localStorage y lo
+   marca con data-rail="contraido" en <html>, para que el CSS de cada
+   página (que sigue siendo suyo, no de aquí) lo lea igual que ya lee
+   data-theme. Se aplica nada más pintar la barra, antes de que se vea
+   nada del resto: no hay parpadeo de la barra ancha.
    ═══════════════════════════════════════════════════════════════════ */
 (function(){
-  const PAGINA = location.pathname.split('/').pop();
+  const PAGINA   = location.pathname.split('/').pop();
+  const RAIL_KEY = 'pl-rail';
+
+  function railGuardado(){
+    try { return localStorage.getItem(RAIL_KEY) || 'expandido'; } catch(e){ return 'expandido'; }
+  }
+  function railAplicar(v){
+    if(v === 'contraido') document.documentElement.setAttribute('data-rail', 'contraido');
+    else document.documentElement.removeAttribute('data-rail');
+    try { localStorage.setItem(RAIL_KEY, v); } catch(e){}
+  }
 
   const NAV_HTML = `
     <a class="rail-top" href="PlayLoad-dashboard.html" title="Ir al panel">
       <span class="mark">PL</span>
       <span>PlayLoad</span>
     </a>
+    <button class="rail-toggle" id="railToggle" type="button">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg>
+    </button>
 
     <a class="club" href="PlayLoad-equipos.html" title="Cambiar de equipo" style="color:inherit;text-decoration:none">
       <span class="club-badge" id="clubBadge">··</span>
@@ -155,4 +174,13 @@
       break;
     }
   }
+
+  railAplicar(railGuardado());
+  const toggle = mount.querySelector('#railToggle');
+  toggle.setAttribute('aria-label', 'Contraer u expandir el menú');
+  toggle.title = 'Contraer u expandir el menú';
+  toggle.addEventListener('click', () => {
+    const contraido = document.documentElement.getAttribute('data-rail') === 'contraido';
+    railAplicar(contraido ? 'expandido' : 'contraido');
+  });
 })();

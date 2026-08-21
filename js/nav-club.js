@@ -11,13 +11,30 @@
    de la misma página, y su propia función irA() ya se encarga de
    mover el aria-current cuando cambia de sección. Este archivo solo
    pone el HTML en su sitio.
+
+   El botón de contraer/expandir es el mismo mecanismo que en nav.js:
+   data-rail="contraido" en <html>, guardado en localStorage.
    ═══════════════════════════════════════════════════════════════════ */
 (function(){
+  const RAIL_KEY = 'pl-rail';
+
+  function railGuardado(){
+    try { return localStorage.getItem(RAIL_KEY) || 'expandido'; } catch(e){ return 'expandido'; }
+  }
+  function railAplicar(v){
+    if(v === 'contraido') document.documentElement.setAttribute('data-rail', 'contraido');
+    else document.documentElement.removeAttribute('data-rail');
+    try { localStorage.setItem(RAIL_KEY, v); } catch(e){}
+  }
+
   const NAV_HTML = `
     <a class="rail-top" href="PlayLoad-club.html" title="Ir al club">
       <span class="mark">PL</span>
       <span>PlayLoad</span>
     </a>
+    <button class="rail-toggle" id="railToggle" type="button">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg>
+    </button>
 
     <div class="club">
       <span class="club-badge" id="clubBadge">··</span>
@@ -73,4 +90,13 @@
   const mount = document.getElementById('rail');
   if(!mount) return;
   mount.innerHTML = NAV_HTML;
+
+  railAplicar(railGuardado());
+  const toggle = mount.querySelector('#railToggle');
+  toggle.setAttribute('aria-label', 'Contraer u expandir el menú');
+  toggle.title = 'Contraer u expandir el menú';
+  toggle.addEventListener('click', () => {
+    const contraido = document.documentElement.getAttribute('data-rail') === 'contraido';
+    railAplicar(contraido ? 'expandido' : 'contraido');
+  });
 })();

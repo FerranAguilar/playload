@@ -371,6 +371,33 @@ a.rail-top:hover{color:var(--color-accent)}
   .me{justify-content:center}
   .content,.topbar{padding-left:18px;padding-right:18px}
 }
+/* — barra lateral contraída a mano, con el botón de la esquina — */
+:root[data-rail="contraido"]{--rail:64px}
+:root[data-rail="contraido"] .rail-top span:last-child,
+:root[data-rail="contraido"] .club-text,
+:root[data-rail="contraido"] .club svg,
+:root[data-rail="contraido"] .nav-item span,
+:root[data-rail="contraido"] .nav-count,
+:root[data-rail="contraido"] .me-text{display:none}
+:root[data-rail="contraido"] .rail-top,
+:root[data-rail="contraido"] .nav,
+:root[data-rail="contraido"] .rail-foot{padding-left:8px;padding-right:8px}
+:root[data-rail="contraido"] .club{justify-content:center;padding:8px}
+:root[data-rail="contraido"] .nav-item{justify-content:center;padding:9px 0}
+:root[data-rail="contraido"] .nav-item[aria-current="page"]::before{left:-8px}
+:root[data-rail="contraido"] .nav-group{text-align:center;padding:0;font-size:9px;overflow:hidden;text-overflow:clip;opacity:.5}
+:root[data-rail="contraido"] .me{justify-content:center}
+:root[data-rail="contraido"] .rail-toggle svg{transform:rotate(180deg)}
+
+.rail-toggle{position:absolute;top:18px;right:-12px;width:24px;height:24px;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--color-surface);border:1px solid var(--color-divider);
+  color:var(--muted);cursor:pointer;padding:0;z-index:5;
+  transition:color .14s ease,border-color .14s ease}
+.rail-toggle:hover{color:var(--color-text);border-color:var(--color-accent)}
+.rail-toggle svg{width:12px;height:12px;transition:transform .18s ease;pointer-events:none}
+@media (max-width:1080px){ .rail-toggle{display:none} }
+
 @media (max-width:900px){
   /* siete columnas no caben: la semana pasa a ser una lista de días */
   .week{grid-template-columns:minmax(0,1fr)}
