@@ -543,6 +543,118 @@ body{transition:background .18s ease,color .18s ease}
 .umenu-acc-x svg{width:11px;height:11px}
 .umenu-acc:hover .umenu-acc-x{opacity:1}
 .umenu-acc-x:hover{background:color-mix(in srgb,var(--color-risk) 16%,transparent);color:var(--color-risk)}
+
+/* ═══════════════ TESTS FÍSICOS ═══════════════ */
+
+/* — insignia de la cualidad que valora el test — */
+.calidad{--c:var(--color-accent);display:inline-flex;align-items:center;gap:5px;font-size:11px;
+  letter-spacing:.02em;padding:3px 9px;border-radius:20px;
+  background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--c)}
+.calidad::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);flex:none}
+
+/* — ficha del test: cabecera con descripción + botones — */
+.test-desc{margin:0 26px 4px;font-size:13.5px;line-height:1.6;color:var(--muted)}
+.test-meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 26px 22px}
+
+/* — parámetros globales del test (ej. altura del cajón) — */
+.parametros{margin:0 26px 18px;padding:14px 16px;border-radius:var(--radius-lg);
+  border:1px dashed var(--color-divider);display:flex;flex-direction:column;gap:10px}
+.parametros-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.parametros-head .eyebrow{margin:0}
+.param-fila{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.param-fila .input{width:auto;flex:1;min-width:140px}
+.param-fila input[type="number"]{width:100px;flex:none}
+
+/* — la hoja de cálculo — */
+.hoja-wrap{margin:0 26px 22px;border-radius:var(--radius-lg);border:1px solid var(--color-divider);
+  overflow:auto;max-height:min(52vh,520px)}
+.hoja{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+.hoja th,.hoja td{padding:0;border-right:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+.hoja th:last-child,.hoja td:last-child{border-right:0}
+.hoja thead th{position:sticky;top:0;z-index:2;background:var(--color-surface);
+  padding:8px 10px;text-align:left;vertical-align:top}
+.hoja tbody td{background:var(--color-surface)}
+.hoja tbody tr:hover td{background:color-mix(in srgb,var(--color-text) 3%,var(--color-surface))}
+.hoja .col-jugador{position:sticky;left:0;z-index:1;min-width:150px;font-weight:500;
+  background:var(--color-surface);padding:8px 12px}
+.hoja thead .col-jugador{z-index:3}
+
+.col-cab{display:flex;flex-direction:column;gap:5px;min-width:128px}
+.col-cab-top{display:flex;align-items:center;gap:5px}
+.col-nombre{border:0;background:transparent;color:var(--color-text);font:inherit;font-weight:500;
+  font-size:12.5px;width:100%;padding:2px 0;border-bottom:1px dashed transparent}
+.col-nombre:hover,.col-nombre:focus-visible{border-bottom-color:var(--color-divider)}
+.col-borrar{flex:none;width:20px;height:20px;border-radius:6px;border:0;background:transparent;
+  color:var(--muted-2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.col-borrar:hover{color:var(--color-risk);background:color-mix(in srgb,var(--color-risk) 14%,transparent)}
+.col-borrar svg{width:11px;height:11px;pointer-events:none}
+
+.col-tipo{display:inline-flex;align-items:center;gap:4px;font-size:10px;letter-spacing:.03em;
+  padding:2px 7px;border-radius:20px;width:fit-content;color:var(--muted-2);
+  border:1px solid var(--color-divider)}
+.col-tipo.formula{color:var(--color-accent);border-color:var(--color-accent)}
+.col-formula-txt{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:10.5px;
+  color:var(--muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+
+.celda-input{border:0;background:transparent;color:var(--color-text);font:inherit;
+  width:100%;min-width:100px;padding:9px 10px}
+.celda-input:focus-visible{outline:2px solid var(--color-accent);outline-offset:-2px;
+  background:color-mix(in srgb,var(--color-accent) 6%,transparent)}
+.celda-calc{padding:9px 10px;color:var(--color-accent-300);font-variant-numeric:tabular-nums;
+  background:color-mix(in srgb,var(--color-accent) 7%,transparent)!important;white-space:nowrap}
+.celda-calc.err{color:var(--color-risk)}
+
+.col-nueva{padding:8px;vertical-align:middle}
+.btn-col-nueva{width:100%;min-height:64px;border-radius:8px;border:1px dashed var(--color-divider);
+  background:transparent;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;font:inherit;font-size:11.5px}
+.btn-col-nueva:hover{color:var(--color-accent);border-color:var(--color-accent)}
+
+/* — barra de fórmula, cuando se edita una columna calculada — */
+.formula-bar{margin:0 26px 22px;padding:14px 16px;border-radius:var(--radius-lg);
+  background:color-mix(in srgb,var(--color-accent) 8%,transparent);
+  border:1px solid color-mix(in srgb,var(--color-accent) 30%,transparent);
+  display:flex;flex-direction:column;gap:10px}
+.formula-bar[hidden]{display:none}
+.formula-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.formula-input-row{display:flex;align-items:center;gap:8px}
+.formula-fx{flex:none;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-weight:700;
+  color:var(--color-accent);font-size:14px;width:20px;text-align:center}
+.formula-input{flex:1;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:13px}
+.formula-vars{display:flex;flex-wrap:wrap;gap:6px}
+.formula-var{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;padding:3px 8px;
+  border-radius:6px;border:1px solid var(--color-divider);background:var(--color-surface);
+  color:var(--muted);cursor:pointer}
+.formula-var:hover{color:var(--color-accent);border-color:var(--color-accent)}
+.formula-error{font-size:12px;color:var(--color-risk)}
+.formula-ok{font-size:12px;color:var(--color-ok)}
+
+/* — catálogo de fórmulas rápidas — */
+.catalogo-formulas{display:flex;flex-direction:column;gap:2px;max-height:260px;overflow:auto}
+.catalogo-it{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px;
+  border:0;background:transparent;text-align:left;cursor:pointer;color:inherit;font:inherit}
+.catalogo-it:hover{background:color-mix(in srgb,var(--color-text) 6%,transparent)}
+.catalogo-it b{font-size:12.5px;font-weight:500}
+.catalogo-it span{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;color:var(--muted-2)}
+
+/* — galería de tests predeterminados, en el diálogo de "nuevo test" — */
+.plantillas-test{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.plantilla-test{display:flex;flex-direction:column;gap:6px;padding:13px 14px;border-radius:var(--radius-lg);
+  border:1px solid var(--color-divider);background:transparent;text-align:left;cursor:pointer;
+  color:inherit;font:inherit}
+.plantilla-test:hover{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 6%,transparent)}
+.plantilla-test b{font-size:13.5px}
+.plantilla-test p{margin:0;font-size:11.5px;color:var(--muted-2);line-height:1.4}
+
+/* — historial de pases guardados — */
+.historial{margin:0 26px 22px}
+.historial-it{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:12.5px;color:var(--muted)}
+.historial-it+.historial-it{border-top:1px solid var(--hair)}
+.historial-it b{font-family:var(--font-heading);font-weight:500;color:var(--color-text);font-size:13px}
+
+@media (max-width:760px){
+  .plantillas-test{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -570,9 +682,9 @@ body{transition:background .18s ease,color .18s ease}
         <input class="input" type="search" id="buscar" placeholder="Buscar tarea por nombre…">
       </div>
 
-      <button class="btn btn-primary" data-nueva-tarea>
+      <button class="btn btn-primary" id="btnNuevaTarea" data-nueva-tarea>
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
-        Nueva tarea
+        <span id="btnNuevaTareaTxt">Nueva tarea</span>
       </button>
     </header>
 
@@ -615,6 +727,60 @@ body{transition:background .18s ease,color .18s ease}
       </section>
 
     </main>
+  </div>
+</div>
+
+<!-- ══════════ DIÁLOGO: NUEVO TEST ══════════ -->
+<div class="dialog-backdrop" id="dlgNuevoTest">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgNuevoTestT">
+    <div>
+      <h2 id="dlgNuevoTestT">Nuevo test</h2>
+      <p class="p-sub">Empieza desde uno de los predeterminados o diseña uno desde cero.</p>
+    </div>
+    <div class="plantillas-test" id="plantillasTest"></div>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" type="button" data-cerrar-dlg>Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ DIÁLOGO: CATÁLOGO DE FÓRMULAS ══════════ -->
+<div class="dialog-backdrop" id="dlgCatalogo">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgCatalogoT">
+    <div>
+      <h2 id="dlgCatalogoT">Insertar fórmula</h2>
+      <p class="p-sub">Elige una y ajústala si hace falta — son un punto de partida, no una caja cerrada.</p>
+    </div>
+    <div class="catalogo-formulas" id="catalogoFormulas"></div>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" type="button" data-cerrar-dlg>Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ DIÁLOGO: PASAR TEST ══════════ -->
+<div class="dialog-backdrop" id="dlgPasarTest">
+  <div class="dialog dialog-xl" role="dialog" aria-modal="true" aria-labelledby="dlgPasarTestT" style="max-height:92vh">
+    <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:0">
+        <h2 id="dlgPasarTestT">Pasar test</h2>
+        <p class="p-sub" id="dlgPasarTestSub"></p>
+      </div>
+      <div class="field" style="width:170px">
+        <label for="ptEquipo">Equipo</label>
+        <select class="input" id="ptEquipo"></select>
+      </div>
+      <div class="field" style="width:150px">
+        <label for="ptFecha">Fecha</label>
+        <input class="input" id="ptFecha" type="date">
+      </div>
+    </div>
+    <div class="hoja-wrap" id="ptHojaWrap" style="margin:0"></div>
+    <p class="p-sub">Las celdas en morado se calculan solas a partir de las demás columnas de esa fila.</p>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" type="button" data-cerrar-dlg>Cancelar</button>
+      <button class="btn btn-primary" type="button" id="btnGuardarResultados">Guardar resultados</button>
+    </div>
   </div>
 </div>
 
@@ -749,6 +915,7 @@ const BLOQUE_TIPOS = {
   competicion:  {label:'Competición',  color:'#dd9a52', icono:'M4 2.6h8v3.2a4 4 0 0 1-8 0zM6 12.4h4M8 9.8v2.6M2.4 3.4h1.6v2.6a2 2 0 0 1-1.6-2ZM13.6 3.4H12v2.6a2 2 0 0 0 1.6-2Z'},
   charla:       {label:'Charla / vídeo', color:'#7191c9', icono:'M2.6 3.4h10.8v6.6H6.2L3.4 12.4V10H2.6Z'},
   vuelta_calma: {label:'Vuelta a la calma', color:'#6fbf82', icono:'M8 13.4S2.2 10 2.2 6.3A3.1 3.1 0 0 1 8 4.7a3.1 3.1 0 0 1 5.8 1.6c0 3.7-5.8 7.1-5.8 7.1z'},
+  tests:        {label:'Tests',        color:'#4a9d8f', icono:'M2.4 2.6h11.2v10.8H2.4ZM2.4 8h11.2M8 2.6v10.8'},
   otro:         {label:'Otro',         color:'#9397ab', icono:'M4 8h.01M8 8h.01M12 8h.01'},
 };
 const ESPACIOS = {'':'Sin definir', campo:'Campo', gimnasio:'Gimnasio', sala:'Sala',
@@ -757,6 +924,155 @@ const ESPACIOS = {'':'Sin definir', campo:'Campo', gimnasio:'Gimnasio', sala:'Sa
 let D = {teams:[], user:null, club:null, ejercicios:[], activo:null};
 let filtroTipo = 'todos';
 let busca = '';
+let columnaEditando = null;
+
+/* ── tests físicos: fórmulas, plantillas y catálogo ────────────
+   El evaluador es el gemelo exacto del que corre en el servidor
+   (api/app.php, clase EvaluadorFormula): mismo lenguaje, para que
+   lo que se ve al diseñar sea lo que de verdad se guarda. */
+function normalizarClave(n){
+  return String(n || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'columna';
+}
+
+function evaluarFormula(expr, valores){
+  let s = String(expr || '').trim();
+  if(s.startsWith('=')) s = s.slice(1);
+  if(!s) throw new Error('Fórmula vacía');
+
+  s = s.replace(/\[([^\]]+)\]/g, (_, ref) => {
+    const clave = normalizarClave(ref);
+    const v = valores[clave];
+    if(v === undefined || v === null || v === '' || isNaN(+v)){
+      throw new Error(`Falta el valor de «${ref.trim()}»`);
+    }
+    return `(${+v})`;
+  });
+
+  return evaluarExpresion(s);
+}
+
+function evaluarExpresion(s){
+  let i = 0;
+  const err = msg => { throw new Error(msg); };
+  const skip = () => { while(s[i] === ' ') i++; };
+
+  function numero(){
+    skip();
+    const m = /^\d+(\.\d+)?/.exec(s.slice(i));
+    if(!m) err(`Se esperaba un número en «${s.slice(i) || '(nada)'}»`);
+    i += m[0].length;
+    return parseFloat(m[0]);
+  }
+  function funcion(){
+    skip();
+    const m = /^[a-zA-Z]+/.exec(s.slice(i));
+    if(m && s[i + m[0].length] === '('){
+      const nombre = m[0].toLowerCase();
+      i += m[0].length + 1;
+      const args = [expresion()];
+      skip();
+      while(s[i] === ','){ i++; args.push(expresion()); skip(); }
+      if(s[i] !== ')') err('Falta un ")"');
+      i++;
+      switch(nombre){
+        case 'sqrt':  return Math.sqrt(args[0]);
+        case 'abs':   return Math.abs(args[0]);
+        case 'round': return args[1] !== undefined
+          ? Math.round(args[0] * 10 ** args[1]) / 10 ** args[1] : Math.round(args[0]);
+        case 'min':   return Math.min(...args);
+        case 'max':   return Math.max(...args);
+        default: err(`No conozco la función «${nombre}»`);
+      }
+    }
+    if(s[i] === '('){
+      i++;
+      const v = expresion();
+      skip();
+      if(s[i] !== ')') err('Falta un ")"');
+      i++;
+      return v;
+    }
+    if(s[i] === '-'){ i++; return -funcion(); }
+    if(s[i] === '+'){ i++; return funcion(); }
+    return numero();
+  }
+  function potencia(){
+    let v = funcion();
+    skip();
+    if(s[i] === '^'){ i++; v = Math.pow(v, potencia()); }
+    return v;
+  }
+  function termino(){
+    let v = potencia();
+    skip();
+    while(s[i] === '*' || s[i] === '/'){
+      const op = s[i]; i++;
+      const d = potencia();
+      v = op === '*' ? v * d : v / d;
+      skip();
+    }
+    return v;
+  }
+  function expresion(){
+    let v = termino();
+    skip();
+    while(s[i] === '+' || s[i] === '-'){
+      const op = s[i]; i++;
+      const d = termino();
+      v = op === '+' ? v + d : v - d;
+      skip();
+    }
+    return v;
+  }
+
+  const resultado = expresion();
+  skip();
+  if(i < s.length) err(`Sobra «${s.slice(i)}»`);
+  if(!isFinite(resultado)) err('El resultado no es un número válido');
+  return resultado;
+}
+
+function valorFormateado(v){
+  if(!isFinite(v)) return '—';
+  return Math.abs(v) >= 100 ? Math.round(v).toString() : (Math.round(v * 100) / 100).toString();
+}
+
+function fechaLarga(iso){
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('es-ES', {day:'numeric', month:'long', year:'numeric'});
+}
+
+/* Solo para pintar la galería de "Nuevo test": el servidor tiene su
+   propio catálogo (api/app.php, catalogo_tests_predeterminados) con
+   las columnas y fórmulas de verdad — aquí solo hace falta lo que se
+   ve en la tarjeta. */
+const TESTS_PRESET_INFO = [
+  {id:'cmj', nombre:'CMJ · Countermovement Jump', cualidad:'Potencia del tren inferior', color:'#8a7cd6',
+   resumen:'Salto vertical con contramovimiento. El tiempo de vuelo se convierte en altura del salto.'},
+  {id:'drop_jump', nombre:'Drop Jump', cualidad:'Fuerza reactiva', color:'#dd7a7a',
+   resumen:'Caída desde un cajón y salto máximo. La relación salto/tiempo de contacto da el RSI.'},
+  {id:'imtp', nombre:'IMTP · Isometric Mid-Thigh Pull', cualidad:'Fuerza máxima', color:'#dd9a52',
+   resumen:'Tirón isométrico contra una barra fija. La fuerza pico relativa al peso es el indicador.'},
+  {id:'yoyo', nombre:'Yo-Yo Intermittent Recovery Test', cualidad:'Resistencia a esfuerzos intermitentes', color:'#5cb8ac',
+   resumen:'Carreras de ida y vuelta a velocidad creciente, hasta el fallo.'},
+];
+
+const CATALOGO_FORMULAS = [
+  {nombre:'Altura de salto (desde el tiempo de vuelo)',
+   formula:'=(9.81*[tiempo_vuelo]^2)/8*100', nota:'cm, a partir del tiempo de vuelo en segundos'},
+  {nombre:'RSI · Índice de fuerza reactiva',
+   formula:'=([altura_salto]/100)/[tiempo_contacto]', nota:'altura del salto (cm) entre tiempo de contacto (s)'},
+  {nombre:'Fuerza relativa al peso',
+   formula:'=[fuerza_pico]/[peso_corporal]', nota:'N/kg — fuerza entre peso corporal'},
+  {nombre:'1RM · fórmula de Epley',
+   formula:'=[peso]*(1+[repeticiones]/30)', nota:'a partir del peso movido y las repeticiones hasta el fallo'},
+  {nombre:'Velocidad media',
+   formula:'=[distancia]/[tiempo]', nota:'m/s — distancia entre tiempo'},
+  {nombre:'Variación en %',
+   formula:'=(([valor_final]-[valor_inicial])/[valor_inicial])*100', nota:'cambio entre dos valores, en porcentaje'},
+];
 
 function respuesta(status, b){
   return (b && typeof b.ok !== 'undefined')
@@ -795,6 +1111,13 @@ function toast(msg, kind){
 
 /* ── la lista de la izquierda ───────────────────────────────── */
 function tagsTarea(e){
+  if(e.block_type === 'tests'){
+    const t = [];
+    if(e.quality_label) t.push(`<span>${esc(e.quality_label)}</span>`);
+    t.push(`<span>${(e.columnas || []).length} columnas</span>`);
+    if(e.ultimo_pase) t.push(`<span>Último pase: ${esc(fechaLarga(e.ultimo_pase))}</span>`);
+    return t.join(' · ');
+  }
   const t = [];
   if(e.duration_min) t.push(`<span>${e.duration_min}'</span>`);
   if(e.intensity)     t.push(`<span>RPE ${e.intensity}</span>`);
@@ -815,6 +1138,8 @@ function pintarFiltros(){
 
   caja.innerHTML = chip('todos', 'Todos') +
     Object.entries(BLOQUE_TIPOS).map(([k,v]) => chip(k, v.label, v.color)).join('');
+
+  if($('btnNuevaTareaTxt')) $('btnNuevaTareaTxt').textContent = filtroTipo === 'tests' ? 'Nuevo test' : 'Nueva tarea';
 }
 
 function pintarLista(){
@@ -832,7 +1157,7 @@ function pintarLista(){
         <p>${D.ejercicios.length
              ? 'Prueba con otro tipo o borra la búsqueda.'
              : 'Crea la primera tarea de tu biblioteca.'}</p>
-        ${D.ejercicios.length ? '' : '<button class="btn btn-primary btn-sm" data-nueva-tarea>Nueva tarea</button>'}
+        ${D.ejercicios.length ? '' : `<button class="btn btn-primary btn-sm" data-nueva-tarea>${filtroTipo === 'tests' ? 'Nuevo test' : 'Nueva tarea'}</button>`}
       </div>`;
     return;
   }
@@ -863,6 +1188,20 @@ async function cargarEjercicios(){
   if(DEMO){ pintarLista(); return; }
   const r = await get('action=ejercicios').catch(() => null);
   if(r && r.ok) D.ejercicios = r.ejercicios || [];
+
+  // Los tests traen aparte sus columnas y parámetros: se piden solo
+  // si hay alguno, y se mezclan en la misma lista por id.
+  if(D.ejercicios.some(e => e.block_type === 'tests')){
+    const rt = await get('action=tests').catch(() => null);
+    if(rt && rt.ok){
+      const porId = new Map((rt.tests || []).map(t => [t.id, t]));
+      D.ejercicios.forEach(e => {
+        const extra = porId.get(e.id);
+        if(extra) Object.assign(e, extra);
+      });
+    }
+  }
+
   pintarLista();
 }
 
@@ -891,14 +1230,17 @@ function pintarFicha(){
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M9 3h6v3H9zM9 12h6M9 16h4"/></svg>
           </div>
-          <h3>Elige una tarea o crea una nueva</h3>
-          <p>Aquí se guardan las tareas que luego eliges dentro de una sesión, con su tipo,
-             su duración y — si es de campo — su dibujo en la pizarra.</p>
-          <button class="btn btn-primary btn-sm" data-nueva-tarea>Nueva tarea</button>
+          <h3>${filtroTipo === 'tests' ? 'Elige un test o crea uno nuevo' : 'Elige una tarea o crea una nueva'}</h3>
+          <p>${filtroTipo === 'tests'
+               ? 'Cada test es una hoja de cálculo: columnas de entrada que rellena el entrenador y columnas calculadas con fórmulas, lista para pasarla a la plantilla.'
+               : 'Aquí se guardan las tareas que luego eliges dentro de una sesión, con su tipo, su duración y — si es de campo — su dibujo en la pizarra.'}</p>
+          <button class="btn btn-primary btn-sm" data-nueva-tarea>${filtroTipo === 'tests' ? 'Nuevo test' : 'Nueva tarea'}</button>
         </div>
       </div>`;
     return;
   }
+
+  if(e.block_type === 'tests'){ pintarFichaTest(e); return; }
 
   const nueva = !e.id;
 
@@ -919,7 +1261,7 @@ function pintarFicha(){
         <input class="input" id="tName" value="${esc(e.name)}" placeholder="Rondo 4v2"></div>
       <div class="field"><label for="tTipo">Tipo de bloque</label>
         <select class="input" id="tTipo">
-          ${Object.entries(BLOQUE_TIPOS).map(([k,v]) =>
+          ${Object.entries(BLOQUE_TIPOS).filter(([k]) => k !== 'tests').map(([k,v]) =>
             `<option value="${k}"${e.block_type === k ? ' selected' : ''}>${v.label}</option>`).join('')}
         </select></div>
       <div class="field"><label for="tEspacio">Espacio</label>
@@ -957,6 +1299,171 @@ function pintarFicha(){
     </div>`;
 }
 
+/* ── tests físicos: la ficha con la hoja de cálculo ────────────
+   Un test es un ejercicio (mismo id, mismo owner) con block_type
+   'tests': el nombre y la descripción son los mismos campos que
+   cualquier tarea; lo propio son la cualidad, los parámetros y las
+   columnas, que llegan ya mezcladas en D.activo desde cargarEjercicios(). */
+function filaEjemploValores(e){
+  const vals = {};
+  (e.parametros || []).forEach(p => { vals[p.col_key] = +p.value; });
+  // una fila de ejemplo fija, solo para que las fórmulas tengan algo
+  // con lo que calcular mientras se diseña
+  (e.columnas || []).filter(c => c.type === 'entrada').forEach((c, i) => {
+    vals[c.col_key] = [0.52, 0.46, 0.18, 30, 74, 2150, 18.5, 1680][i] ?? 1;
+  });
+  (e.columnas || []).forEach(c => {
+    if(c.type !== 'formula') return;
+    try { vals[c.col_key] = evaluarFormula(c.formula, vals); }
+    catch(err){ /* se enseña el error en la celda, no aquí */ }
+  });
+  return vals;
+}
+
+function pintarColumnasDesigner(e){
+  const vals = filaEjemploValores(e);
+  const cols = e.columnas || [];
+
+  const cabeceras = cols.map(c => `
+    <th>
+      <div class="col-cab">
+        <div class="col-cab-top">
+          <input class="col-nombre" value="${esc(c.label)}" data-col-nombre="${esc(c.col_key)}">
+          <button class="col-borrar" data-col-borrar="${esc(c.col_key)}" title="Quitar columna" aria-label="Quitar columna">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
+          </button>
+        </div>
+        <button class="col-tipo${c.type === 'formula' ? ' formula' : ''}" data-col-tipo="${esc(c.col_key)}">
+          ${c.type === 'formula' ? 'ƒ Fórmula' : 'Entrada'}
+        </button>
+        ${c.type === 'formula' ? `<span class="col-formula-txt" title="${esc(c.formula || '')}">${esc(c.formula || '')}</span>` : ''}
+      </div>
+    </th>`).join('');
+
+  const celdas = cols.map(c => {
+    if(c.type === 'entrada'){
+      return `<td><input class="celda-input" value="${vals[c.col_key] ?? ''}" placeholder="valor" disabled></td>`;
+    }
+    try {
+      const r = evaluarFormula(c.formula, vals);
+      return `<td class="celda-calc">${valorFormateado(r)}</td>`;
+    } catch(err){
+      return `<td class="celda-calc err" title="${esc(err.message)}">?</td>`;
+    }
+  }).join('');
+
+  return `
+    <table class="hoja">
+      <thead><tr>
+        <th class="col-jugador">Jugador</th>
+        ${cabeceras}
+        <th class="col-nueva"><button class="btn-col-nueva" type="button" data-nueva-columna>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.2v9.6M3.2 8h9.6"/></svg>
+          Columna
+        </button></th>
+      </tr></thead>
+      <tbody><tr>
+        <td class="col-jugador" style="color:var(--muted-2);font-weight:400;font-style:italic">Fila de ejemplo</td>
+        ${celdas}
+        <td></td>
+      </tr></tbody>
+    </table>`;
+}
+
+function pintarFormulaBar(e){
+  const caja = $('formulaBar');
+  if(!caja) return;
+  const c = (e.columnas || []).find(x => x.col_key === columnaEditando);
+  if(!c || c.type !== 'formula'){ caja.hidden = true; return; }
+  caja.hidden = false;
+
+  const vals = filaEjemploValores(e);
+  let estado = '';
+  try {
+    const r = evaluarFormula(c.formula, vals);
+    estado = `<span class="formula-ok">= ${valorFormateado(r)} con la fila de ejemplo</span>`;
+  } catch(err){
+    estado = `<span class="formula-error">${esc(err.message)}</span>`;
+  }
+
+  const otras = (e.columnas || []).filter(x => x.col_key !== c.col_key)
+    .concat((e.parametros || []).map(p => ({col_key:p.col_key, label:p.label})));
+
+  caja.innerHTML = `
+    <div class="formula-head">
+      <span class="eyebrow">Fórmula de «${esc(c.label)}»</span>
+      <span style="display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" type="button" data-revertir-entrada>Volver a entrada</button>
+        <button class="btn btn-secondary btn-sm" type="button" data-abrir-catalogo>Insertar fórmula…</button>
+      </span>
+    </div>
+    <div class="formula-input-row">
+      <span class="formula-fx">ƒx</span>
+      <input class="input formula-input" id="formulaInput" value="${esc(c.formula || '')}" spellcheck="false">
+    </div>
+    <div class="formula-vars">
+      ${otras.map(o => `<button class="formula-var" type="button" data-insertar-var="${esc(o.col_key)}">[${esc(o.label)}]</button>`).join('')
+        || '<span class="p-sub" style="margin:0">Añade otra columna para poder referenciarla.</span>'}
+    </div>
+    ${estado}`;
+}
+
+function pintarFichaTest(e){
+  const caja = $('detalle');
+  const nueva = !e.id;
+
+  caja.innerHTML = `
+    <div class="det-head">
+      <div style="min-width:0;flex:1">
+        <h2>${nueva ? 'Nuevo test' : esc(e.name) || 'Test'}</h2>
+        <div class="eyebrow">${nueva ? 'Todavía sin guardar' : 'De tu biblioteca de tests'}</div>
+      </div>
+      <div class="det-acc">
+        ${nueva ? '' : '<button class="btn btn-secondary btn-sm" data-borrar-tarea>Borrar</button>'}
+        ${nueva ? '' : `<button class="btn btn-primary btn-sm" data-pasar-test="${e.id}">Pasar test</button>`}
+      </div>
+    </div>
+
+    <div class="ficha-tarea">
+      <div class="field" style="grid-column:span 2"><label for="tsNombre">Nombre</label>
+        <input class="input" id="tsNombre" value="${esc(e.name)}"></div>
+      <div class="field"><label for="tsCualidad">Cualidad que valora</label>
+        <input class="input" id="tsCualidad" value="${esc(e.quality_label || '')}" placeholder="Potencia del tren inferior"></div>
+      <div class="field field-desc"><label for="tsDesc">Descripción</label>
+        <textarea class="input" id="tsDesc" placeholder="Qué mide y cómo se hace…">${esc(e.description || '')}</textarea></div>
+    </div>
+
+    ${e.quality_label ? `<div class="test-meta-row">
+      <span class="calidad" style="--c:${esc(e.quality_color || '#9184d9')}">${esc(e.quality_label)}</span>
+    </div>` : ''}
+
+    <div class="parametros">
+      <div class="parametros-head">
+        <span class="eyebrow">Parámetros del test</span>
+        <button class="btn btn-secondary btn-sm" type="button" data-nuevo-parametro>+ Parámetro</button>
+      </div>
+      ${(e.parametros || []).length ? (e.parametros || []).map(p => `
+        <div class="param-fila">
+          <input class="input" value="${esc(p.label)}" data-param-nombre="${esc(p.col_key)}">
+          <input type="number" class="input" value="${p.value}" data-param-valor="${esc(p.col_key)}">
+        </div>`).join('') : `
+        <p class="p-sub">Constantes de la sesión de test, no de cada jugador — por ejemplo la altura
+          del cajón en un Drop Jump. Se pueden usar en las fórmulas igual que una columna.</p>`}
+    </div>
+
+    <div class="hoja-wrap">${pintarColumnasDesigner(e)}</div>
+    <div class="formula-bar" id="formulaBar" hidden></div>
+
+    ${nueva ? `<p class="p-sub" style="margin:0 26px 18px">Guarda el test para poder pasarlo a la plantilla.</p>` : ''}
+
+    <div class="dialog-actions" style="margin:0 26px 22px">
+      <button class="btn btn-primary btn-sm" data-guardar-tarea>Guardar test</button>
+    </div>
+  `;
+
+  pintarFormulaBar(e);
+}
+
 function nuevaFicha(){
   D.activo = {id:0, name:'', block_type:'otro', space:'', duration_min:null,
               intensity:null, materials:'', description:'', diagram:null};
@@ -973,6 +1480,7 @@ function abrirFicha(id){
 
 async function guardarFicha(){
   if(!D.activo) return;
+  if(D.activo.block_type === 'tests'){ await guardarFichaTest(); return; }
   if(DEMO){ toast('Sin servidor no se pueden guardar cambios: esta es la vista de diseño.'); return; }
   const datos = leerFicha();
   if(!datos.name.trim()){ toast('La tarea necesita un nombre.', 'bad'); return; }
@@ -1942,6 +2450,227 @@ async function cargar(){
 /* ── interacción ────────────────────────────────────────────── */
 $('buscar').addEventListener('input', e => { busca = e.target.value.trim().toLowerCase(); pintarLista(); });
 
+/* ── tests físicos: guardar, plantillas y pasar el test ────────── */
+async function guardarFichaTest(){
+  if(!D.activo) return;
+  if(DEMO){ toast('Sin servidor no se pueden guardar cambios: esta es la vista de diseño.'); return; }
+
+  const nombre = $('tsNombre').value.trim();
+  if(!nombre){ toast('El test necesita un nombre.', 'bad'); return; }
+
+  const datos = {
+    name: nombre,
+    description: $('tsDesc').value,
+    quality_label: $('tsCualidad').value,
+    quality_color: D.activo.quality_color || '#9184d9',
+  };
+
+  const r = await post({action:'editar_test', exercise_id:D.activo.id, ...datos});
+  if(!r.ok){ toast(r.error || 'No se ha podido guardar.', 'bad'); return; }
+
+  Object.assign(D.activo, datos);
+  const item = D.ejercicios.find(x => x.id === D.activo.id);
+  if(item) Object.assign(item, datos);
+
+  toast('Test guardado');
+  pintarLista();
+}
+
+let testGuardarTimer = null;
+function programarGuardadoColumnasTest(e){
+  clearTimeout(testGuardarTimer);
+  testGuardarTimer = setTimeout(() => guardarColumnasTest(e), 700);
+}
+
+async function guardarColumnasTest(e){
+  if(!e || !e.id || DEMO) return;
+  const r = await post({
+    action: 'guardar_columnas_test', exercise_id: e.id,
+    columnas: (e.columnas || []).map(c => ({key:c.col_key, label:c.label, type:c.type, formula:c.formula || ''})),
+    parametros: (e.parametros || []).map(p => ({key:p.col_key, label:p.label, valor:p.value})),
+  });
+  if(!r.ok){ toast(r.error || 'No se han podido guardar las columnas.', 'bad'); }
+}
+
+function pintarPlantillasTest(){
+  $('plantillasTest').innerHTML = TESTS_PRESET_INFO.map(t => `
+    <button class="plantilla-test" type="button" data-plantilla="${t.id}">
+      <b>${esc(t.nombre)}</b>
+      <span class="calidad" style="--c:${t.color}">${esc(t.cualidad)}</span>
+      <p>${esc(t.resumen)}</p>
+    </button>`).join('') + `
+    <button class="plantilla-test" type="button" data-plantilla="blanco">
+      <b>Empezar en blanco</b>
+      <span class="calidad" style="--c:#75798c">A tu manera</span>
+      <p>Solo la columna de jugador. Añades tú las variables y las fórmulas que necesites.</p>
+    </button>`;
+}
+
+async function crearTestDesdeplantilla(id){
+  if(DEMO){ toast('Sin servidor no se pueden crear tests: esta es la vista de diseño.'); return; }
+  const r = await post({action:'crear_test_predeterminado', team_id:D.teams[0] ? D.teams[0].id : 0, plantilla:id});
+  if(!r.ok){ toast(r.error || 'No se ha podido crear el test.', 'bad'); return; }
+
+  $('dlgNuevoTest').classList.remove('open');
+  filtroTipo = 'tests';
+  await cargarEjercicios();
+  pintarFiltros();
+  abrirFicha(r.exercise_id);
+  toast('Test creado');
+}
+
+async function abrirPasarTest(exerciseId){
+  const e = D.ejercicios.find(x => x.id === exerciseId);
+  if(!e) return;
+
+  $('dlgPasarTestT').textContent = `Pasar test · ${e.name}`;
+  $('ptFecha').value = new Date().toISOString().slice(0, 10);
+  $('ptEquipo').innerHTML = D.teams.length
+    ? D.teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('')
+    : '<option value="">Sin equipos</option>';
+
+  $('dlgPasarTest').classList.add('open');
+  await cargarRosterPasarTest(e);
+}
+
+async function cargarRosterPasarTest(e){
+  const teamId = +$('ptEquipo').value || 0;
+  const equipo = D.teams.find(t => t.id === teamId);
+  $('dlgPasarTestSub').textContent = equipo ? equipo.name : '';
+
+  if(!teamId){
+    $('ptHojaWrap').innerHTML = '<p class="p-sub" style="margin:16px">Este club todavía no tiene equipos.</p>';
+    return;
+  }
+
+  $('ptHojaWrap').innerHTML = '<p class="p-sub" style="margin:16px">Cargando plantilla…</p>';
+  const r = await get('action=equipo&id=' + teamId).catch(() => null);
+  const jugadores = (r && r.ok) ? (r.players || []) : [];
+
+  if(!jugadores.length){
+    $('ptHojaWrap').innerHTML = '<p class="p-sub" style="margin:16px">Este equipo todavía no tiene jugadores.</p>';
+    return;
+  }
+
+  const cols = e.columnas || [];
+  const cab = cols.map(c => `<th>${esc(c.label)}${c.type === 'formula' ? ' <span style="color:var(--color-accent)">ƒ</span>' : ''}</th>`).join('');
+
+  const filas = jugadores.map(j => {
+    const celdas = cols.map(c => c.type === 'entrada'
+      ? `<td><input class="celda-input" data-celda-entrada data-jugador="${j.id}" data-col="${esc(c.col_key)}" placeholder="—"></td>`
+      : `<td class="celda-calc" data-celda-calc data-jugador="${j.id}" data-col="${esc(c.col_key)}">—</td>`
+    ).join('');
+    return `<tr>
+      <td class="col-jugador">${esc(j.name)}${j.dorsal ? ` <span style="color:var(--muted-2);font-weight:400">· ${esc(j.dorsal)}</span>` : ''}</td>
+      ${celdas}
+    </tr>`;
+  }).join('');
+
+  $('ptHojaWrap').innerHTML = `
+    <table class="hoja">
+      <thead><tr><th class="col-jugador">Jugador</th>${cab}</tr></thead>
+      <tbody>${filas}</tbody>
+    </table>`;
+}
+
+function recalcularFilaJugadorPasarTest(e, jugId){
+  const vals = {};
+  (e.parametros || []).forEach(p => { vals[p.col_key] = +p.value; });
+  (e.columnas || []).filter(c => c.type === 'entrada').forEach(c => {
+    const inp = document.querySelector(`[data-celda-entrada][data-jugador="${jugId}"][data-col="${c.col_key}"]`);
+    vals[c.col_key] = inp ? inp.value : '';
+  });
+  (e.columnas || []).filter(c => c.type === 'formula').forEach(c => {
+    const celda = document.querySelector(`[data-celda-calc][data-jugador="${jugId}"][data-col="${c.col_key}"]`);
+    if(!celda) return;
+    try {
+      const r = evaluarFormula(c.formula, vals);
+      celda.textContent = valorFormateado(r);
+      celda.classList.remove('err');
+      celda.title = '';
+      vals[c.col_key] = r;
+    } catch(err){
+      celda.textContent = '—';
+      celda.classList.add('err');
+      celda.title = err.message;
+    }
+  });
+}
+
+async function guardarResultadosTest(){
+  if(!D.activo) return;
+  if(DEMO){ toast('Sin servidor no se pueden guardar resultados: esta es la vista de diseño.'); return; }
+
+  const teamId = +$('ptEquipo').value || 0;
+  const fecha  = $('ptFecha').value;
+  if(!teamId){ toast('Elige un equipo.', 'bad'); return; }
+  if(!fecha){ toast('Elige una fecha.', 'bad'); return; }
+
+  const valores = {};
+  document.querySelectorAll('#ptHojaWrap [data-celda-entrada]').forEach(inp => {
+    if(inp.value === '') return;
+    const jid = inp.dataset.jugador, key = inp.dataset.col;
+    valores[jid] = valores[jid] || {};
+    valores[jid][key] = inp.value;
+  });
+  if(!Object.keys(valores).length){ toast('No has rellenado ningún valor.', 'bad'); return; }
+
+  const btn = $('btnGuardarResultados');
+  btn.disabled = true;
+  const r = await post({action:'pasar_test', exercise_id:D.activo.id, team_id:teamId, date:fecha, valores});
+  btn.disabled = false;
+
+  if(!r.ok){ toast(r.error || 'No se han podido guardar los resultados.', 'bad'); return; }
+
+  $('dlgPasarTest').classList.remove('open');
+  toast(`Resultados guardados (${r.jugadores} jugador${r.jugadores===1?'':'es'})`);
+
+  await cargarEjercicios();
+  const item = D.ejercicios.find(x => x.id === D.activo.id);
+  if(item){ D.activo = item; pintarFicha(); }
+}
+
+document.addEventListener('input', e => {
+  if(!D.activo || D.activo.block_type !== 'tests') return;
+  const eActivo = D.activo;
+
+  if(e.target.id === 'tsNombre' || e.target.id === 'tsCualidad' || e.target.id === 'tsDesc') return;
+
+  if(e.target.id === 'formulaInput'){
+    const c = (eActivo.columnas || []).find(x => x.col_key === columnaEditando);
+    if(c){ c.formula = e.target.value; pintarFormulaBar(eActivo); programarGuardadoColumnasTest(eActivo); }
+    return;
+  }
+
+  const colNombre = e.target.closest('[data-col-nombre]');
+  if(colNombre){
+    const c = (eActivo.columnas || []).find(x => x.col_key === colNombre.dataset.colNombre);
+    if(c){ c.label = e.target.value; programarGuardadoColumnasTest(eActivo); }
+    return;
+  }
+
+  const paramNombre = e.target.closest('[data-param-nombre]');
+  if(paramNombre){
+    const p = (eActivo.parametros || []).find(x => x.col_key === paramNombre.dataset.paramNombre);
+    if(p){ p.label = e.target.value; programarGuardadoColumnasTest(eActivo); }
+    return;
+  }
+  const paramValor = e.target.closest('[data-param-valor]');
+  if(paramValor){
+    const p = (eActivo.parametros || []).find(x => x.col_key === paramValor.dataset.paramValor);
+    if(p){ p.value = +e.target.value || 0; programarGuardadoColumnasTest(eActivo); }
+    return;
+  }
+
+  if(e.target.closest('[data-celda-entrada]')){
+    recalcularFilaJugadorPasarTest(eActivo, e.target.dataset.jugador);
+  }
+});
+
+document.getElementById('ptEquipo')?.addEventListener('change', async () => {
+  if(D.activo) await cargarRosterPasarTest(D.activo);
+});
+
 document.addEventListener('click', async e => {
 
   if(e.target.closest('[data-cerrar-dlg]') || e.target.classList.contains('dialog-backdrop')){
@@ -1956,7 +2685,8 @@ document.addEventListener('click', async e => {
   if(abre){ abrirFicha(+abre.dataset.abrir); return; }
 
   if(e.target.closest('[data-nueva-tarea]')){
-    if(DEMO){ toast('Sin servidor no se pueden crear tareas: esta es la vista de diseño.'); return; }
+    if(DEMO){ toast(`Sin servidor no se pueden crear ${filtroTipo === 'tests' ? 'tests' : 'tareas'}: esta es la vista de diseño.`); return; }
+    if(filtroTipo === 'tests'){ pintarPlantillasTest(); $('dlgNuevoTest').classList.add('open'); return; }
     nuevaFicha();
     return;
   }
@@ -1966,6 +2696,101 @@ document.addEventListener('click', async e => {
   if(e.target.closest('[data-abrir-pizarra]')){ pzAbrir(); return; }
   if(e.target.closest('[data-quitar-pizarra]')){ await pzQuitar(); return; }
   if(e.target.closest('#btnGuardarPizarra')){ await pzGuardar(); return; }
+
+  const plantilla = e.target.closest('[data-plantilla]');
+  if(plantilla){ await crearTestDesdeplantilla(plantilla.dataset.plantilla); return; }
+
+  const pasar = e.target.closest('[data-pasar-test]');
+  if(pasar){ await abrirPasarTest(+pasar.dataset.pasarTest); return; }
+
+  if(e.target.closest('#btnGuardarResultados')){ await guardarResultadosTest(); return; }
+
+  if(!D.activo || D.activo.block_type !== 'tests'){ return; }
+  const eActivo = D.activo;
+
+  const colTipo = e.target.closest('[data-col-tipo]');
+  if(colTipo){
+    const c = (eActivo.columnas || []).find(x => x.col_key === colTipo.dataset.colTipo);
+    if(!c) return;
+    if(c.type === 'entrada'){ c.type = 'formula'; c.formula = c.formula || '=0'; }
+    columnaEditando = c.col_key;
+    pintarFicha();
+    guardarColumnasTest(eActivo);
+    return;
+  }
+
+  if(e.target.closest('[data-revertir-entrada]')){
+    const c = (eActivo.columnas || []).find(x => x.col_key === columnaEditando);
+    if(c){ c.type = 'entrada'; delete c.formula; columnaEditando = null; pintarFicha(); guardarColumnasTest(eActivo); }
+    return;
+  }
+
+  const colBorrar = e.target.closest('[data-col-borrar]');
+  if(colBorrar){
+    eActivo.columnas = (eActivo.columnas || []).filter(x => x.col_key !== colBorrar.dataset.colBorrar);
+    if(columnaEditando === colBorrar.dataset.colBorrar) columnaEditando = null;
+    pintarFicha();
+    guardarColumnasTest(eActivo);
+    return;
+  }
+
+  if(e.target.closest('[data-nueva-columna]')){
+    eActivo.columnas = eActivo.columnas || [];
+    let n = 1, key;
+    do { key = 'columna_' + n; n++; } while(eActivo.columnas.some(c => c.col_key === key));
+    eActivo.columnas.push({col_key:key, label:'Nueva columna', type:'entrada'});
+    pintarFicha();
+    guardarColumnasTest(eActivo);
+    return;
+  }
+
+  if(e.target.closest('[data-nuevo-parametro]')){
+    eActivo.parametros = eActivo.parametros || [];
+    let n = 1, key;
+    do { key = 'parametro_' + n; n++; } while(eActivo.parametros.some(p => p.col_key === key));
+    eActivo.parametros.push({col_key:key, label:'Nuevo parámetro', value:0});
+    pintarFicha();
+    guardarColumnasTest(eActivo);
+    return;
+  }
+
+  if(e.target.closest('[data-abrir-catalogo]')){
+    $('catalogoFormulas').innerHTML = CATALOGO_FORMULAS.map((f,i) => `
+      <button class="catalogo-it" type="button" data-catalogo="${i}">
+        <b>${esc(f.nombre)}</b>
+        <span>${esc(f.formula)}</span>
+        <span style="color:var(--muted-2);font-family:inherit">${esc(f.nota)}</span>
+      </button>`).join('');
+    $('dlgCatalogo').classList.add('open');
+    return;
+  }
+
+  const catIt = e.target.closest('[data-catalogo]');
+  if(catIt){
+    const f = CATALOGO_FORMULAS[+catIt.dataset.catalogo];
+    const c = (eActivo.columnas || []).find(x => x.col_key === columnaEditando);
+    if(c){ c.formula = f.formula; }
+    $('dlgCatalogo').classList.remove('open');
+    pintarFicha();
+    guardarColumnasTest(eActivo);
+    return;
+  }
+
+  const varBtn = e.target.closest('[data-insertar-var]');
+  if(varBtn){
+    const c = (eActivo.columnas || []).find(x => x.col_key === columnaEditando);
+    const inp = $('formulaInput');
+    if(c && inp){
+      const ref = `[${varBtn.dataset.insertarVar}]`;
+      const pos = inp.selectionStart ?? inp.value.length;
+      inp.value = inp.value.slice(0, pos) + ref + inp.value.slice(pos);
+      c.formula = inp.value;
+      inp.focus();
+      pintarFormulaBar(eActivo);
+      programarGuardadoColumnasTest(eActivo);
+    }
+    return;
+  }
 
 });
 

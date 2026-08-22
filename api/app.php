@@ -1550,6 +1550,262 @@ switch ($action) {
 
         json_out(['ok' => true]);
 
+    // ── Tests físicos: la lista, con sus columnas y parámetros ───────
+    // Son ejercicios con block_type = 'tests'; se listan aparte porque
+    // la pantalla de tests necesita las columnas de cada uno de una
+    // vez, no solo el nombre.
+    case 'tests':
+        $teamId = (int) ($_GET['team_id'] ?? 0);
+        if ($teamId && !es_mi_equipo($teamId, $userId)) {
+            fail('Ese equipo no es tuyo.', 403);
+        }
+
+        $st = db()->prepare(
+            "SELECT id, name, description, quality_label, quality_color
+               FROM exercises WHERE owner_user_id = ? AND block_type = 'tests'
+              ORDER BY name"
+        );
+        $st->execute([$userId]);
+        $tests = $st->fetchAll();
+
+        if ($tests) {
+            $ids = array_map(static fn ($t) => (int) $t['id'], $tests);
+            $ph  = implode(',', array_fill(0, count($ids), '?'));
+
+            $cq = db()->prepare(
+                "SELECT exercise_id, col_key, label, type, formula
+                   FROM test_columns WHERE exercise_id IN ($ph) ORDER BY sort, id"
+            );
+            $cq->execute($ids);
+            $porTest = [];
+            foreach ($cq->fetchAll() as $c) {
+                $porTest[(int) $c['exercise_id']][] = $c;
+            }
+
+            $pq = db()->prepare(
+                "SELECT exercise_id, col_key, label, value
+                   FROM test_parameters WHERE exercise_id IN ($ph) ORDER BY sort, id"
+            );
+            $pq->execute($ids);
+            $paramsPorTest = [];
+            foreach ($pq->fetchAll() as $p) {
+                $p['value'] = (float) $p['value'];
+                $paramsPorTest[(int) $p['exercise_id']][] = $p;
+            }
+
+            // La fecha del último pase, para que la lista pueda decir
+            // hace cuánto sin traer el historial entero.
+            $rq = db()->prepare(
+                "SELECT exercise_id, MAX(date) AS ultimo, COUNT(*) AS veces
+                   FROM test_results WHERE exercise_id IN ($ph) GROUP BY exercise_id"
+            );
+            $rq->execute($ids);
+            $historialPorTest = [];
+            foreach ($rq->fetchAll() as $r) {
+                $historialPorTest[(int) $r['exercise_id']] = $r;
+            }
+
+            foreach ($tests as &$t) {
+                $t['id']          = (int) $t['id'];
+                $t['columnas']    = $porTest[$t['id']] ?? [];
+                $t['parametros']  = $paramsPorTest[$t['id']] ?? [];
+                $h                = $historialPorTest[$t['id']] ?? null;
+                $t['ultimo_pase'] = $h ? $h['ultimo'] : null;
+                $t['veces_pasado'] = $h ? (int) $h['veces'] : 0;
+            }
+            unset($t);
+        }
+
+        json_out(['ok' => true, 'tests' => $tests]);
+
+    // ── Crear un test desde una plantilla (o en blanco) ──────────────
+    case 'crear_test_predeterminado':
+        $teamId = (int) (body()['team_id'] ?? 0);
+        exige_acceso($teamId, $userId, ['propietario', 'staff']);
+
+        $plantilla = param('plantilla');
+        $catalogo  = catalogo_tests_predeterminados();
+
+        if ($plantilla === 'blanco') {
+            $datos = ['nombre' => 'Nuevo test', 'cualidad' => '', 'color' => '#9184d9',
+                      'descripcion' => '', 'parametros' => [], 'columnas' => []];
+        } elseif (isset($catalogo[$plantilla])) {
+            $datos = $catalogo[$plantilla];
+        } else {
+            fail('No conozco esa plantilla de test.');
+        }
+
+        $ins = db()->prepare(
+            "INSERT INTO exercises (owner_user_id, name, block_type, description, quality_label, quality_color)
+             VALUES (?, ?, 'tests', ?, ?, ?)"
+        );
+        $ins->execute([$userId, $datos['nombre'], $datos['descripcion'], $datos['cualidad'], $datos['color']]);
+        $exerciseId = (int) db()->lastInsertId();
+
+        reemplazar_columnas_test($exerciseId, $datos['columnas'], $datos['parametros']);
+
+        json_out(['ok' => true, 'exercise_id' => $exerciseId], 201);
+
+    // ── Editar el nombre, la descripción y la cualidad de un test ────
+    case 'editar_test':
+        $id = (int) (body()['exercise_id'] ?? 0);
+        exige_ejercicio_propio($id, $userId);
+
+        $nombre = trim(mb_substr(param('name'), 0, 120));
+        if ($nombre === '') {
+            fail('El test necesita un nombre.');
+        }
+        $color = color_valido(param('quality_color')) ?? '#9184d9';
+
+        $up = db()->prepare(
+            'UPDATE exercises SET name = ?, description = ?, quality_label = ?, quality_color = ?
+              WHERE id = ?'
+        );
+        $up->execute([
+            $nombre, mb_substr(param('description'), 0, 400),
+            mb_substr(param('quality_label'), 0, 80), $color, $id,
+        ]);
+
+        json_out(['ok' => true]);
+
+    // ── Guardar las columnas y los parámetros de un test ─────────────
+    // Se borran y se vuelven a escribir enteras: no hace falta
+    // conservar sus id, los resultados ya guardados se referencian por
+    // col_key, no por el id de la columna.
+    case 'guardar_columnas_test':
+        $id = (int) (body()['exercise_id'] ?? 0);
+        exige_ejercicio_propio($id, $userId);
+
+        $columnas   = body()['columnas'] ?? [];
+        $parametros = body()['parametros'] ?? [];
+        if (!is_array($columnas) || !is_array($parametros)) {
+            fail('Faltan las columnas.');
+        }
+
+        reemplazar_columnas_test($id, $columnas, $parametros);
+
+        json_out(['ok' => true]);
+
+    // ── Pasar un test a la plantilla: guarda un resultado por jugador ─
+    // Las fórmulas se recalculan aquí, con lo que ha entrado el
+    // navegador en las columnas de entrada: nunca nos fiamos del
+    // número ya calculado que pueda venir en la petición.
+    case 'pasar_test':
+        $exerciseId = (int) (body()['exercise_id'] ?? 0);
+        exige_ejercicio_propio($exerciseId, $userId);
+
+        $teamId = (int) (body()['team_id'] ?? 0);
+        exige_acceso($teamId, $userId, ['propietario', 'staff']);
+
+        $fecha = param('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            fail('La fecha debe ser AAAA-MM-DD.');
+        }
+
+        $valoresPorJugador = body()['valores'] ?? [];
+        if (!is_array($valoresPorJugador) || !$valoresPorJugador) {
+            fail('No hay ningún valor que guardar.');
+        }
+
+        $cq = db()->prepare(
+            'SELECT col_key, label, type, formula FROM test_columns
+              WHERE exercise_id = ? ORDER BY sort, id'
+        );
+        $cq->execute([$exerciseId]);
+        $columnas = $cq->fetchAll();
+        if (!$columnas) {
+            fail('Este test todavía no tiene columnas.');
+        }
+
+        $pq = db()->prepare('SELECT col_key, value FROM test_parameters WHERE exercise_id = ?');
+        $pq->execute([$exerciseId]);
+        $parametros = [];
+        foreach ($pq->fetchAll() as $p) {
+            $parametros[$p['col_key']] = (float) $p['value'];
+        }
+
+        // Solo se tocan jugadores de este equipo: el identificador viene
+        // del navegador y podría ser el de cualquier otra plantilla.
+        $q = db()->prepare('SELECT id FROM players WHERE team_id = ?');
+        $q->execute([$teamId]);
+        $suyos = array_map('intval', array_column($q->fetchAll(), 'id'));
+
+        $ins = db()->prepare('INSERT INTO test_results (exercise_id, team_id, date) VALUES (?, ?, ?)');
+        $ins->execute([$exerciseId, $teamId, $fecha]);
+        $resultId = (int) db()->lastInsertId();
+
+        $insValor = db()->prepare(
+            'INSERT INTO test_result_values (result_id, player_id, col_key, value) VALUES (?, ?, ?, ?)'
+        );
+
+        $guardados = 0;
+        foreach ($valoresPorJugador as $jugadorId => $entradas) {
+            $jugadorId = (int) $jugadorId;
+            if (!is_array($entradas) || !in_array($jugadorId, $suyos, true)) {
+                continue;
+            }
+
+            $vals = $parametros;
+            foreach ($columnas as $c) {
+                if ($c['type'] !== 'entrada') {
+                    continue;
+                }
+                $v = $entradas[$c['col_key']] ?? null;
+                if ($v !== null && $v !== '' && is_numeric($v)) {
+                    $vals[$c['col_key']] = (float) $v;
+                }
+            }
+
+            $huboAlgo = false;
+            foreach ($columnas as $c) {
+                if ($c['type'] === 'entrada') {
+                    $valor = $vals[$c['col_key']] ?? null;
+                } else {
+                    try {
+                        $valor = evaluar_formula((string) $c['formula'], $vals);
+                        $vals[$c['col_key']] = $valor;
+                    } catch (Throwable $e) {
+                        // Fila incompleta para esta fórmula: se deja en
+                        // blanco, no se rompe el resto del guardado.
+                        $valor = null;
+                    }
+                }
+                if ($valor === null) {
+                    continue;
+                }
+                $insValor->execute([$resultId, $jugadorId, $c['col_key'], $valor]);
+                $huboAlgo = true;
+            }
+            if ($huboAlgo) {
+                $guardados++;
+            }
+        }
+
+        if ($guardados === 0) {
+            db()->prepare('DELETE FROM test_results WHERE id = ?')->execute([$resultId]);
+            fail('No se ha rellenado ningún valor.');
+        }
+
+        json_out(['ok' => true, 'result_id' => $resultId, 'jugadores' => $guardados], 201);
+
+    // ── El historial de pases de un test ──────────────────────────────
+    case 'resultados_test':
+        $exerciseId = (int) ($_GET['exercise_id'] ?? 0);
+        exige_ejercicio_propio($exerciseId, $userId);
+
+        $st = db()->prepare(
+            'SELECT id, team_id, date FROM test_results WHERE exercise_id = ? ORDER BY date DESC'
+        );
+        $st->execute([$exerciseId]);
+        $resultados = $st->fetchAll();
+        foreach ($resultados as &$r) {
+            $r['id']      = (int) $r['id'];
+            $r['team_id'] = (int) $r['team_id'];
+        }
+        unset($r);
+
+        json_out(['ok' => true, 'resultados' => $resultados]);
+
     // ── Añadir un ejercicio a un bloque ───────────────────────────────
     // O bien llega `exercise_id` de la biblioteca, o bien los datos para
     // crear uno nuevo — que de paso queda guardado en la biblioteca,
@@ -2450,7 +2706,7 @@ function tipos_sesion(): array
 function tipos_bloque(): array
 {
     return ['activacion', 'fisico', 'tecnico', 'tactico', 'posesion',
-            'estrategia', 'competicion', 'charla', 'vuelta_calma', 'otro'];
+            'estrategia', 'competicion', 'charla', 'vuelta_calma', 'tests', 'otro'];
 }
 
 function espacios(): array
@@ -2547,6 +2803,325 @@ function exige_ejercicio_propio(int $id, int $userId): void
     if (!$st->fetch()) {
         fail('Ese ejercicio no está en tu biblioteca.', 403);
     }
+}
+
+/* ── tests físicos: fórmulas y plantillas ────────────────────────────
+   La clave de una columna (col_key) es estable aunque se le cambie
+   el nombre visible después: así una fórmula que la referencia, o un
+   resultado ya guardado, no se rompen por un simple cambio de
+   etiqueta. */
+
+/** «Tiempo de vuelo (s)» → «tiempo_de_vuelo_s». Sin acentos ni nada
+ *  que no sea a-z0-9 y guiones bajos. */
+function clave_valida(string $k): string
+{
+    $k = mb_strtolower(trim($k));
+    $k = strtr($k, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ü'=>'u','ñ'=>'n']);
+    $k = preg_replace('/[^a-z0-9]+/', '_', $k) ?? '';
+    $k = trim($k, '_');
+    return $k !== '' ? $k : 'columna';
+}
+
+/**
+ * Evaluador de expresiones aritméticas para las fórmulas de un test:
+ * + - * / ^ ( ), decimales, y las funciones sqrt/abs/round/min/max.
+ * Sin eval(): se tokeniza y se evalúa a mano, con el mismo lenguaje
+ * que su gemelo en el navegador — para que servidor y cliente
+ * calculen siempre el mismo número.
+ */
+final class EvaluadorFormula
+{
+    private string $s;
+    private int $i = 0;
+    private int $len;
+
+    public function __construct(string $expresion)
+    {
+        $this->s   = $expresion;
+        $this->len = strlen($expresion);
+    }
+
+    public function evaluar(): float
+    {
+        $v = $this->expresion();
+        $this->saltar();
+        if ($this->i < $this->len) {
+            throw new RuntimeException('Sobra «' . substr($this->s, $this->i) . '»');
+        }
+        if (!is_finite($v)) {
+            throw new RuntimeException('El resultado no es un número válido');
+        }
+        return $v;
+    }
+
+    private function saltar(): void
+    {
+        while ($this->i < $this->len && $this->s[$this->i] === ' ') {
+            $this->i++;
+        }
+    }
+
+    private function actual(): string
+    {
+        return $this->s[$this->i] ?? '';
+    }
+
+    private function numero(): float
+    {
+        $this->saltar();
+        if (!preg_match('/\G\d+(\.\d+)?/', $this->s, $m, 0, $this->i)) {
+            throw new RuntimeException('Se esperaba un número en «' . substr($this->s, $this->i) . '»');
+        }
+        $this->i += strlen($m[0]);
+        return (float) $m[0];
+    }
+
+    private function funcion(): float
+    {
+        $this->saltar();
+
+        if (preg_match('/\G[a-zA-Z]+/', $this->s, $m, 0, $this->i)
+            && ($this->s[$this->i + strlen($m[0])] ?? '') === '('
+        ) {
+            $nombre = strtolower($m[0]);
+            $this->i += strlen($m[0]) + 1;
+
+            $args = [$this->expresion()];
+            $this->saltar();
+            while ($this->actual() === ',') {
+                $this->i++;
+                $args[] = $this->expresion();
+                $this->saltar();
+            }
+            if ($this->actual() !== ')') {
+                throw new RuntimeException('Falta un ")"');
+            }
+            $this->i++;
+
+            return match ($nombre) {
+                'sqrt'  => sqrt($args[0]),
+                'abs'   => abs($args[0]),
+                'round' => isset($args[1]) ? round($args[0], (int) $args[1]) : round($args[0]),
+                'min'   => min($args),
+                'max'   => max($args),
+                default => throw new RuntimeException("No conozco la función «$nombre»"),
+            };
+        }
+
+        if ($this->actual() === '(') {
+            $this->i++;
+            $v = $this->expresion();
+            $this->saltar();
+            if ($this->actual() !== ')') {
+                throw new RuntimeException('Falta un ")"');
+            }
+            $this->i++;
+            return $v;
+        }
+
+        if ($this->actual() === '-') { $this->i++; return -$this->funcion(); }
+        if ($this->actual() === '+') { $this->i++; return $this->funcion(); }
+
+        return $this->numero();
+    }
+
+    private function potencia(): float
+    {
+        $v = $this->funcion();
+        $this->saltar();
+        if ($this->actual() === '^') {
+            $this->i++;
+            $v = $v ** $this->potencia();
+        }
+        return $v;
+    }
+
+    private function termino(): float
+    {
+        $v = $this->potencia();
+        $this->saltar();
+        while (in_array($this->actual(), ['*', '/'], true)) {
+            $op = $this->actual(); $this->i++;
+            $d  = $this->potencia();
+            $v  = $op === '*' ? $v * $d : $v / $d;
+            $this->saltar();
+        }
+        return $v;
+    }
+
+    private function expresion(): float
+    {
+        $v = $this->termino();
+        $this->saltar();
+        while (in_array($this->actual(), ['+', '-'], true)) {
+            $op = $this->actual(); $this->i++;
+            $d  = $this->termino();
+            $v  = $op === '+' ? $v + $d : $v - $d;
+            $this->saltar();
+        }
+        return $v;
+    }
+}
+
+/** Evalúa la fórmula de una columna de test contra los valores ya
+ *  conocidos de esa fila (otras columnas y parámetros del test, por
+ *  su col_key). Lanza si falta algún valor o la expresión no cuadra. */
+function evaluar_formula(string $expr, array $valores): float
+{
+    $s = trim($expr);
+    if (str_starts_with($s, '=')) {
+        $s = substr($s, 1);
+    }
+    if ($s === '') {
+        throw new RuntimeException('Fórmula vacía');
+    }
+
+    $s = preg_replace_callback('/\[([^\]]+)\]/', function (array $m) use ($valores): string {
+        $clave = clave_valida($m[1]);
+        if (!array_key_exists($clave, $valores) || $valores[$clave] === null || $valores[$clave] === ''
+            || !is_numeric($valores[$clave])
+        ) {
+            throw new RuntimeException('Falta el valor de «' . trim($m[1]) . '»');
+        }
+        return '(' . (float) $valores[$clave] . ')';
+    }, $s);
+
+    return (new EvaluadorFormula((string) $s))->evaluar();
+}
+
+/** Borra y vuelve a escribir enteras las columnas y los parámetros de
+ *  un test. Antes de tocar la base, valida cada fórmula con todas las
+ *  claves conocidas puestas a 1: si la sintaxis está rota, o referencia
+ *  una columna que no existe, se avisa ahora — no el día que alguien
+ *  pase el test de verdad. */
+function reemplazar_columnas_test(int $exerciseId, array $columnas, array $parametros): void
+{
+    $clavesConocidas = [];
+    foreach ($columnas as $c) {
+        $clavesConocidas[clave_valida((string) ($c['key'] ?? ''))] = 1;
+    }
+    foreach ($parametros as $p) {
+        $clavesConocidas[clave_valida((string) ($p['key'] ?? ''))] = 1;
+    }
+
+    foreach ($columnas as $c) {
+        if (($c['type'] ?? '') !== 'formula') {
+            continue;
+        }
+        try {
+            evaluar_formula((string) ($c['formula'] ?? ''), $clavesConocidas);
+        } catch (Throwable $e) {
+            $label = (string) ($c['label'] ?? '');
+            fail("La fórmula de «$label» no es válida: " . $e->getMessage());
+        }
+    }
+
+    db()->prepare('DELETE FROM test_columns WHERE exercise_id = ?')->execute([$exerciseId]);
+    db()->prepare('DELETE FROM test_parameters WHERE exercise_id = ?')->execute([$exerciseId]);
+
+    $insCol = db()->prepare(
+        'INSERT INTO test_columns (exercise_id, col_key, label, type, formula, sort)
+         VALUES (?, ?, ?, ?, ?, ?)'
+    );
+    $sort = 0;
+    foreach ($columnas as $c) {
+        $key   = clave_valida((string) ($c['key'] ?? ''));
+        $label = trim(mb_substr((string) ($c['label'] ?? ''), 0, 120));
+        if ($key === '' || $label === '') {
+            continue;
+        }
+        $tipo    = (($c['type'] ?? '') === 'formula') ? 'formula' : 'entrada';
+        $formula = $tipo === 'formula' ? mb_substr((string) ($c['formula'] ?? ''), 0, 300) : null;
+        $insCol->execute([$exerciseId, $key, $label, $tipo, $formula, $sort++]);
+    }
+
+    $insParam = db()->prepare(
+        'INSERT INTO test_parameters (exercise_id, col_key, label, value, sort)
+         VALUES (?, ?, ?, ?, ?)'
+    );
+    $sort = 0;
+    foreach ($parametros as $p) {
+        $key   = clave_valida((string) ($p['key'] ?? ''));
+        $label = trim(mb_substr((string) ($p['label'] ?? ''), 0, 120));
+        if ($key === '' || $label === '') {
+            continue;
+        }
+        $valor = is_numeric($p['valor'] ?? null) ? (float) $p['valor'] : 0.0;
+        $insParam->execute([$exerciseId, $key, $label, $valor, $sort++]);
+    }
+}
+
+/** Los tests que trae la app de fábrica: nombre, la cualidad que
+ *  valoran, sus columnas y sus parámetros. Un mismo entrenador puede
+ *  crear varios a partir de la misma plantilla — cada uno es su
+ *  propio ejercicio, independiente de aquí en adelante. */
+function catalogo_tests_predeterminados(): array
+{
+    return [
+        'cmj' => [
+            'nombre' => 'CMJ · Countermovement Jump',
+            'cualidad' => 'Potencia del tren inferior',
+            'color' => '#8a7cd6',
+            'descripcion' => 'Salto vertical con contramovimiento. El tiempo que el jugador pasa en '
+                . 'el aire se convierte en altura del salto: es el test más rápido para vigilar la '
+                . 'potencia de piernas semana a semana.',
+            'parametros' => [],
+            'columnas' => [
+                ['key' => 'tiempo_vuelo', 'label' => 'Tiempo de vuelo (s)', 'type' => 'entrada', 'formula' => null],
+                ['key' => 'altura', 'label' => 'Altura (cm)', 'type' => 'formula',
+                 'formula' => '=(9.81*[tiempo_vuelo]^2)/8*100'],
+            ],
+        ],
+        'drop_jump' => [
+            'nombre' => 'Drop Jump',
+            'cualidad' => 'Fuerza reactiva',
+            'color' => '#dd7a7a',
+            'descripcion' => 'Caída desde un cajón seguida de un salto máximo. La relación entre lo '
+                . 'que salta y lo que tarda en despegar del suelo (RSI) dice cuánta fuerza es capaz '
+                . 'de aplicar en muy poco tiempo — clave en frenadas y cambios de dirección.',
+            'parametros' => [
+                ['key' => 'altura_cajon', 'label' => 'Altura del cajón (cm)', 'valor' => 30],
+            ],
+            'columnas' => [
+                ['key' => 'tiempo_contacto', 'label' => 'Tiempo de contacto (s)', 'type' => 'entrada', 'formula' => null],
+                ['key' => 'tiempo_vuelo', 'label' => 'Tiempo de vuelo (s)', 'type' => 'entrada', 'formula' => null],
+                ['key' => 'altura_salto', 'label' => 'Altura del salto (cm)', 'type' => 'formula',
+                 'formula' => '=(9.81*[tiempo_vuelo]^2)/8*100'],
+                ['key' => 'rsi', 'label' => 'RSI', 'type' => 'formula',
+                 'formula' => '=([altura_salto]/100)/[tiempo_contacto]'],
+            ],
+        ],
+        'imtp' => [
+            'nombre' => 'IMTP · Isometric Mid-Thigh Pull',
+            'cualidad' => 'Fuerza máxima',
+            'color' => '#dd9a52',
+            'descripcion' => 'Tirón isométrico contra una barra fija, sobre una plataforma de fuerza. '
+                . 'La fuerza pico registrada, relativizada al peso corporal, es uno de los mejores '
+                . 'indicadores de fuerza máxima sin el riesgo de una repetición máxima dinámica.',
+            'parametros' => [],
+            'columnas' => [
+                ['key' => 'peso_corporal', 'label' => 'Peso corporal (kg)', 'type' => 'entrada', 'formula' => null],
+                ['key' => 'fuerza_pico', 'label' => 'Fuerza pico (N)', 'type' => 'entrada', 'formula' => null],
+                ['key' => 'fuerza_relativa', 'label' => 'Fuerza relativa (N/kg)', 'type' => 'formula',
+                 'formula' => '=[fuerza_pico]/[peso_corporal]'],
+            ],
+        ],
+        'yoyo' => [
+            'nombre' => 'Yo-Yo Intermittent Recovery Test',
+            'cualidad' => 'Resistencia a esfuerzos intermitentes',
+            'color' => '#5cb8ac',
+            'descripcion' => 'Carreras de ida y vuelta a velocidad creciente con pausas cortas, hasta '
+                . 'el fallo. Es el test de referencia para la capacidad de repetir esfuerzos de alta '
+                . 'intensidad — la resistencia que de verdad se usa en un partido.',
+            'parametros' => [],
+            'columnas' => [
+                ['key' => 'nivel', 'label' => 'Nivel alcanzado', 'type' => 'entrada', 'formula' => null],
+                ['key' => 'distancia', 'label' => 'Distancia total (m)', 'type' => 'entrada', 'formula' => null],
+                ['key' => 'vo2max', 'label' => 'VO2max estimado', 'type' => 'formula',
+                 'formula' => '=[distancia]*0.0084+36.4'],
+            ],
+        ],
+    ];
 }
 
 /** Un rango de fechas AAAA-MM-DD con el fin en o después del inicio.
